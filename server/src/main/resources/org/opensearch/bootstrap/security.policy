@@ -80,6 +80,11 @@ grant codeBase "${codebase.jna}" {
 //// Everything else:
 
 grant {
+  // Added as a part of POC: https://github.com/opensearch-project/OpenSearch/issues/2034
+  permission java.lang.RuntimePermission "accessDeclaredMembers";
+  permission java.util.PropertyPermission "*", "write";
+  permission java.net.SocketPermission "*", "connect";
+
   // needed by vendored Guice
   permission java.lang.RuntimePermission "accessClassInPackage.jdk.internal.vm.annotation";
 

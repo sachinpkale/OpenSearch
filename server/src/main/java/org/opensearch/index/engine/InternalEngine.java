@@ -32,6 +32,9 @@
 
 package org.opensearch.index.engine;
 
+import com.amazonaws.regions.Regions;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.apache.lucene.document.LongPoint;
@@ -63,6 +66,8 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.LockObtainFailedException;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.InfoStream;
@@ -104,16 +109,17 @@ import org.opensearch.index.seqno.SequenceNumbers;
 import org.opensearch.index.shard.OpenSearchMergePolicy;
 import org.opensearch.index.shard.ShardId;
 import org.opensearch.index.store.Store;
+import org.opensearch.index.translog.DefaultTranslogDeletionPolicy;
 import org.opensearch.index.translog.Translog;
 import org.opensearch.index.translog.TranslogConfig;
 import org.opensearch.index.translog.TranslogCorruptedException;
-import org.opensearch.index.translog.DefaultTranslogDeletionPolicy;
 import org.opensearch.index.translog.TranslogDeletionPolicy;
 import org.opensearch.index.translog.TranslogStats;
 import org.opensearch.search.suggest.completion.CompletionStats;
 import org.opensearch.threadpool.ThreadPool;
 
 import java.io.Closeable;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -193,6 +199,9 @@ public class InternalEngine extends Engine {
     private final AtomicBoolean trackTranslogLocation = new AtomicBoolean(false);
     private final KeyedLock<Long> noOpKeyedLock = new KeyedLock<>();
     private final AtomicBoolean shouldPeriodicallyFlushAfterBigMerge = new AtomicBoolean(false);
+
+    private final Map<String, Boolean> segmentUploadStatus = new HashMap<>();
+    private final AmazonS3 s3Client = AmazonS3ClientBuilder.standard().withRegion(Regions.US_EAST_1).build();
 
     /**
      * If multiple writes passed {@link InternalEngine#tryAcquireInFlightDocs(Operation, int)} but they haven't adjusted
@@ -2001,6 +2010,10 @@ public class InternalEngine extends Engine {
                         commitIndexWriter(indexWriter, translog);
                         logger.trace("finished commit for flush");
 
+                        logger.trace("starting segment upload to remote store");
+                        uploadSegmentsToRemote();
+                        logger.trace("finished segment upload to remote store");
+
                         // a temporary debugging to investigate test failure - issue#32827. Remove when the issue is resolved
                         logger.debug(
                             "new commit on flush, hasUncommittedChanges:{}, force:{}, shouldPeriodicallyFlush:{}",
@@ -2033,6 +2046,39 @@ public class InternalEngine extends Engine {
         if (engineConfig.isEnableGcDeletes()) {
             pruneDeletedTombstones();
         }
+    }
+
+    /**
+     * Uploads new segment created as part of flush to S3
+     * This method is added as a part of POC: https://github.com/opensearch-project/OpenSearch/issues/2034
+     */
+    private void uploadSegmentsToRemote() throws IOException {
+        Engine.IndexCommitRef commitRef = acquireLastIndexCommit(false);
+        IndexCommit indexCommit = commitRef.getIndexCommit();
+        try {
+            // ToDo: Find a better way to abstract out logic to get segment directory name.
+            String segmentDirectory = ((FSDirectory) ((FilterDirectory) ((FilterDirectory) indexCommit.getDirectory()).getDelegate()).getDelegate()).getDirectory().toString();
+            indexCommit.getFileNames()
+                .stream()
+                .filter(segmentFile -> !segmentFile.equals(indexCommit.getSegmentsFileName()))
+                .map(segmentFile -> segmentDirectory + "/" + segmentFile) // ToDo: Remove hardcoded separator
+                .filter(segmentKey -> !segmentUploadStatus.containsKey(segmentKey))
+                .forEach(segmentKey -> {
+                    uploadSegmentFile(segmentKey);
+                    segmentUploadStatus.put(segmentKey, Boolean.TRUE);
+                });
+        } catch(Exception e) {
+            logger.error("Exception while uploading segment files to remote store", e);
+            throw e;
+        } finally {
+            commitRef.close();
+        }
+    }
+
+    private void uploadSegmentFile(String segmentFile) {
+        logger.trace("uploading segment file: " + segmentFile);
+        s3Client.putObject("segment-upload-test-poc", segmentFile, new File(segmentFile));
+        // ToDo: Checksum of the uploaded file and match it with the local file
     }
 
     private void refreshLastCommittedSegmentInfos() {
