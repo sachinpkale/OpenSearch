@@ -104,6 +104,7 @@ import org.opensearch.index.mapper.Uid;
 import org.opensearch.index.merge.MergeStats;
 import org.opensearch.index.merge.OnGoingMerge;
 import org.opensearch.index.seqno.LocalCheckpointTracker;
+import org.opensearch.index.seqno.ReplicationTracker;
 import org.opensearch.index.seqno.SeqNoStats;
 import org.opensearch.index.seqno.SequenceNumbers;
 import org.opensearch.index.shard.OpenSearchMergePolicy;
@@ -202,6 +203,7 @@ public class InternalEngine extends Engine {
 
     private final Map<String, Boolean> segmentUploadStatus = new HashMap<>();
     private final AmazonS3 s3Client = AmazonS3ClientBuilder.standard().withRegion(Regions.US_EAST_1).build();
+    private final ReplicationTracker replicationTracker;
 
     /**
      * If multiple writes passed {@link InternalEngine#tryAcquireInFlightDocs(Operation, int)} but they haven't adjusted
@@ -285,6 +287,7 @@ public class InternalEngine extends Engine {
                 historyUUID = loadHistoryUUID(commitData);
                 forceMergeUUID = commitData.get(FORCE_MERGE_UUID_KEY);
                 indexWriter = writer;
+                this.replicationTracker = (ReplicationTracker) engineConfig.getGlobalCheckpointSupplier();
             } catch (IOException | TranslogCorruptedException e) {
                 throw new EngineCreationFailureException(shardId, "failed to create engine", e);
             } catch (AssertionError e) {
@@ -2010,9 +2013,11 @@ public class InternalEngine extends Engine {
                         commitIndexWriter(indexWriter, translog);
                         logger.trace("finished commit for flush");
 
-                        logger.trace("starting segment upload to remote store");
-                        uploadSegmentsToRemote();
-                        logger.trace("finished segment upload to remote store");
+                        if(this.replicationTracker.isPrimaryMode()) {
+                            logger.trace("starting segment upload to remote store");
+                            uploadSegmentsToRemote();
+                            logger.trace("finished segment upload to remote store");
+                        }
 
                         // a temporary debugging to investigate test failure - issue#32827. Remove when the issue is resolved
                         logger.debug(
