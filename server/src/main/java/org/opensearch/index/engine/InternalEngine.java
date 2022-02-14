@@ -36,6 +36,7 @@ import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.util.FileUtils;
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -77,6 +78,7 @@ import org.opensearch.action.index.IndexRequest;
 import org.opensearch.common.Booleans;
 import org.opensearch.common.Nullable;
 import org.opensearch.common.SuppressForbidden;
+import org.opensearch.common.io.FileSystemUtils;
 import org.opensearch.common.lease.Releasable;
 import org.opensearch.common.lucene.LoggerInfoStream;
 import org.opensearch.common.lucene.Lucene;
@@ -122,7 +124,11 @@ import org.opensearch.threadpool.ThreadPool;
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -2006,6 +2012,7 @@ public class InternalEngine extends Engine {
                     || getProcessedLocalCheckpoint() > Long.parseLong(
                         lastCommittedSegmentInfos.userData.get(SequenceNumbers.LOCAL_CHECKPOINT_KEY)
                     )) {
+
                     ensureCanFlush();
                     try {
                         translog.rollGeneration();
@@ -2061,6 +2068,33 @@ public class InternalEngine extends Engine {
         Engine.IndexCommitRef commitRef = acquireLastIndexCommit(false);
         IndexCommit indexCommit = commitRef.getIndexCommit();
 
+        final List<IndexCommit> existingCommits = DirectoryReader.listCommits(indexCommit.getDirectory());
+
+        logger.debug("ExistingCommits: ");
+        for(IndexCommit ic: existingCommits) {
+            logger.debug("ic.getGeneration(): " + ic.getGeneration());
+            logger.debug("indexCommit.getSegmentCount(): " + ic.getSegmentCount());
+            logger.debug("indexCommit.getSegmentsFileName(): " + ic.getSegmentsFileName());
+            logger.debug("indexCommit.getUserData(): " + ic.getUserData());
+            logger.debug("indexCommit.getFileNames(): " + ic.getFileNames());
+        }
+
+        logger.debug("NewCommit: ");
+        logger.debug("indexCommit.getGeneration(): " + indexCommit.getGeneration());
+        logger.debug("indexCommit.getSegmentCount(): " + indexCommit.getSegmentCount());
+        logger.debug("indexCommit.getSegmentsFileName(): " + indexCommit.getSegmentsFileName());
+        logger.debug("indexCommit.getUserData(): " + indexCommit.getUserData());
+        logger.debug("indexCommit.getFileNames(): " + indexCommit.getFileNames());
+        if(lastCommittedSegmentInfos != null) {
+            List<SegmentCommitInfo> segmentCommitInfos = lastCommittedSegmentInfos.asList();
+            logger.debug("lastCommittedSegmentInfos.asList().size(): " + segmentCommitInfos.size());
+            for(int i = 0; i < segmentCommitInfos.size(); i++) {
+                SegmentCommitInfo segmentCommitInfo = segmentCommitInfos.get(i);
+                logger.debug("segmentCommitInfo: " + i + ", segmentCommitInfo.files(): " + segmentCommitInfo.files());
+            }
+        } else {
+            logger.debug("lastCommittedSegmentInfos.asList().size(): 0");
+        }
         try {
             // ToDo: Find a better way to abstract out logic to get segment directory name.
             String segmentDirectory = ((FSDirectory) ((FilterDirectory) ((FilterDirectory) indexCommit.getDirectory()).getDelegate()).getDelegate()).getDirectory().toString();
@@ -2072,6 +2106,11 @@ public class InternalEngine extends Engine {
                         segmentUploadStatus.put(segmentFilePath, Boolean.TRUE);
                     }
                 });
+            String maxProcessedLocalCheckpoint = indexCommit.getUserData().get(SequenceNumbers.LOCAL_CHECKPOINT_KEY);
+            try (PrintWriter out = new PrintWriter(segmentDirectory + "/max_checkpoint")) {
+                out.println(maxProcessedLocalCheckpoint);
+            }
+            uploadSegmentFile("max_checkpoint", segmentDirectory + "/max_checkpoint");
         } catch(Exception e) {
             logger.error("Exception while uploading segment files to remote store", e);
             throw e;
@@ -2082,12 +2121,13 @@ public class InternalEngine extends Engine {
 
     private void uploadSegmentFile(String segmentFile, String segmentFilePath) {
         logger.trace("uploading segment file: " + segmentFilePath);
-        List<String> pathElements = List.of(engineConfig.getIndexSettings().getUUID(),
+        String[] elements = {engineConfig.getIndexSettings().getUUID(),
             shardId.toString(),
             String.valueOf(engineConfig.getPrimaryTermSupplier().getAsLong()),
-            segmentFile);
+            segmentFile};
+        List<String> pathElements = Arrays.asList(elements);
         String remotePath = String.join("/", pathElements);
-        s3Client.putObject("segment-upload-test-poc", remotePath, new File(segmentFilePath));
+        s3Client.putObject("segment-upload-test-123", remotePath, new File(segmentFilePath));
         // ToDo: Checksum of the uploaded file and match it with the local file
     }
 
