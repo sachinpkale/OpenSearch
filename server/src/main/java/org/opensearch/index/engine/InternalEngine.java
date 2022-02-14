@@ -2082,7 +2082,6 @@ public class InternalEngine extends Engine {
 
     private void uploadSegmentFile(String segmentFile, String segmentFilePath) {
         logger.trace("uploading segment file: " + segmentFilePath);
-        engineConfig.getStore().getMetadata()
         List<String> pathElements = List.of(engineConfig.getIndexSettings().getUUID(),
             shardId.toString(),
             String.valueOf(engineConfig.getPrimaryTermSupplier().getAsLong()),
