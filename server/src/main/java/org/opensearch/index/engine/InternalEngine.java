@@ -2060,17 +2060,17 @@ public class InternalEngine extends Engine {
     private void uploadSegmentsToRemote() throws IOException {
         Engine.IndexCommitRef commitRef = acquireLastIndexCommit(false);
         IndexCommit indexCommit = commitRef.getIndexCommit();
+
         try {
             // ToDo: Find a better way to abstract out logic to get segment directory name.
             String segmentDirectory = ((FSDirectory) ((FilterDirectory) ((FilterDirectory) indexCommit.getDirectory()).getDelegate()).getDelegate()).getDirectory().toString();
             indexCommit.getFileNames()
-                .stream()
-                .filter(segmentFile -> !segmentFile.equals(indexCommit.getSegmentsFileName()))
-                .map(segmentFile -> segmentDirectory + "/" + segmentFile) // ToDo: Remove hardcoded separator
-                .filter(segmentKey -> !segmentUploadStatus.containsKey(segmentKey))
-                .forEach(segmentKey -> {
-                    uploadSegmentFile(segmentKey);
-                    segmentUploadStatus.put(segmentKey, Boolean.TRUE);
+                .forEach(fileName -> {
+                    if(!segmentUploadStatus.containsKey(fileName)) {
+                        String segmentFilePath = segmentDirectory + "/" + fileName; // ToDo: Remove hardcoded separator
+                        uploadSegmentFile(fileName, segmentFilePath);
+                        segmentUploadStatus.put(segmentFilePath, Boolean.TRUE);
+                    }
                 });
         } catch(Exception e) {
             logger.error("Exception while uploading segment files to remote store", e);
@@ -2080,9 +2080,15 @@ public class InternalEngine extends Engine {
         }
     }
 
-    private void uploadSegmentFile(String segmentFile) {
-        logger.trace("uploading segment file: " + segmentFile);
-        s3Client.putObject("segment-upload-test-poc", segmentFile, new File(segmentFile));
+    private void uploadSegmentFile(String segmentFile, String segmentFilePath) {
+        logger.trace("uploading segment file: " + segmentFilePath);
+        engineConfig.getStore().getMetadata()
+        List<String> pathElements = List.of(engineConfig.getIndexSettings().getUUID(),
+            shardId.toString(),
+            String.valueOf(engineConfig.getPrimaryTermSupplier().getAsLong()),
+            segmentFile);
+        String remotePath = String.join("/", pathElements);
+        s3Client.putObject("segment-upload-test-poc", remotePath, new File(segmentFilePath));
         // ToDo: Checksum of the uploaded file and match it with the local file
     }
 
