@@ -207,7 +207,6 @@ public class InternalEngine extends Engine {
     private final KeyedLock<Long> noOpKeyedLock = new KeyedLock<>();
     private final AtomicBoolean shouldPeriodicallyFlushAfterBigMerge = new AtomicBoolean(false);
 
-    private final Map<String, Boolean> segmentUploadStatus = new HashMap<>();
     private final AmazonS3 s3Client = AmazonS3ClientBuilder.standard().withRegion(Regions.US_EAST_1).build();
     private final ReplicationTracker replicationTracker;
 
@@ -2095,19 +2094,22 @@ public class InternalEngine extends Engine {
         } else {
             logger.debug("lastCommittedSegmentInfos.asList().size(): 0");
         }
+
+        IndexCommit previousIndexCommit = null;
+        if(existingCommits.size() > 2) {
+            previousIndexCommit = existingCommits.get(existingCommits.size() - 2);
+        }
         try {
             // ToDo: Find a better way to abstract out logic to get segment directory name.
             String segmentDirectory = ((FSDirectory) ((FilterDirectory) ((FilterDirectory) indexCommit.getDirectory()).getDelegate()).getDelegate()).getDirectory().toString();
-            indexCommit.getFileNames()
-                .forEach(fileName -> {
-                    if(!segmentUploadStatus.containsKey(fileName)) {
-                        String segmentFilePath = segmentDirectory + "/" + fileName; // ToDo: Remove hardcoded separator
-                        uploadSegmentFile(fileName, segmentFilePath);
-                        segmentUploadStatus.put(segmentFilePath, Boolean.TRUE);
-                    }
-                });
+            for(String fileName: indexCommit.getFileNames()) {
+                if(previousIndexCommit == null || !previousIndexCommit.getFileNames().contains(fileName)) {
+                    String segmentFilePath = segmentDirectory + "/" + fileName; // ToDo: Remove hardcoded separator
+                    uploadSegmentFile(fileName, segmentFilePath);
+                }
+            }
             String maxProcessedLocalCheckpoint = indexCommit.getUserData().get(SequenceNumbers.LOCAL_CHECKPOINT_KEY);
-            try (PrintWriter out = new PrintWriter(segmentDirectory + "/max_checkpoint")) {
+                try (PrintWriter out = new PrintWriter(segmentDirectory + "/max_checkpoint")) {
                 out.println(maxProcessedLocalCheckpoint);
             }
             uploadSegmentFile("max_checkpoint", segmentDirectory + "/max_checkpoint");
