@@ -621,6 +621,10 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
                                     () -> {}
                                 )
                             );
+
+                            // Upload segments to remote store
+                            engine.backfillSegmentsToRemoteStore(newPrimaryTerm);
+
                             /* Rolling the translog generation is not strictly needed here (as we will never have collisions between
                              * sequence numbers in a translog generation in a new primary as it takes the last known sequence number
                              * as a starting point), but it simplifies reasoning about the relationship between primary terms and

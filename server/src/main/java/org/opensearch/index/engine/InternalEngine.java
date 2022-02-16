@@ -35,6 +35,7 @@ package org.opensearch.index.engine;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.services.s3.model.S3Object;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.util.FileUtils;
 import org.apache.logging.log4j.message.ParameterizedMessage;
@@ -121,9 +122,11 @@ import org.opensearch.index.translog.TranslogStats;
 import org.opensearch.search.suggest.completion.CompletionStats;
 import org.opensearch.threadpool.ThreadPool;
 
+import java.io.BufferedReader;
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -2102,17 +2105,32 @@ public class InternalEngine extends Engine {
         try {
             // ToDo: Find a better way to abstract out logic to get segment directory name.
             String segmentDirectory = ((FSDirectory) ((FilterDirectory) ((FilterDirectory) indexCommit.getDirectory()).getDelegate()).getDelegate()).getDirectory().toString();
+
+            // Upload file with existing primary term number
+            String currentPrimaryTerm = String.valueOf(engineConfig.getPrimaryTermSupplier().getAsLong());
+            try (PrintWriter out = new PrintWriter(segmentDirectory + "/current_primary_term")) {
+                out.println(currentPrimaryTerm);
+            }
+            uploadSegmentFile(engineConfig.getIndexSettings().getUUID() + "/" + shardId.toString() + "/current_primary_term",
+                segmentDirectory + "/current_primary_term");
+
+            // Upload segment files
+            String[] elements = {engineConfig.getIndexSettings().getUUID(),
+                shardId.toString(),
+                String.valueOf(engineConfig.getPrimaryTermSupplier().getAsLong())};
+            List<String> pathElements = Arrays.asList(elements);
+            String remotePath = String.join("/", pathElements);
             for(String fileName: indexCommit.getFileNames()) {
                 if(previousIndexCommit == null || !previousIndexCommit.getFileNames().contains(fileName)) {
                     String segmentFilePath = segmentDirectory + "/" + fileName; // ToDo: Remove hardcoded separator
-                    uploadSegmentFile(fileName, segmentFilePath);
+                    uploadSegmentFile(remotePath + "/" + fileName, segmentFilePath);
                 }
             }
             String maxProcessedLocalCheckpoint = indexCommit.getUserData().get(SequenceNumbers.LOCAL_CHECKPOINT_KEY);
                 try (PrintWriter out = new PrintWriter(segmentDirectory + "/max_checkpoint")) {
                 out.println(maxProcessedLocalCheckpoint);
             }
-            uploadSegmentFile("max_checkpoint", segmentDirectory + "/max_checkpoint");
+            uploadSegmentFile(remotePath + "/max_checkpoint", segmentDirectory + "/max_checkpoint");
         } catch(Exception e) {
             logger.error("Exception while uploading segment files to remote store", e);
             throw e;
@@ -2121,16 +2139,75 @@ public class InternalEngine extends Engine {
         }
     }
 
-    private void uploadSegmentFile(String segmentFile, String segmentFilePath) {
+    private void uploadSegmentFile(String remotePath, String segmentFilePath) {
         logger.trace("uploading segment file: " + segmentFilePath);
-        String[] elements = {engineConfig.getIndexSettings().getUUID(),
-            shardId.toString(),
-            String.valueOf(engineConfig.getPrimaryTermSupplier().getAsLong()),
-            segmentFile};
-        List<String> pathElements = Arrays.asList(elements);
-        String remotePath = String.join("/", pathElements);
         s3Client.putObject("segment-upload-test-123", remotePath, new File(segmentFilePath));
         // ToDo: Checksum of the uploaded file and match it with the local file
+    }
+
+    private String downloadRemoteFileAsAString(String remotePath) throws IOException {
+        logger.trace("downloading segment file: " + remotePath);
+        S3Object s3Object = s3Client.getObject("segment-upload-test-123", remotePath);
+        BufferedReader reader = new BufferedReader(new InputStreamReader(s3Object.getObjectContent()));
+        return reader.readLine();
+    }
+
+    @Override
+    public void backfillSegmentsToRemoteStore(long newPrimaryTerm) {
+        try {
+            String primaryTermRemotePath = engineConfig.getIndexSettings().getUUID() + "/" + shardId.toString() + "/current_primary_term";
+            long remotePrimaryTerm = Long.parseLong(downloadRemoteFileAsAString(primaryTermRemotePath));
+            if(remotePrimaryTerm < newPrimaryTerm) {
+                String[] elements = {engineConfig.getIndexSettings().getUUID(),
+                    shardId.toString(),
+                    String.valueOf(remotePrimaryTerm),
+                    "max_checkpoint"};
+                List<String> pathElements = Arrays.asList(elements);
+                String maxCheckpointRemotePath = String.join("/", pathElements);
+                long maxProcessedRemoteCheckpoint = Long.parseLong(downloadRemoteFileAsAString(maxCheckpointRemotePath));
+
+                Engine.IndexCommitRef commitRef = acquireLastIndexCommit(false);
+                IndexCommit indexCommit = commitRef.getIndexCommit();
+                String segmentDirectory = ((FSDirectory) ((FilterDirectory) ((FilterDirectory) indexCommit.getDirectory()).getDelegate()).getDelegate()).getDirectory().toString();
+
+                String[] elements2 = {engineConfig.getIndexSettings().getUUID(),
+                    shardId.toString(),
+                    String.valueOf(newPrimaryTerm)};
+                List<String> pathElements2 = Arrays.asList(elements2);
+                String remotePath = String.join("/", pathElements2);
+
+                long maxProcessedLocalCheckpoint = Long.parseLong(indexCommit.getUserData().get(SequenceNumbers.LOCAL_CHECKPOINT_KEY));
+
+                if(maxProcessedRemoteCheckpoint == maxProcessedLocalCheckpoint) {
+                    logger.debug("This is unbelievable");
+                } else if(maxProcessedRemoteCheckpoint > maxProcessedLocalCheckpoint) {
+                    logger.debug("No need to take any action. There will not be any data loss");
+                } else {
+                    logger.debug("Backfill is required to remote store before proceeding");
+                    IndexCommit previousIndexCommit = null;
+                    final List<IndexCommit> existingCommits = DirectoryReader.listCommits(indexCommit.getDirectory());
+                    for(IndexCommit existingCommit: existingCommits) {
+                        if(maxProcessedRemoteCheckpoint < Long.parseLong(existingCommit.getUserData().get(SequenceNumbers.LOCAL_CHECKPOINT_KEY))) {
+                            logger.debug("Backfilling started for commit with checkpoint: " + existingCommit.getUserData().get(SequenceNumbers.LOCAL_CHECKPOINT_KEY));
+                            for(String fileName: existingCommit.getFileNames()) {
+                                if(previousIndexCommit == null || !previousIndexCommit.getFileNames().contains(fileName)) {
+                                    String segmentFilePath = segmentDirectory + "/" + fileName; // ToDo: Remove hardcoded separator
+                                    uploadSegmentFile(remotePath + "/" + fileName, segmentFilePath);
+                                }
+                            }
+                            try (PrintWriter out = new PrintWriter(segmentDirectory + "/max_checkpoint")) {
+                                out.println(existingCommit.getUserData().get(SequenceNumbers.LOCAL_CHECKPOINT_KEY));
+                            }
+                            uploadSegmentFile(remotePath + "/max_checkpoint", segmentDirectory + "/max_checkpoint");
+                            logger.debug("Backfilling completed for commit with checkpoint: " + existingCommit.getUserData().get(SequenceNumbers.LOCAL_CHECKPOINT_KEY));
+                        }
+                        previousIndexCommit = existingCommit;
+                    }
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private void refreshLastCommittedSegmentInfos() {

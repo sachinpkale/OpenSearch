@@ -432,6 +432,9 @@ public class ReadOnlyEngine extends Engine {
     public void flush(boolean force, boolean waitIfOngoing) throws EngineException {}
 
     @Override
+    public void backfillSegmentsToRemoteStore(long newPrimaryTerm) {}
+
+    @Override
     public void forceMerge(
         boolean flush,
         int maxNumSegments,

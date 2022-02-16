@@ -1122,6 +1122,8 @@ public abstract class Engine implements Closeable {
      */
     public abstract void flush(boolean force, boolean waitIfOngoing) throws EngineException;
 
+    public abstract void backfillSegmentsToRemoteStore(long newPrimaryTerm);
+
     /**
      * Flushes the state of the engine including the transaction log, clearing memory and persisting
      * documents in the lucene index to disk including a potentially heavy and durable fsync operation.
