@@ -78,6 +78,7 @@ public final class EngineConfig {
     private final ThreadPool threadPool;
     private final Engine.Warmer warmer;
     private final Store store;
+    private final Store remoteStore;
     private final MergePolicy mergePolicy;
     private final Analyzer analyzer;
     private final Similarity similarity;
@@ -153,6 +154,7 @@ public final class EngineConfig {
         IndexSettings indexSettings,
         Engine.Warmer warmer,
         Store store,
+        Store remoteStore,
         MergePolicy mergePolicy,
         Analyzer analyzer,
         Similarity similarity,
@@ -177,6 +179,7 @@ public final class EngineConfig {
             indexSettings,
             warmer,
             store,
+            remoteStore,
             mergePolicy,
             analyzer,
             similarity,
@@ -207,6 +210,7 @@ public final class EngineConfig {
         IndexSettings indexSettings,
         Engine.Warmer warmer,
         Store store,
+        Store remoteStore,
         MergePolicy mergePolicy,
         Analyzer analyzer,
         Similarity similarity,
@@ -231,6 +235,7 @@ public final class EngineConfig {
         this.threadPool = threadPool;
         this.warmer = warmer == null ? (a) -> {} : warmer;
         this.store = store;
+        this.remoteStore = remoteStore;
         this.mergePolicy = mergePolicy;
         this.analyzer = analyzer;
         this.similarity = similarity;
@@ -334,6 +339,10 @@ public final class EngineConfig {
      */
     public Store getStore() {
         return store;
+    }
+
+    public Store getRemoteStore() {
+        return remoteStore;
     }
 
     /**

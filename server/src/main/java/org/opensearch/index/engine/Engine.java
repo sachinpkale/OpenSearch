@@ -126,6 +126,7 @@ public abstract class Engine implements Closeable {
     protected final Logger logger;
     protected final EngineConfig engineConfig;
     protected final Store store;
+    protected final Store remoteStore;
     protected final AtomicBoolean isClosed = new AtomicBoolean(false);
     private final CountDownLatch closedLatch = new CountDownLatch(1);
     protected final EventListener eventListener;
@@ -153,6 +154,7 @@ public abstract class Engine implements Closeable {
         this.engineConfig = engineConfig;
         this.shardId = engineConfig.getShardId();
         this.store = engineConfig.getStore();
+        this.remoteStore = engineConfig.getRemoteStore();
         // we use the engine class directly here to make sure all subclasses have the same logger name
         this.logger = Loggers.getLogger(Engine.class, engineConfig.getShardId());
         this.eventListener = engineConfig.getEventListener();
