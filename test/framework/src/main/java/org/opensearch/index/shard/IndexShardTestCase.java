@@ -462,6 +462,7 @@ public abstract class IndexShardTestCase extends OpenSearchTestCase {
                 indexSettings,
                 shardPath,
                 store,
+                null,
                 () -> null,
                 indexCache,
                 mapperService,

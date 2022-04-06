@@ -21,7 +21,7 @@ public class RemoteIndexOutput extends IndexOutput {
     private final BlobContainer blobContainer;
 
     public RemoteIndexOutput(String name, IOContext context, BlobContainer blobContainer) {
-        super("TempResourceDescription", "TempName");
+        super(name, name);
         this.blobContainer = blobContainer;
     }
 
@@ -37,7 +37,8 @@ public class RemoteIndexOutput extends IndexOutput {
 
     @Override
     public void close() throws IOException {
-        throw new UnsupportedOperationException();
+        // throw new UnsupportedOperationException();
+        // do nothing for now
     }
 
     @Override

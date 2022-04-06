@@ -63,6 +63,8 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FilterDirectory;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.LockObtainFailedException;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.InfoStream;
@@ -100,6 +102,7 @@ import org.opensearch.index.mapper.Uid;
 import org.opensearch.index.merge.MergeStats;
 import org.opensearch.index.merge.OnGoingMerge;
 import org.opensearch.index.seqno.LocalCheckpointTracker;
+import org.opensearch.index.seqno.ReplicationTracker;
 import org.opensearch.index.seqno.SeqNoStats;
 import org.opensearch.index.seqno.SequenceNumbers;
 import org.opensearch.index.shard.OpenSearchMergePolicy;
@@ -117,6 +120,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -214,6 +218,9 @@ public class InternalEngine extends Engine {
     @Nullable
     private volatile String forceMergeUUID;
 
+    private final ReplicationTracker replicationTracker;
+
+
     public InternalEngine(EngineConfig engineConfig) {
         this(engineConfig, IndexWriter.MAX_DOCS, LocalCheckpointTracker::new);
     }
@@ -275,6 +282,7 @@ public class InternalEngine extends Engine {
                 historyUUID = loadHistoryUUID(commitData);
                 forceMergeUUID = commitData.get(FORCE_MERGE_UUID_KEY);
                 indexWriter = writer;
+                this.replicationTracker = (ReplicationTracker) engineConfig.getGlobalCheckpointSupplier();
             } catch (IOException | TranslogCorruptedException e) {
                 throw new EngineCreationFailureException(shardId, "failed to create engine", e);
             } catch (AssertionError e) {
@@ -481,10 +489,10 @@ public class InternalEngine extends Engine {
             syncTranslog(); // to persist noops associated with the advancement of the local checkpoint
             assert localCheckpointTracker.getPersistedCheckpoint() == maxSeqNo
                 : "persisted local checkpoint did not advance to max seq no; is ["
-                    + localCheckpointTracker.getPersistedCheckpoint()
-                    + "], max seq no ["
-                    + maxSeqNo
-                    + "]";
+                + localCheckpointTracker.getPersistedCheckpoint()
+                + "], max seq no ["
+                + maxSeqNo
+                + "]";
             return numNoOpsAdded;
         }
     }
@@ -846,8 +854,8 @@ public class InternalEngine extends Engine {
         } else if (engineConfig.isEnableGcDeletes()
             && versionValue.isDelete()
             && (engineConfig.getThreadPool().relativeTimeInMillis() - ((DeleteVersionValue) versionValue).time) > getGcDeletesInMillis()) {
-                versionValue = null;
-            }
+            versionValue = null;
+        }
         return versionValue;
     }
 
@@ -1158,35 +1166,35 @@ public class InternalEngine extends Engine {
                 plan = IndexingStrategy.skipDueToVersionConflict(e, true, currentVersion);
             } else if (index.getIfSeqNo() != SequenceNumbers.UNASSIGNED_SEQ_NO
                 && (versionValue.seqNo != index.getIfSeqNo() || versionValue.term != index.getIfPrimaryTerm())) {
-                    final VersionConflictEngineException e = new VersionConflictEngineException(
-                        shardId,
-                        index.id(),
-                        index.getIfSeqNo(),
-                        index.getIfPrimaryTerm(),
-                        versionValue.seqNo,
-                        versionValue.term
-                    );
-                    plan = IndexingStrategy.skipDueToVersionConflict(e, currentNotFoundOrDeleted, currentVersion);
-                } else if (index.versionType().isVersionConflictForWrites(currentVersion, index.version(), currentNotFoundOrDeleted)) {
-                    final VersionConflictEngineException e = new VersionConflictEngineException(
-                        shardId,
-                        index,
-                        currentVersion,
-                        currentNotFoundOrDeleted
-                    );
-                    plan = IndexingStrategy.skipDueToVersionConflict(e, currentNotFoundOrDeleted, currentVersion);
+                final VersionConflictEngineException e = new VersionConflictEngineException(
+                    shardId,
+                    index.id(),
+                    index.getIfSeqNo(),
+                    index.getIfPrimaryTerm(),
+                    versionValue.seqNo,
+                    versionValue.term
+                );
+                plan = IndexingStrategy.skipDueToVersionConflict(e, currentNotFoundOrDeleted, currentVersion);
+            } else if (index.versionType().isVersionConflictForWrites(currentVersion, index.version(), currentNotFoundOrDeleted)) {
+                final VersionConflictEngineException e = new VersionConflictEngineException(
+                    shardId,
+                    index,
+                    currentVersion,
+                    currentNotFoundOrDeleted
+                );
+                plan = IndexingStrategy.skipDueToVersionConflict(e, currentNotFoundOrDeleted, currentVersion);
+            } else {
+                final Exception reserveError = tryAcquireInFlightDocs(index, reservingDocs);
+                if (reserveError != null) {
+                    plan = IndexingStrategy.failAsTooManyDocs(reserveError);
                 } else {
-                    final Exception reserveError = tryAcquireInFlightDocs(index, reservingDocs);
-                    if (reserveError != null) {
-                        plan = IndexingStrategy.failAsTooManyDocs(reserveError);
-                    } else {
-                        plan = IndexingStrategy.processNormally(
-                            currentNotFoundOrDeleted,
-                            canOptimizeAddDocument ? 1L : index.versionType().updateVersion(currentVersion, index.version()),
-                            reservingDocs
-                        );
-                    }
+                    plan = IndexingStrategy.processNormally(
+                        currentNotFoundOrDeleted,
+                        canOptimizeAddDocument ? 1L : index.versionType().updateVersion(currentVersion, index.version()),
+                        reservingDocs
+                    );
                 }
+            }
         }
         return plan;
     }
@@ -1312,10 +1320,10 @@ public class InternalEngine extends Engine {
                 : "use lucene update is set to true, but we're not indexing into lucene";
             assert (indexIntoLucene && earlyResultOnPreFlightError != null) == false
                 : "can only index into lucene or have a preflight result but not both."
-                    + "indexIntoLucene: "
-                    + indexIntoLucene
-                    + "  earlyResultOnPreFlightError:"
-                    + earlyResultOnPreFlightError;
+                + "indexIntoLucene: "
+                + indexIntoLucene
+                + "  earlyResultOnPreFlightError:"
+                + earlyResultOnPreFlightError;
             assert reservedDocs == 0 || indexIntoLucene || addStaleOpToLucene : reservedDocs;
             this.currentNotFoundOrDeleted = currentNotFoundOrDeleted;
             this.useLuceneUpdateDocument = useLuceneUpdateDocument;
@@ -1573,32 +1581,32 @@ public class InternalEngine extends Engine {
             plan = DeletionStrategy.skipDueToVersionConflict(e, currentVersion, true);
         } else if (delete.getIfSeqNo() != SequenceNumbers.UNASSIGNED_SEQ_NO
             && (versionValue.seqNo != delete.getIfSeqNo() || versionValue.term != delete.getIfPrimaryTerm())) {
-                final VersionConflictEngineException e = new VersionConflictEngineException(
-                    shardId,
-                    delete.id(),
-                    delete.getIfSeqNo(),
-                    delete.getIfPrimaryTerm(),
-                    versionValue.seqNo,
-                    versionValue.term
-                );
-                plan = DeletionStrategy.skipDueToVersionConflict(e, currentVersion, currentlyDeleted);
-            } else if (delete.versionType().isVersionConflictForWrites(currentVersion, delete.version(), currentlyDeleted)) {
-                final VersionConflictEngineException e = new VersionConflictEngineException(
-                    shardId,
-                    delete,
-                    currentVersion,
-                    currentlyDeleted
-                );
-                plan = DeletionStrategy.skipDueToVersionConflict(e, currentVersion, currentlyDeleted);
+            final VersionConflictEngineException e = new VersionConflictEngineException(
+                shardId,
+                delete.id(),
+                delete.getIfSeqNo(),
+                delete.getIfPrimaryTerm(),
+                versionValue.seqNo,
+                versionValue.term
+            );
+            plan = DeletionStrategy.skipDueToVersionConflict(e, currentVersion, currentlyDeleted);
+        } else if (delete.versionType().isVersionConflictForWrites(currentVersion, delete.version(), currentlyDeleted)) {
+            final VersionConflictEngineException e = new VersionConflictEngineException(
+                shardId,
+                delete,
+                currentVersion,
+                currentlyDeleted
+            );
+            plan = DeletionStrategy.skipDueToVersionConflict(e, currentVersion, currentlyDeleted);
+        } else {
+            final Exception reserveError = tryAcquireInFlightDocs(delete, 1);
+            if (reserveError != null) {
+                plan = DeletionStrategy.failAsTooManyDocs(reserveError);
             } else {
-                final Exception reserveError = tryAcquireInFlightDocs(delete, 1);
-                if (reserveError != null) {
-                    plan = DeletionStrategy.failAsTooManyDocs(reserveError);
-                } else {
-                    final long versionOfDeletion = delete.versionType().updateVersion(currentVersion, delete.version());
-                    plan = DeletionStrategy.processNormally(currentlyDeleted, versionOfDeletion, 1);
-                }
+                final long versionOfDeletion = delete.versionType().updateVersion(currentVersion, delete.version());
+                plan = DeletionStrategy.processNormally(currentlyDeleted, versionOfDeletion, 1);
             }
+        }
         return plan;
     }
 
@@ -1658,10 +1666,10 @@ public class InternalEngine extends Engine {
         ) {
             assert (deleteFromLucene && earlyResultOnPreflightError != null) == false
                 : "can only delete from lucene or have a preflight result but not both."
-                    + "deleteFromLucene: "
-                    + deleteFromLucene
-                    + "  earlyResultOnPreFlightError:"
-                    + earlyResultOnPreflightError;
+                + "deleteFromLucene: "
+                + deleteFromLucene
+                + "  earlyResultOnPreFlightError:"
+                + earlyResultOnPreflightError;
             this.deleteFromLucene = deleteFromLucene;
             this.addStaleOpToLucene = addStaleOpToLucene;
             this.currentlyDeleted = currentlyDeleted;
@@ -1841,6 +1849,25 @@ public class InternalEngine extends Engine {
                     store.decRef();
                 }
                 if (refreshed) {
+                    if(remoteStore != null && this.replicationTracker.isPrimaryMode()) {
+                        // Get files from local directory
+                        // Get files from remote directory
+                        // Add (local - remote) to remote
+                        // Delete (remote - local) from remote
+                        Set<String> localFiles = Arrays.stream(store.directory().listAll()).collect(Collectors.toSet());
+                        Set<String> remoteFiles = Arrays.stream(remoteStore.directory().listAll()).collect(Collectors.toSet());
+                        for(String file: localFiles) {
+                            if(!remoteFiles.contains(file)) {
+                                RemoteDirectory remoteDirectory = (RemoteDirectory) FilterDirectory.unwrap(FilterDirectory.unwrap(remoteStore.directory()));
+                                remoteDirectory.copyFrom(store.directory(), file, file, IOContext.DEFAULT);
+                            }
+                        }
+                        for(String file: remoteFiles) {
+                            if(!localFiles.contains(file)) {
+                                remoteStore.directory().deleteFile(file);
+                            }
+                        }
+                    }
                     lastRefreshedCheckpointListener.updateRefreshedCheckpoint(localCheckpointBeforeRefresh);
                 }
             } else {
@@ -1945,8 +1972,8 @@ public class InternalEngine extends Engine {
                     || force
                     || shouldPeriodicallyFlush
                     || getProcessedLocalCheckpoint() > Long.parseLong(
-                        lastCommittedSegmentInfos.userData.get(SequenceNumbers.LOCAL_CHECKPOINT_KEY)
-                    )) {
+                    lastCommittedSegmentInfos.userData.get(SequenceNumbers.LOCAL_CHECKPOINT_KEY)
+                )) {
                     ensureCanFlush();
                     try {
                         translog.rollGeneration();
@@ -2267,12 +2294,12 @@ public class InternalEngine extends Engine {
             return failOnTragicEvent((AlreadyClosedException) e);
         } else if (e != null
             && ((indexWriter.isOpen() == false && indexWriter.getTragicException() == e)
-                || (translog.isOpen() == false && translog.getTragicException() == e))) {
-                    // this spot on - we are handling the tragic event exception here so we have to fail the engine
-                    // right away
-                    failEngine(source, e);
-                    return true;
-                }
+            || (translog.isOpen() == false && translog.getTragicException() == e))) {
+            // this spot on - we are handling the tragic event exception here so we have to fail the engine
+            // right away
+            failEngine(source, e);
+            return true;
+        }
         return false;
     }
 
@@ -2990,9 +3017,9 @@ public class InternalEngine extends Engine {
         final IndexSearcher searcher = new IndexSearcher(directoryReader);
         searcher.setQueryCache(null);
         final Query query = new BooleanQuery.Builder().add(
-            LongPoint.newRangeQuery(SeqNoFieldMapper.NAME, getPersistedLocalCheckpoint() + 1, Long.MAX_VALUE),
-            BooleanClause.Occur.MUST
-        )
+                LongPoint.newRangeQuery(SeqNoFieldMapper.NAME, getPersistedLocalCheckpoint() + 1, Long.MAX_VALUE),
+                BooleanClause.Occur.MUST
+            )
             // exclude non-root nested documents
             .add(Queries.newNonNestedFilter(), BooleanClause.Occur.MUST)
             .build();

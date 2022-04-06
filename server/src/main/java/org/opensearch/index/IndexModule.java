@@ -70,6 +70,7 @@ import org.opensearch.index.shard.IndexingOperationListener;
 import org.opensearch.index.shard.SearchOperationListener;
 import org.opensearch.index.similarity.SimilarityService;
 import org.opensearch.index.store.FsDirectoryFactory;
+import org.opensearch.index.store.RemoteDirectoryFactory;
 import org.opensearch.indices.IndicesQueryCache;
 import org.opensearch.indices.breaker.CircuitBreakerService;
 import org.opensearch.indices.fielddata.cache.IndicesFieldDataCache;
@@ -473,6 +474,7 @@ public final class IndexModule {
             .get() == null ? (shard) -> null : indexReaderWrapper.get();
         eventListener.beforeIndexCreated(indexSettings.getIndex(), indexSettings.getSettings());
         final IndexStorePlugin.DirectoryFactory directoryFactory = getDirectoryFactory(indexSettings, directoryFactories);
+        final IndexStorePlugin.RemoteDirectoryFactory remoteDirectoryFactory = new RemoteDirectoryFactory();
         final IndexStorePlugin.RecoveryStateFactory recoveryStateFactory = getRecoveryStateFactory(indexSettings, recoveryStateFactories);
         QueryCache queryCache = null;
         IndexAnalyzers indexAnalyzers = null;
@@ -509,6 +511,7 @@ public final class IndexModule {
                 client,
                 queryCache,
                 directoryFactory,
+                remoteDirectoryFactory,
                 eventListener,
                 readerWrapperFactory,
                 mapperRegistry,

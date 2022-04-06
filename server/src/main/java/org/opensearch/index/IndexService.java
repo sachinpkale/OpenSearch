@@ -95,6 +95,7 @@ import org.opensearch.indices.fielddata.cache.IndicesFieldDataCache;
 import org.opensearch.indices.mapper.MapperRegistry;
 import org.opensearch.indices.recovery.RecoveryState;
 import org.opensearch.plugins.IndexStorePlugin;
+import org.opensearch.repositories.RepositoriesService;
 import org.opensearch.script.ScriptService;
 import org.opensearch.search.aggregations.support.ValuesSourceRegistry;
 import org.opensearch.threadpool.ThreadPool;
@@ -130,6 +131,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
     private final NodeEnvironment nodeEnv;
     private final ShardStoreDeleter shardStoreDeleter;
     private final IndexStorePlugin.DirectoryFactory directoryFactory;
+    private final IndexStorePlugin.RemoteDirectoryFactory remoteDirectoryFactory;
     private final IndexStorePlugin.RecoveryStateFactory recoveryStateFactory;
     private final CheckedFunction<DirectoryReader, DirectoryReader, IOException> readerWrapper;
     private final IndexCache indexCache;
@@ -184,6 +186,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
         Client client,
         QueryCache queryCache,
         IndexStorePlugin.DirectoryFactory directoryFactory,
+        IndexStorePlugin.RemoteDirectoryFactory remoteDirectoryFactory,
         IndexEventListener eventListener,
         Function<IndexService, CheckedFunction<DirectoryReader, DirectoryReader, IOException>> wrapperFactory,
         MapperRegistry mapperRegistry,
@@ -254,6 +257,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
         this.eventListener = eventListener;
         this.nodeEnv = nodeEnv;
         this.directoryFactory = directoryFactory;
+        this.remoteDirectoryFactory = remoteDirectoryFactory;
         this.recoveryStateFactory = recoveryStateFactory;
         this.engineFactory = Objects.requireNonNull(engineFactory);
         this.engineConfigFactory = Objects.requireNonNull(engineConfigFactory);
@@ -418,7 +422,8 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
     public synchronized IndexShard createShard(
         final ShardRouting routing,
         final Consumer<ShardId> globalCheckpointSyncer,
-        final RetentionLeaseSyncer retentionLeaseSyncer
+        final RetentionLeaseSyncer retentionLeaseSyncer,
+        final RepositoriesService repositoriesService
     ) throws IOException {
         Objects.requireNonNull(retentionLeaseSyncer);
         /*
@@ -433,6 +438,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
         final ShardId shardId = routing.shardId();
         boolean success = false;
         Store store = null;
+        Store remoteStore = null;
         IndexShard indexShard = null;
         ShardLock lock = null;
         try {
@@ -499,12 +505,21 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
                 lock,
                 new StoreCloseListener(shardId, () -> eventListener.onStoreClosed(shardId))
             );
+            Directory remoteDirectory = remoteDirectoryFactory.newDirectory(this.indexSettings, path, repositoriesService);
+            remoteStore = new Store(
+                shardId,
+                this.indexSettings,
+                remoteDirectory,
+                lock,
+                new StoreCloseListener(shardId, () -> eventListener.onStoreClosed(shardId))
+            );
             eventListener.onStoreCreated(shardId);
             indexShard = new IndexShard(
                 routing,
                 this.indexSettings,
                 path,
                 store,
+                remoteStore,
                 indexSortSupplier,
                 indexCache,
                 mapperService,

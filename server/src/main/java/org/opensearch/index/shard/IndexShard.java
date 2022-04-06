@@ -205,6 +205,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
     private final MapperService mapperService;
     private final IndexCache indexCache;
     private final Store store;
+    private final Store remoteStore;
     private final InternalIndexingStats internalIndexingStats;
     private final ShardSearchStats searchStats = new ShardSearchStats();
     private final ShardGetService getService;
@@ -299,6 +300,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
         final IndexSettings indexSettings,
         final ShardPath path,
         final Store store,
+        final Store remoteStore,
         final Supplier<Sort> indexSortSupplier,
         final IndexCache indexCache,
         final MapperService mapperService,
@@ -327,6 +329,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
         this.engineFactory = Objects.requireNonNull(engineFactory);
         this.engineConfigFactory = Objects.requireNonNull(engineConfigFactory);
         this.store = store;
+        this.remoteStore = remoteStore;
         this.indexSortSupplier = indexSortSupplier;
         this.indexEventListener = indexEventListener;
         this.threadPool = threadPool;
@@ -3101,6 +3104,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
             indexSettings,
             warmer,
             store,
+            remoteStore,
             indexSettings.getMergePolicy(),
             mapperService != null ? mapperService.indexAnalyzer() : null,
             similarityService.similarity(mapperService),
