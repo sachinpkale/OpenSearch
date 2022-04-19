@@ -92,7 +92,7 @@ public class FsDirectoryFactoryTests extends OpenSearchTestCase {
         Path tempDir = createTempDir().resolve(idxSettings.getUUID()).resolve("0");
         Files.createDirectories(tempDir);
         ShardPath path = new ShardPath(false, tempDir, tempDir, new ShardId(idxSettings.getIndex(), 0));
-        return new FsDirectoryFactory().newDirectory(idxSettings, path, );
+        return new FsDirectoryFactory().newDirectory(idxSettings, path);
     }
 
     private void doTestPreload(String... preload) throws IOException {
