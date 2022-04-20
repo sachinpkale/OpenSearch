@@ -658,6 +658,7 @@ public class IndexShardIT extends OpenSearchSingleNodeTestCase {
             indexService.getIndexSettings(),
             shard.shardPath(),
             shard.store(),
+            null,
             indexService.getIndexSortSupplier(),
             indexService.cache(),
             indexService.mapperService(),
