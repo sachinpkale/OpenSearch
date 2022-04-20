@@ -51,7 +51,8 @@ public class RemoteDirectoryFactory implements IndexStorePlugin.RemoteDirectoryF
     public Directory newDirectory(IndexSettings indexSettings, ShardPath path, RepositoriesService repositoriesService) throws IOException {
         Repository repository = repositoriesService.repository("dragon-stone");
         BlobPath blobPath = new BlobPath();
-        blobPath.add("test-upload");
+        blobPath = blobPath.add(indexSettings.getIndex().getName());
+        blobPath = blobPath.add(String.valueOf(path.getShardId()));
         BlobContainer blobContainer = ((BlobStoreRepository) repository).blobStore().blobContainer(blobPath);
         return new RemoteDirectory(blobContainer);
     }
