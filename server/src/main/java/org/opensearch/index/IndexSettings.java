@@ -530,6 +530,7 @@ public final class IndexSettings {
     private final String nodeName;
     private final Settings nodeSettings;
     private final int numberOfShards;
+    private final boolean isRemoteStoreEnabled;
     // volatile fields are updated via #updateIndexMetadata(IndexMetadata) under lock
     private volatile Settings settings;
     private volatile IndexMetadata indexMetadata;
@@ -681,6 +682,7 @@ public final class IndexSettings {
         nodeName = Node.NODE_NAME_SETTING.get(settings);
         this.indexMetadata = indexMetadata;
         numberOfShards = settings.getAsInt(IndexMetadata.SETTING_NUMBER_OF_SHARDS, null);
+        isRemoteStoreEnabled = settings.getAsBoolean(IndexMetadata.SETTING_REMOTE_STORE, false);
 
         this.searchThrottled = INDEX_SEARCH_THROTTLED.get(settings);
         this.queryStringLenient = QUERY_STRING_LENIENT_SETTING.get(settings);
@@ -913,6 +915,13 @@ public final class IndexSettings {
      */
     public int getNumberOfReplicas() {
         return settings.getAsInt(IndexMetadata.SETTING_NUMBER_OF_REPLICAS, null);
+    }
+
+    /**
+     * Returns if remote store is enabled for this index.
+     */
+    public boolean isRemoteStoreEnabled() {
+        return isRemoteStoreEnabled;
     }
 
     /**
