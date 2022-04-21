@@ -10,10 +10,11 @@ package org.opensearch.index.engine;
 
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.opensearch.common.blobstore.BlobContainer;
+import org.opensearch.common.lucene.store.InputStreamIndexInput;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
 public class RemoteIndexOutput extends IndexOutput {
@@ -54,9 +55,8 @@ public class RemoteIndexOutput extends IndexOutput {
     @Override
     public void copyBytes(DataInput input, long numBytes) throws IOException {
         assert numBytes >= 0: "numBytes=" + numBytes;
-        byte[] copyBuffer = new byte[(int) numBytes];
-        input.readBytes(copyBuffer, 0, (int)numBytes);
-        blobContainer.writeBlob(getName(), new ByteArrayInputStream(copyBuffer), numBytes, false);
+        assert input instanceof IndexInput: "input should be instance of IndexInput";
+        blobContainer.writeBlob(getName(), new InputStreamIndexInput((IndexInput) input, numBytes), numBytes, false);
     }
 
 }
