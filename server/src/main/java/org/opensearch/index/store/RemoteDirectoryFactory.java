@@ -36,7 +36,6 @@ import org.apache.lucene.store.Directory;
 import org.opensearch.common.blobstore.BlobContainer;
 import org.opensearch.common.blobstore.BlobPath;
 import org.opensearch.index.IndexSettings;
-import org.opensearch.index.engine.RemoteDirectory;
 import org.opensearch.index.shard.ShardPath;
 import org.opensearch.plugins.IndexStorePlugin;
 import org.opensearch.repositories.RepositoriesService;
