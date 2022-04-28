@@ -69,12 +69,7 @@ public class RemoteDirectory extends Directory {
      */
     @Override
     public String[] listAll() throws IOException {
-        return blobContainer
-            .listBlobs()
-            .keySet()
-            .stream()
-            .sorted()
-            .toArray(String[]::new);
+        return blobContainer.listBlobs().keySet().stream().sorted().toArray(String[]::new);
     }
 
     /**
@@ -139,7 +134,7 @@ public class RemoteDirectory extends Directory {
     public long fileLength(String name) throws IOException {
         // ToDo: Instead of calling remote store each time, keep a cache with segment metadata
         Map<String, BlobMetadata> metadata = blobContainer.listBlobsByPrefix(name);
-        if(metadata.containsKey(name)) {
+        if (metadata.containsKey(name)) {
             return metadata.get(name).length();
         }
         throw new NoSuchFileException(name);

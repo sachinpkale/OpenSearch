@@ -77,7 +77,8 @@ public interface IndexStorePlugin {
          * @return a new lucene directory instance
          * @throws IOException if an IOException occurs while opening the directory
          */
-        Directory newDirectory(IndexSettings indexSettings, ShardPath shardPath, RepositoriesService repositoriesService) throws IOException;
+        Directory newDirectory(IndexSettings indexSettings, ShardPath shardPath, RepositoriesService repositoriesService)
+            throws IOException;
     }
 
     /**

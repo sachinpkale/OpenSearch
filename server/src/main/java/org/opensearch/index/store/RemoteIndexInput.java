@@ -58,12 +58,14 @@ public class RemoteIndexInput extends IndexInput {
 
     @Override
     public byte readByte() throws IOException {
-        return inputStream.readNBytes(1)[0];
+        byte[] buffer = new byte[1];
+        inputStream.read(buffer);
+        return buffer[0];
     }
 
     @Override
     public void readBytes(byte[] b, int offset, int len) throws IOException {
-        inputStream.readNBytes(b, offset, len);
+        inputStream.read(b, offset, len);
     }
 
     @Override
@@ -78,7 +80,7 @@ public class RemoteIndexInput extends IndexInput {
 
     @Override
     public void seek(long pos) throws IOException {
-        inputStream.skipNBytes(pos);
+        inputStream.skip(pos);
     }
 
     /**

@@ -59,8 +59,7 @@ public class RemoteIndexOutput extends IndexOutput {
 
     @Override
     public void copyBytes(DataInput input, long numBytes) throws IOException {
-        assert numBytes >= 0: "numBytes=" + numBytes;
-        assert input instanceof IndexInput: "input should be instance of IndexInput";
+        assert input instanceof IndexInput : "input should be instance of IndexInput";
         blobContainer.writeBlob(getName(), new InputStreamIndexInput((IndexInput) input, numBytes), numBytes, false);
     }
 

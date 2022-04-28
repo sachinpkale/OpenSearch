@@ -505,7 +505,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
                 lock,
                 new StoreCloseListener(shardId, () -> eventListener.onStoreClosed(shardId))
             );
-            if(this.indexSettings.isRemoteStoreEnabled()) {
+            if (this.indexSettings.isRemoteStoreEnabled()) {
                 Directory remoteDirectory = remoteDirectoryFactory.newDirectory(this.indexSettings, path, repositoriesService);
                 remoteStore = new Store(
                     shardId,
