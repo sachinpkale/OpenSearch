@@ -47,10 +47,10 @@ import org.apache.lucene.index.LiveIndexWriterConfig;
 import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentCommitInfo;
 import org.apache.lucene.index.SegmentInfos;
+import org.apache.lucene.sandbox.index.MergeOnFlushMergePolicy;
 import org.apache.lucene.index.ShuffleForcedMergePolicy;
 import org.apache.lucene.index.SoftDeletesRetentionMergePolicy;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.sandbox.index.MergeOnFlushMergePolicy;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -119,14 +119,17 @@ import org.opensearch.threadpool.ThreadPool;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.nio.file.NoSuchFileException;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -219,6 +222,8 @@ public class InternalEngine extends Engine {
     private volatile String forceMergeUUID;
 
     private final ReplicationTracker replicationTracker;
+
+    private Map<String, String> filesUploadedToRemoteStore;
 
     public InternalEngine(EngineConfig engineConfig) {
         this(engineConfig, IndexWriter.MAX_DOCS, LocalCheckpointTracker::new);
@@ -1854,19 +1859,35 @@ public class InternalEngine extends Engine {
                         // Add (local - remote) to remote
                         // Delete (remote - local) from remote
                         Set<String> localFiles = Arrays.stream(store.directory().listAll()).collect(Collectors.toSet());
-                        Set<String> remoteFiles = Arrays.stream(remoteStore.directory().listAll()).collect(Collectors.toSet());
+                        if(filesUploadedToRemoteStore == null) {
+                            filesUploadedToRemoteStore = new ConcurrentHashMap<>(Arrays.stream(remoteStore.directory().listAll()).collect(Collectors.toMap(f -> f, f -> f)));
+                        }
+                        Set<String> remoteFilesToBeAdded = new HashSet<>();
                         for (String file : localFiles) {
-                            if (!remoteFiles.contains(file)) {
+                            if (!filesUploadedToRemoteStore.containsKey(file)) {
                                 RemoteDirectory remoteDirectory = (RemoteDirectory) FilterDirectory.unwrap(
                                     FilterDirectory.unwrap(remoteStore.directory())
                                 );
-                                remoteDirectory.copyFrom(store.directory(), file, file, IOContext.DEFAULT);
+                                try {
+                                    remoteDirectory.copyFrom(store.directory(), file, file, IOContext.DEFAULT);
+                                    remoteFilesToBeAdded.add(file);
+                                } catch(NoSuchFileException e) {
+                                    // Ignoring for now.
+                                }
                             }
                         }
-                        for (String file : remoteFiles) {
+                        if(!remoteFilesToBeAdded.isEmpty()) {
+                            remoteFilesToBeAdded.forEach(f -> filesUploadedToRemoteStore.put(f, f));
+                        }
+                        Set<String> remoteFilesToBeDeleted = new HashSet<>();
+                        for (String file : filesUploadedToRemoteStore.keySet()) {
                             if (!localFiles.contains(file)) {
                                 remoteStore.directory().deleteFile(file);
+                                remoteFilesToBeDeleted.add(file);
                             }
+                        }
+                        if(!remoteFilesToBeDeleted.isEmpty()) {
+                            remoteFilesToBeDeleted.forEach(f -> filesUploadedToRemoteStore.remove(f));
                         }
                     }
                     lastRefreshedCheckpointListener.updateRefreshedCheckpoint(localCheckpointBeforeRefresh);
