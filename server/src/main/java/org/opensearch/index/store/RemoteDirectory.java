@@ -16,6 +16,7 @@ import org.apache.lucene.store.Lock;
 import org.opensearch.common.blobstore.BlobContainer;
 import org.opensearch.common.blobstore.BlobMetadata;
 
+import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
@@ -76,7 +77,7 @@ public class RemoteDirectory extends Directory {
      */
     @Override
     public IndexOutput createOutput(String name, IOContext context) {
-        return new RemoteIndexOutput(name, blobContainer);
+        return new RemoteIndexOutput(name, new ByteArrayOutputStream(), blobContainer);
     }
 
     /**

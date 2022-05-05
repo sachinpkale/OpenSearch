@@ -11,9 +11,12 @@ package org.opensearch.index.store;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.OutputStreamIndexOutput;
 import org.opensearch.common.blobstore.BlobContainer;
 import org.opensearch.common.lucene.store.InputStreamIndexInput;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 /**
@@ -24,13 +27,15 @@ import java.io.IOException;
  * ToDo: Extend ChecksumIndexInput
  * @see RemoteDirectory
  */
-public class RemoteIndexOutput extends IndexOutput {
+public class RemoteIndexOutput extends OutputStreamIndexOutput {
 
     private final BlobContainer blobContainer;
+    private final ByteArrayOutputStream outputStream;
 
-    public RemoteIndexOutput(String name, BlobContainer blobContainer) {
-        super(name, name);
+    public RemoteIndexOutput(String name, ByteArrayOutputStream outputStream, BlobContainer blobContainer) {
+        super(name, name, outputStream, 8192);
         this.blobContainer = blobContainer;
+        this.outputStream = outputStream;
     }
 
     @Override
@@ -45,53 +50,7 @@ public class RemoteIndexOutput extends IndexOutput {
      */
     @Override
     public void close() throws IOException {
-        // do nothing
+        byte[] contents = outputStream.toByteArray();
+        blobContainer.writeBlob(getName(), new ByteArrayInputStream(contents), contents.length, false);
     }
-
-    /**
-     * Guaranteed to throw an exception and leave the RemoteIndexOutput unmodified.
-     * This method is not implemented as it is not used for the file transfer to/from the remote store.
-     *
-     * @throws UnsupportedOperationException always
-     */
-    @Override
-    public void writeByte(byte b) throws IOException {
-        throw new UnsupportedOperationException();
-    }
-
-    /**
-     * Guaranteed to throw an exception and leave the RemoteIndexOutput unmodified.
-     * This method is not implemented as it is not used for the file transfer to/from the remote store.
-     *
-     * @throws UnsupportedOperationException always
-     */
-    @Override
-    public void writeBytes(byte[] byteArray, int offset, int length) throws IOException {
-        throw new UnsupportedOperationException();
-    }
-
-    /**
-     * Guaranteed to throw an exception and leave the RemoteIndexOutput unmodified.
-     * This method is not implemented as it is not used for the file transfer to/from the remote store.
-     *
-     * @throws UnsupportedOperationException always
-     */
-    @Override
-    public long getFilePointer() {
-        throw new UnsupportedOperationException();
-    }
-
-    /**
-     * Guaranteed to throw an exception and leave the RemoteIndexOutput unmodified.
-     * This method is not implemented as it is not directly used for the file transfer to/from the remote store.
-     * But the checksum is important to verify integrity of the data and that means implementing this method will
-     * be required for the segment upload as well.
-     *
-     * @throws UnsupportedOperationException always
-     */
-    @Override
-    public long getChecksum() throws IOException {
-        throw new UnsupportedOperationException();
-    }
-
 }
