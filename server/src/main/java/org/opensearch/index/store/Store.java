@@ -174,6 +174,7 @@ public class Store extends AbstractIndexShardComponent implements Closeable, Ref
 
     private final AtomicBoolean isClosed = new AtomicBoolean(false);
     private final StoreDirectory directory;
+    private final StoreDirectory secondaryDirectory;
     private final ReentrantReadWriteLock metadataLock = new ReentrantReadWriteLock();
     private final ShardLock shardLock;
     private final OnClose onClose;
@@ -187,15 +188,36 @@ public class Store extends AbstractIndexShardComponent implements Closeable, Ref
     };
 
     public Store(ShardId shardId, IndexSettings indexSettings, Directory directory, ShardLock shardLock) {
-        this(shardId, indexSettings, directory, shardLock, OnClose.EMPTY);
+        this(shardId, indexSettings, directory, null, shardLock, OnClose.EMPTY);
+    }
+
+    public Store(ShardId shardId, IndexSettings indexSettings, Directory directory, Directory secondaryDirectory, ShardLock shardLock) {
+        this(shardId, indexSettings, directory, secondaryDirectory, shardLock, OnClose.EMPTY);
     }
 
     public Store(ShardId shardId, IndexSettings indexSettings, Directory directory, ShardLock shardLock, OnClose onClose) {
+        this(shardId, indexSettings, directory, null, shardLock, onClose);
+    }
+
+    public Store(
+        ShardId shardId,
+        IndexSettings indexSettings,
+        Directory directory,
+        Directory secondaryDirectory,
+        ShardLock shardLock,
+        OnClose onClose
+    ) {
         super(shardId, indexSettings);
         final TimeValue refreshInterval = indexSettings.getValue(INDEX_STORE_STATS_REFRESH_INTERVAL_SETTING);
         logger.debug("store stats are refreshed with refresh_interval [{}]", refreshInterval);
         ByteSizeCachingDirectory sizeCachingDir = new ByteSizeCachingDirectory(directory, refreshInterval);
         this.directory = new StoreDirectory(sizeCachingDir, Loggers.getLogger("index.store.deletes", shardId));
+        if (secondaryDirectory != null) {
+            ByteSizeCachingDirectory sizeCachingSecondaryDir = new ByteSizeCachingDirectory(secondaryDirectory, refreshInterval);
+            this.secondaryDirectory = new StoreDirectory(sizeCachingSecondaryDir, Loggers.getLogger("index.store.deletes", shardId));
+        } else {
+            this.secondaryDirectory = null;
+        }
         this.shardLock = shardLock;
         this.onClose = onClose;
 
@@ -205,8 +227,20 @@ public class Store extends AbstractIndexShardComponent implements Closeable, Ref
     }
 
     public Directory directory() {
+        return directory(true);
+    }
+
+    public Directory secondaryDirectory() {
+        return directory(false);
+    }
+
+    private Directory directory(boolean primary) {
         ensureOpen();
-        return directory;
+        if (primary) {
+            return directory;
+        } else {
+            return secondaryDirectory;
+        }
     }
 
     /**
