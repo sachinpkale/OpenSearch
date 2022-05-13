@@ -70,7 +70,6 @@ import org.opensearch.index.shard.IndexingOperationListener;
 import org.opensearch.index.shard.SearchOperationListener;
 import org.opensearch.index.similarity.SimilarityService;
 import org.opensearch.index.store.FsDirectoryFactory;
-import org.opensearch.index.store.RemoteDirectoryFactory;
 import org.opensearch.indices.IndicesQueryCache;
 import org.opensearch.indices.breaker.CircuitBreakerService;
 import org.opensearch.indices.fielddata.cache.IndicesFieldDataCache;
@@ -118,8 +117,6 @@ public final class IndexModule {
     public static final Setting<Boolean> NODE_STORE_ALLOW_MMAP = Setting.boolSetting("node.store.allow_mmap", true, Property.NodeScope);
 
     private static final FsDirectoryFactory DEFAULT_DIRECTORY_FACTORY = new FsDirectoryFactory();
-
-    private static final RemoteDirectoryFactory REMOTE_DIRECTORY_FACTORY = new RemoteDirectoryFactory();
 
     private static final IndexStorePlugin.RecoveryStateFactory DEFAULT_RECOVERY_STATE_FACTORY = RecoveryState::new;
 
@@ -514,7 +511,6 @@ public final class IndexModule {
                 client,
                 queryCache,
                 directoryFactory,
-                REMOTE_DIRECTORY_FACTORY,
                 eventListener,
                 readerWrapperFactory,
                 mapperRegistry,
