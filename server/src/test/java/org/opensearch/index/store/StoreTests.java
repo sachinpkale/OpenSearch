@@ -1138,4 +1138,23 @@ public class StoreTests extends OpenSearchTestCase {
             }
         }
     }
+
+    public void testStoreWithoutSecondaryDirectory() throws IOException {
+        final ShardId shardId = new ShardId("index", "_na_", 1);
+        Directory primaryDirectory = new NIOFSDirectory(createTempDir("primary"));
+        try (Store store = new Store(shardId, INDEX_SETTINGS, primaryDirectory, new DummyShardLock(shardId))) {
+            assertEquals(primaryDirectory, FilterDirectory.unwrap(FilterDirectory.unwrap(store.directory())));
+            assertNull(store.secondaryDirectory());
+        }
+    }
+
+    public void testStoreWithSecondaryDirectory() throws IOException {
+        final ShardId shardId = new ShardId("index", "_na_", 1);
+        Directory primaryDirectory = new NIOFSDirectory(createTempDir("primary"));
+        Directory secondaryDirectory = new NIOFSDirectory(createTempDir("secondary"));
+        try (Store store = new Store(shardId, INDEX_SETTINGS, primaryDirectory, secondaryDirectory, new DummyShardLock(shardId))) {
+            assertEquals(primaryDirectory, FilterDirectory.unwrap(FilterDirectory.unwrap(store.directory())));
+            assertEquals(secondaryDirectory, FilterDirectory.unwrap(FilterDirectory.unwrap(store.secondaryDirectory())));
+        }
+    }
 }
