@@ -87,6 +87,7 @@ import org.opensearch.index.shard.ShardNotFoundException;
 import org.opensearch.index.shard.ShardNotInPrimaryModeException;
 import org.opensearch.index.shard.ShardPath;
 import org.opensearch.index.similarity.SimilarityService;
+import org.opensearch.index.store.CompositeDirectory;
 import org.opensearch.index.store.Store;
 import org.opensearch.index.translog.Translog;
 import org.opensearch.indices.breaker.CircuitBreakerService;
@@ -504,11 +505,11 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
                 }
             };
             Directory directory = directoryFactory.newDirectory(this.indexSettings, path);
-            Directory remoteDirectory = null;
             if (this.indexSettings.isRemoteStoreEnabled()) {
                 try {
                     Repository repository = repositoriesService.repository("dragon-stone");
-                    remoteDirectory = remoteDirectoryFactory.newDirectory(this.indexSettings, path, repository);
+                    Directory remoteDirectory = remoteDirectoryFactory.newDirectory(this.indexSettings, path, repository);
+                    directory = new CompositeDirectory(directory, remoteDirectory);
                 } catch (RepositoryMissingException e) {
                     throw new IllegalArgumentException(
                         "Repository should be created before creating index with remote_store enabled setting",
@@ -520,7 +521,6 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
                 shardId,
                 this.indexSettings,
                 directory,
-                remoteDirectory,
                 lock,
                 new StoreCloseListener(shardId, () -> eventListener.onStoreClosed(shardId))
             );
