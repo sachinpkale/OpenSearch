@@ -42,6 +42,7 @@ import org.opensearch.LegacyESVersion;
 import org.opensearch.Version;
 import org.opensearch.action.ActionListener;
 import org.opensearch.action.StepListener;
+import org.opensearch.action.admin.cluster.remote_store.restore.RestoreRemoteStoreRequest;
 import org.opensearch.action.admin.cluster.snapshots.restore.RestoreSnapshotRequest;
 import org.opensearch.action.support.IndicesOptions;
 import org.opensearch.cluster.ClusterChangedEvent;
@@ -68,6 +69,7 @@ import org.opensearch.cluster.metadata.RepositoriesMetadata;
 import org.opensearch.cluster.node.DiscoveryNode;
 import org.opensearch.cluster.routing.RecoverySource;
 import org.opensearch.cluster.routing.RecoverySource.SnapshotRecoverySource;
+import org.opensearch.cluster.routing.RecoverySource.RemoteStoreRecoverySource;
 import org.opensearch.cluster.routing.RoutingChangesObserver;
 import org.opensearch.cluster.routing.RoutingTable;
 import org.opensearch.cluster.routing.ShardRouting;
@@ -92,6 +94,7 @@ import org.opensearch.repositories.RepositoriesService;
 import org.opensearch.repositories.Repository;
 import org.opensearch.repositories.RepositoryData;
 
+import java.rmi.Remote;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -194,6 +197,63 @@ public class RestoreService implements ClusterStateApplier {
         }
         this.clusterSettings = clusterService.getClusterSettings();
         this.shardLimitValidator = shardLimitValidator;
+    }
+
+    public void restoreFromRemoteStore(RestoreRemoteStoreRequest request, final ActionListener<RestoreCompletionResponse> listener) {
+        clusterService.submitStateUpdateTask("restore[remote_store]", new ClusterStateUpdateTask() {
+            final String restoreUUID = UUIDs.randomBase64UUID();
+
+            @Override
+            public ClusterState execute(ClusterState currentState) {
+                // Updating cluster state
+                ClusterState.Builder builder = ClusterState.builder(currentState);
+                Metadata.Builder mdBuilder = Metadata.builder(currentState.metadata());
+                ClusterBlocks.Builder blocks = ClusterBlocks.builder().blocks(currentState.blocks());
+                RoutingTable.Builder rtBuilder = RoutingTable.builder(currentState.routingTable());
+
+                String indexName = request.index();
+                String shardId = request.shardId();
+                List<String> indices = new ArrayList<>();
+                if(indexName != null && shardId != null) {
+                    indices = Arrays.asList(request.indices());
+                } else {
+                    indices.add(indexName);
+                }
+
+                for(String index: indices) {
+                    IndexMetadata currentIndexMetadata = currentState.metadata().index(index);
+                    IndexId indexId = new IndexId(index, currentIndexMetadata.getIndexUUID());
+                    ShardId shard = null;
+                    if(shardId != null) {
+                        shard = new ShardId(index, currentIndexMetadata.getIndexUUID(), Integer.parseInt(shardId));
+                    }
+
+                    RemoteStoreRecoverySource recoverySource = new RemoteStoreRecoverySource(restoreUUID, currentIndexMetadata.getCreationVersion(), indexId, shard);
+                    rtBuilder.addAsRemoteStoreRestore(currentIndexMetadata, recoverySource);
+                }
+
+                RoutingTable rt = rtBuilder.build();
+                ClusterState updatedState = builder.metadata(mdBuilder).blocks(blocks).routingTable(rt).build();
+                return allocationService.reroute(updatedState, "restored from remote store");
+            }
+
+            @Override
+            public void onFailure(String source, Exception e) {
+                logger.warn("failed to restore from remote store", e);
+                listener.onFailure(e);
+            }
+
+            @Override
+            public TimeValue timeout() {
+                return TimeValue.MAX_VALUE;
+            }
+
+            @Override
+            public void clusterStateProcessed(String source, ClusterState oldState, ClusterState newState) {
+                listener.onResponse(new RestoreCompletionResponse(restoreUUID, null, null));
+            }
+        });
+
     }
 
     /**

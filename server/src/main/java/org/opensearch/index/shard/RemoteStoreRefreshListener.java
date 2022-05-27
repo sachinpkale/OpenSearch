@@ -40,6 +40,14 @@ public class RemoteStoreRefreshListener implements ReferenceManager.RefreshListe
         this.filesUploadedToRemoteStore = new HashSet<>(Arrays.asList(remoteDirectory.listAll()));
     }
 
+    public Directory getStoreDirectory() {
+        return this.storeDirectory;
+    }
+
+    public Directory getRemoteDirectory() {
+        return this.remoteDirectory;
+    }
+
     @Override
     public void beforeRefresh() throws IOException {
         // Do Nothing

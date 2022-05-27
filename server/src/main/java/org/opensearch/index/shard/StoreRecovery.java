@@ -59,6 +59,7 @@ import org.opensearch.index.engine.EngineException;
 import org.opensearch.index.mapper.MapperService;
 import org.opensearch.index.seqno.SequenceNumbers;
 import org.opensearch.index.snapshots.IndexShardRestoreFailedException;
+import org.opensearch.index.store.RemoteDirectory;
 import org.opensearch.index.store.Store;
 import org.opensearch.index.translog.Translog;
 import org.opensearch.indices.recovery.RecoveryState;
@@ -110,6 +111,21 @@ final class StoreRecovery {
             ActionListener.completeWith(recoveryListener(indexShard, listener), () -> {
                 logger.debug("starting recovery from store ...");
                 internalRecoverFromStore(indexShard);
+                return true;
+            });
+        } else {
+            listener.onResponse(false);
+        }
+    }
+
+    void recoverFromRemoteStore(final IndexShard indexShard, ActionListener<Boolean> listener) {
+        if (canRecover(indexShard)) {
+            RecoverySource.Type recoveryType = indexShard.recoveryState().getRecoverySource().getType();
+            assert recoveryType == RecoverySource.Type.REMOTE_STORE
+                : "expected store recovery type but was: " + recoveryType;
+            ActionListener.completeWith(recoveryListener(indexShard, listener), () -> {
+                logger.debug("starting recovery from remote store ...");
+                recoverFromRemoteStore(indexShard);
                 return true;
             });
         } else {
@@ -420,6 +436,39 @@ final class StoreRecovery {
                 }
             }
         });
+    }
+
+    private void recoverFromRemoteStore(IndexShard indexShard) throws IndexShardRecoveryException {
+        indexShard.preRecovery();
+        indexShard.prepareForIndexRecovery();
+        final Store store = indexShard.store();
+        if(indexShard.getRemoteStoreRefreshListener() == null) {
+            throw new IndexShardRecoveryException(indexShard.shardId(), "Remote store is not enabled for this index", new IllegalArgumentException());
+        }
+        final Directory remoteDirectory = indexShard.getRemoteStoreRefreshListener().getRemoteDirectory();
+        final Directory storeDirectory = store.directory();
+        store.incRef();
+        try {
+            for(String file: storeDirectory.listAll()) {
+                storeDirectory.deleteFile(file);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new IndexShardRecoveryException(indexShard.shardId, "Exception while recovering from remote store", e);
+        }
+        try {
+            for(String file: remoteDirectory.listAll()) {
+                storeDirectory.copyFrom(remoteDirectory, file, file, IOContext.DEFAULT);
+            }
+            indexShard.openEngineAndRecoverFromTranslog();
+            indexShard.getEngine().fillSeqNoGaps(indexShard.getPendingPrimaryTerm());
+            indexShard.finalizeRecovery();
+            indexShard.postRecovery("post recovery from shard_store");
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new IndexShardRecoveryException(indexShard.shardId, "Exception while recovering from remote store", e);
+        }
+        store.decRef();
     }
 
     /**

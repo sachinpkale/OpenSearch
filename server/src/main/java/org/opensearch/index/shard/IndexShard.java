@@ -48,6 +48,7 @@ import org.apache.lucene.search.ReferenceManager;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.UsageTrackingQueryCachingPolicy;
 import org.apache.lucene.store.AlreadyClosedException;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.SetOnce;
 import org.apache.lucene.util.ThreadInterruptedException;
 import org.opensearch.Assertions;
@@ -449,6 +450,10 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
 
     public ShardFieldData fieldData() {
         return this.shardFieldData;
+    }
+
+    public RemoteStoreRefreshListener getRemoteStoreRefreshListener() {
+        return this.remoteStoreRefreshListener;
     }
 
     public boolean isSystem() {
@@ -2149,6 +2154,15 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
         storeRecovery.recoverFromStore(this, listener);
     }
 
+    public void recoverFromRemoteStore(ActionListener<Boolean> listener) {
+        // we are the first primary, recover from the gateway
+        // if its post api allocation, the index should exists
+        assert shardRouting.primary() : "recover from store only makes sense if the shard is a primary shard";
+        assert shardRouting.initializing() : "can only start recovery on initializing shard";
+        StoreRecovery storeRecovery = new StoreRecovery(shardId, logger);
+        storeRecovery.recoverFromRemoteStore(this, listener);
+    }
+
     public void restoreFromRepository(Repository repository, ActionListener<Boolean> listener) {
         try {
             assert shardRouting.primary() : "recover from store only makes sense if the shard is a primary shard";
@@ -2901,6 +2915,9 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
             case EMPTY_STORE:
             case EXISTING_STORE:
                 executeRecovery("from store", recoveryState, recoveryListener, this::recoverFromStore);
+                break;
+            case REMOTE_STORE:
+                executeRecovery("from remote store", recoveryState, recoveryListener, this::recoverFromRemoteStore);
                 break;
             case PEER:
                 try {

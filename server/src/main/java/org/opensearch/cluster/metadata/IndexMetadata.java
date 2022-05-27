@@ -284,7 +284,7 @@ public class IndexMetadata implements Diffable<IndexMetadata>, ToXContentFragmen
      */
     public static final Setting<Boolean> INDEX_REMOTE_STORE_SETTING = Setting.boolSetting(
         SETTING_REMOTE_STORE,
-        false,
+        true,
         Property.IndexScope,
         Property.Final
     );
