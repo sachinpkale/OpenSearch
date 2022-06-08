@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.util.List;
 
 import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 import static java.util.Collections.unmodifiableList;
 import static org.opensearch.rest.RestRequest.Method.POST;
 
@@ -30,13 +31,7 @@ public class RestRestoreRemoteStoreAction extends BaseRestHandler {
 
     @Override
     public List<Route> routes() {
-        return unmodifiableList(
-            asList(
-                new Route(POST, "/_remote_store/{index}/{shardId}/_restore"),
-                new Route(POST, "/_remote_store/{index}/_restore"),
-                new Route(POST, "/_remote_store/_restore")
-            )
-        );
+        return singletonList(new Route(POST, "/_remote_store/_restore"));
     }
 
     @Override
@@ -46,7 +41,7 @@ public class RestRestoreRemoteStoreAction extends BaseRestHandler {
 
     @Override
     public RestChannelConsumer prepareRequest(final RestRequest request, final NodeClient client) throws IOException {
-        RestoreRemoteStoreRequest restoreRemoteStoreRequest = new RestoreRemoteStoreRequest(request.param("index"), request.param("shardId"));
+        RestoreRemoteStoreRequest restoreRemoteStoreRequest = new RestoreRemoteStoreRequest();
         restoreRemoteStoreRequest.masterNodeTimeout(
             request.paramAsTime("cluster_manager_timeout", restoreRemoteStoreRequest.masterNodeTimeout())
         );

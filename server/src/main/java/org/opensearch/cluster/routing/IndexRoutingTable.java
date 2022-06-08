@@ -448,31 +448,18 @@ public class IndexRoutingTable extends AbstractDiffable<IndexRoutingTable> imple
                 UnassignedInfo.Reason.EXISTING_INDEX_RESTORED,
                 "restore_source[remote_store]"
             );
-            if(recoverySource.shard() != null) {
-                IndexShardRoutingTable.Builder indexShardRoutingBuilder = new IndexShardRoutingTable.Builder(recoverySource.shard());
+            for (int shardNumber = 0; shardNumber < indexMetadata.getNumberOfShards(); shardNumber++) {
+                ShardId shardId = new ShardId(index, shardNumber);
+                IndexShardRoutingTable.Builder indexShardRoutingBuilder = new IndexShardRoutingTable.Builder(shardId);
                 indexShardRoutingBuilder.addShard(
                     ShardRouting.newUnassigned(
-                        recoverySource.shard(),
+                        shardId,
                         true,
                         recoverySource,
                         unassignedInfo
                     )
                 );
-                shards.put(recoverySource.shard().getId(), indexShardRoutingBuilder.build());
-            } else {
-                for (int shardNumber = 0; shardNumber < indexMetadata.getNumberOfShards(); shardNumber++) {
-                    ShardId shardId = new ShardId(index, shardNumber);
-                    IndexShardRoutingTable.Builder indexShardRoutingBuilder = new IndexShardRoutingTable.Builder(shardId);
-                    indexShardRoutingBuilder.addShard(
-                        ShardRouting.newUnassigned(
-                            shardId,
-                            true,
-                            recoverySource,
-                            unassignedInfo
-                        )
-                    );
-                    shards.put(shardNumber, indexShardRoutingBuilder.build());
-                }
+                shards.put(shardNumber, indexShardRoutingBuilder.build());
             }
             return this;
         }

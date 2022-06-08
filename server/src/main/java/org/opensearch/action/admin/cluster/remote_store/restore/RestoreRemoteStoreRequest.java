@@ -34,25 +34,14 @@ import static org.opensearch.action.ValidateActions.addValidationError;
  */
 public class RestoreRemoteStoreRequest extends MasterNodeRequest<RestoreRemoteStoreRequest> implements ToXContentObject {
 
-    @Nullable
-    private String index;
-    @Nullable
-    private String shardId;
     private String[] indices = Strings.EMPTY_ARRAY;
     private IndicesOptions indicesOptions = IndicesOptions.strictExpandOpen();
     private boolean waitForCompletion;
 
     public RestoreRemoteStoreRequest() {}
 
-    public RestoreRemoteStoreRequest(String index, String shardId) {
-        this.index = index;
-        this.shardId = shardId;
-    }
-
     public RestoreRemoteStoreRequest(StreamInput in) throws IOException {
         super(in);
-        index = in.readOptionalString();
-        shardId = in.readOptionalString();
         indices = in.readStringArray();
         indicesOptions = IndicesOptions.readIndicesOptions(in);
         waitForCompletion = in.readBoolean();
@@ -61,8 +50,6 @@ public class RestoreRemoteStoreRequest extends MasterNodeRequest<RestoreRemoteSt
     @Override
     public void writeTo(StreamOutput out) throws IOException {
         super.writeTo(out);
-        out.writeOptionalString(index);
-        out.writeOptionalString(shardId);
         out.writeStringArray(indices);
         indicesOptions.writeIndicesOptions(out);
         out.writeBoolean(waitForCompletion);
@@ -71,53 +58,10 @@ public class RestoreRemoteStoreRequest extends MasterNodeRequest<RestoreRemoteSt
     @Override
     public ActionRequestValidationException validate() {
         ActionRequestValidationException validationException = null;
-        if (indices == null && index == null) {
-            validationException = addValidationError("index/indices are missing", validationException);
-        }
-        if (index != null && shardId == null) {
-            validationException = addValidationError("shardId is missing for a given index", validationException);
+        if (indices == null || indices.length == 0) {
+            validationException = addValidationError("indices are missing", validationException);
         }
         return validationException;
-    }
-
-    /**
-     * Sets the name of the index.
-     *
-     * @param index index name
-     * @return this request
-     */
-    public RestoreRemoteStoreRequest index(String index) {
-        this.index = index;
-        return this;
-    }
-
-    /**
-     * Returns the name of the index.
-     *
-     * @return index name
-     */
-    public String index() {
-        return this.index;
-    }
-
-    /**
-     * Sets shard ID
-     *
-     * @param shardId shard ID
-     * @return this request
-     */
-    public RestoreRemoteStoreRequest shardId(String shardId) {
-        this.shardId = shardId;
-        return this;
-    }
-
-    /**
-     * Returns shard ID
-     *
-     * @return shard ID
-     */
-    public String shardId() {
-        return this.shardId;
     }
 
     /**
@@ -250,8 +194,6 @@ public class RestoreRemoteStoreRequest extends MasterNodeRequest<RestoreRemoteSt
         if (o == null || getClass() != o.getClass()) return false;
         RestoreRemoteStoreRequest that = (RestoreRemoteStoreRequest) o;
         return waitForCompletion == that.waitForCompletion
-            && Objects.equals(index, that.index)
-            && Objects.equals(shardId, that.shardId)
             && Arrays.equals(indices, that.indices)
             && Objects.equals(indicesOptions, that.indicesOptions);
     }
@@ -259,8 +201,6 @@ public class RestoreRemoteStoreRequest extends MasterNodeRequest<RestoreRemoteSt
     @Override
     public int hashCode() {
         int result = Objects.hash(
-            index,
-            shardId,
             indicesOptions,
             waitForCompletion
         );

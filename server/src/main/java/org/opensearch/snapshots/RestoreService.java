@@ -211,24 +211,11 @@ public class RestoreService implements ClusterStateApplier {
                 ClusterBlocks.Builder blocks = ClusterBlocks.builder().blocks(currentState.blocks());
                 RoutingTable.Builder rtBuilder = RoutingTable.builder(currentState.routingTable());
 
-                String indexName = request.index();
-                String shardId = request.shardId();
-                List<String> indices = new ArrayList<>();
-                if(indexName != null && shardId != null) {
-                    indices = Arrays.asList(request.indices());
-                } else {
-                    indices.add(indexName);
-                }
-
-                for(String index: indices) {
+                for(String index: request.indices()) {
                     IndexMetadata currentIndexMetadata = currentState.metadata().index(index);
                     IndexId indexId = new IndexId(index, currentIndexMetadata.getIndexUUID());
-                    ShardId shard = null;
-                    if(shardId != null) {
-                        shard = new ShardId(index, currentIndexMetadata.getIndexUUID(), Integer.parseInt(shardId));
-                    }
 
-                    RemoteStoreRecoverySource recoverySource = new RemoteStoreRecoverySource(restoreUUID, currentIndexMetadata.getCreationVersion(), indexId, shard);
+                    RemoteStoreRecoverySource recoverySource = new RemoteStoreRecoverySource(restoreUUID, currentIndexMetadata.getCreationVersion(), indexId);
                     rtBuilder.addAsRemoteStoreRestore(currentIndexMetadata, recoverySource);
                 }
 

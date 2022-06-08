@@ -349,14 +349,12 @@ public abstract class RecoverySource implements Writeable, ToXContentObject {
 
         private final String restoreUUID;
         private final IndexId index;
-        private final ShardId shard;
         private final Version version;
 
-        public RemoteStoreRecoverySource(String restoreUUID, Version version, IndexId indexId, ShardId shard) {
+        public RemoteStoreRecoverySource(String restoreUUID, Version version, IndexId indexId) {
             this.restoreUUID = restoreUUID;
             this.version = Objects.requireNonNull(version);
             this.index = Objects.requireNonNull(indexId);
-            this.shard = shard;
         }
 
         RemoteStoreRecoverySource(StreamInput in) throws IOException {
@@ -367,7 +365,6 @@ public abstract class RecoverySource implements Writeable, ToXContentObject {
             } else {
                 index = new IndexId(in.readString(), IndexMetadata.INDEX_UUID_NA_VALUE);
             }
-            shard = new ShardId(in);
         }
 
         public String restoreUUID() {
@@ -384,10 +381,6 @@ public abstract class RecoverySource implements Writeable, ToXContentObject {
             return index;
         }
 
-        public ShardId shard() {
-            return shard;
-        }
-
         public Version version() {
             return version;
         }
@@ -401,7 +394,6 @@ public abstract class RecoverySource implements Writeable, ToXContentObject {
             } else {
                 out.writeString(index.getName());
             }
-            shard.writeTo(out);
         }
 
         @Override
@@ -413,7 +405,6 @@ public abstract class RecoverySource implements Writeable, ToXContentObject {
         public void addAdditionalFields(XContentBuilder builder, ToXContent.Params params) throws IOException {
             builder.field("version", version.toString())
                 .field("index", index.getName())
-                .field("shard", shard.id())
                 .field("restoreUUID", restoreUUID);
         }
 
@@ -434,13 +425,12 @@ public abstract class RecoverySource implements Writeable, ToXContentObject {
             RemoteStoreRecoverySource that = (RemoteStoreRecoverySource) o;
             return restoreUUID.equals(that.restoreUUID)
                 && index.equals(that.index)
-                && shard.equals(that.shard)
                 && version.equals(that.version);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(restoreUUID, index, shard, version);
+            return Objects.hash(restoreUUID, index, version);
         }
 
     }
