@@ -9,7 +9,10 @@
 package org.opensearch.action.admin.cluster.remotestore.restore;
 
 import org.opensearch.action.ActionListener;
+<<<<<<< HEAD
 import org.opensearch.action.admin.cluster.snapshots.restore.RestoreClusterStateListener;
+=======
+>>>>>>> 9ce5195588f (Add rest endpoint for remote store restore)
 import org.opensearch.action.support.ActionFilters;
 import org.opensearch.action.support.clustermanager.TransportClusterManagerNodeAction;
 import org.opensearch.cluster.ClusterState;
@@ -84,6 +87,7 @@ public final class TransportRestoreRemoteStoreAction extends TransportClusterMan
         final ClusterState state,
         final ActionListener<RestoreRemoteStoreResponse> listener
     ) {
+
         restoreService.restoreFromRemoteStore(
             request,
             ActionListener.delegateFailure(listener, (delegatedListener, restoreCompletionResponse) -> {
