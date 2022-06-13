@@ -1,0 +1,24 @@
+---
+"Basic remote store restore API call":
+
+  - do:
+      remote_store.restore:
+        body:
+          indices: "index1,index2"
+
+  - match: { remote_store.indices:  ["index1", "index2"]}
+  - match: { remote_store.shards.total: 0 }
+  - match: { remote_store.shards.successful: 0 }
+  - match: { remote_store.shards.failed : 0 }
+---
+"Error no indices":
+
+  - do:
+      catch: bad_request
+      remote_store.restore:
+        body:
+          indices: ""
+
+  - match: { status: 400 }
+  - match: { error.type:  action_request_validation_exception}
+  - match: { error.reason:  "Validation Failed: 1: indices are missing;"}
