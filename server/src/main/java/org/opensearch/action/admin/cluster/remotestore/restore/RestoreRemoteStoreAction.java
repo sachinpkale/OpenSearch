@@ -6,7 +6,7 @@
  * compatible open source license.
  */
 
-package org.opensearch.action.admin.cluster.remote_store.restore;
+package org.opensearch.action.admin.cluster.remotestore.restore;
 
 import org.opensearch.action.ActionType;
 
@@ -18,7 +18,7 @@ import org.opensearch.action.ActionType;
 public class RestoreRemoteStoreAction extends ActionType<RestoreRemoteStoreResponse> {
 
     public static final RestoreRemoteStoreAction INSTANCE = new RestoreRemoteStoreAction();
-    public static final String NAME = "cluster:admin/remote_store/restore";
+    public static final String NAME = "cluster:admin/remotestore/restore";
 
     private RestoreRemoteStoreAction() {
         super(NAME, RestoreRemoteStoreResponse::new);

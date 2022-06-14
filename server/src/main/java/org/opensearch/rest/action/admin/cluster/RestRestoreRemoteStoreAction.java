@@ -8,7 +8,7 @@
 
 package org.opensearch.rest.action.admin.cluster;
 
-import org.opensearch.action.admin.cluster.remote_store.restore.RestoreRemoteStoreRequest;
+import org.opensearch.action.admin.cluster.remotestore.restore.RestoreRemoteStoreRequest;
 import org.opensearch.client.node.NodeClient;
 import org.opensearch.rest.BaseRestHandler;
 import org.opensearch.rest.RestRequest;
@@ -29,7 +29,7 @@ public class RestRestoreRemoteStoreAction extends BaseRestHandler {
 
     @Override
     public List<Route> routes() {
-        return singletonList(new Route(POST, "/_remote_store/_restore"));
+        return singletonList(new Route(POST, "/_remotestore/_restore"));
     }
 
     @Override

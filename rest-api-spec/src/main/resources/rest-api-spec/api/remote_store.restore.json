@@ -8,7 +8,7 @@
     "url":{
       "paths":[
         {
-          "path":"/_remote_store/_restore",
+          "path":"/_remotestore/_restore",
           "methods":[
             "POST"
           ]
