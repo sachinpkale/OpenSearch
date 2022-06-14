@@ -6,7 +6,7 @@
  * compatible open source license.
  */
 
-package org.opensearch.action.admin.cluster.remote_store.restore;
+package org.opensearch.action.admin.cluster.remotestore.restore;
 
 import org.opensearch.common.xcontent.XContentParser;
 import org.opensearch.snapshots.RestoreInfo;
