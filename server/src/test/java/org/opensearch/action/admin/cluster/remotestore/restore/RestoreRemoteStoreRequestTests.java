@@ -6,7 +6,7 @@
  * compatible open source license.
  */
 
-package org.opensearch.action.admin.cluster.remote_store.restore;
+package org.opensearch.action.admin.cluster.remotestore.restore;
 
 import org.opensearch.action.support.IndicesOptions;
 import org.opensearch.common.bytes.BytesReference;
