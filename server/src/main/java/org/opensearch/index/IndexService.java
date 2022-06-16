@@ -102,6 +102,7 @@ import org.opensearch.repositories.Repository;
 import org.opensearch.repositories.RepositoryMissingException;
 import org.opensearch.script.ScriptService;
 import org.opensearch.search.aggregations.support.ValuesSourceRegistry;
+import org.opensearch.threadpool.Scheduler;
 import org.opensearch.threadpool.ThreadPool;
 
 import java.io.Closeable;
@@ -115,6 +116,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
@@ -176,6 +178,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
     private final IndexNameExpressionResolver expressionResolver;
     private final Supplier<Sort> indexSortSupplier;
     private final ValuesSourceRegistry valuesSourceRegistry;
+    private final ScheduledThreadPoolExecutor remoteSegmentsDeleteScheduler;
 
     public IndexService(
         IndexSettings indexSettings,
@@ -280,6 +283,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
         this.globalCheckpointTask = new AsyncGlobalCheckpointTask(this);
         this.retentionLeaseSyncTask = new AsyncRetentionLeaseSyncTask(this);
         updateFsyncTaskIfNecessary();
+        this.remoteSegmentsDeleteScheduler = new Scheduler.SafeScheduledThreadPoolExecutor(Runtime.getRuntime().availableProcessors());
     }
 
     static boolean needsMapperService(IndexSettings indexSettings, IndexCreationContext indexCreationContext) {
@@ -386,6 +390,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
                     globalCheckpointTask,
                     retentionLeaseSyncTask
                 );
+                remoteSegmentsDeleteScheduler.shutdown();
             }
         }
     }
@@ -512,13 +517,12 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
                 }
             };
             Directory directory = directoryFactory.newDirectory(this.indexSettings, path);
-            Directory remoteDirectory = null;
             RemoteStoreRefreshListener remoteStoreRefreshListener = null;
             if (this.indexSettings.isRemoteStoreEnabled()) {
                 try {
                     Repository repository = repositoriesService.repository(clusterService.state().metadata().clusterUUID());
-                    remoteDirectory = remoteDirectoryFactory.newDirectory(this.indexSettings, path, repository);
-                    remoteStoreRefreshListener = new RemoteStoreRefreshListener(directory, remoteDirectory);
+                    Directory remoteDirectory = remoteDirectoryFactory.newDirectory(this.indexSettings, path, repository);
+                    remoteStoreRefreshListener = new RemoteStoreRefreshListener(directory, remoteDirectory, remoteSegmentsDeleteScheduler);
                 } catch (RepositoryMissingException e) {
                     throw new IllegalArgumentException(
                         "Repository should be created before creating index with remote_store enabled setting",
