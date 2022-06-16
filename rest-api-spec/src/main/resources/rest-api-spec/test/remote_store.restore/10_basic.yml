@@ -1,5 +1,8 @@
 ---
 "Basic remote store restore API call":
+  - skip:
+      version: " - 2.99.99"
+      reason: "remote store restore API only supported since 3.0.0"
 
   - do:
       remote_store.restore:
@@ -12,6 +15,9 @@
   - match: { remote_store.shards.failed : 0 }
 ---
 "Error no indices":
+  - skip:
+      version: " - 2.99.99"
+      reason: "remote store restore API only supported since 3.0.0"
 
   - do:
       catch: bad_request
