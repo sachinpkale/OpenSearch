@@ -10,7 +10,7 @@ package org.opensearch.action.admin.cluster.remotestore.restore;
 
 import org.opensearch.action.ActionListener;
 import org.opensearch.action.support.ActionFilters;
-import org.opensearch.action.support.master.TransportMasterNodeAction;
+import org.opensearch.action.support.clustermanager.TransportClusterManagerNodeAction;
 import org.opensearch.cluster.ClusterState;
 import org.opensearch.cluster.block.ClusterBlockException;
 import org.opensearch.cluster.block.ClusterBlockLevel;
@@ -31,7 +31,9 @@ import java.util.List;
  *
  * @opensearch.internal
  */
-public class TransportRestoreRemoteStoreAction extends TransportMasterNodeAction<RestoreRemoteStoreRequest, RestoreRemoteStoreResponse> {
+public class TransportRestoreRemoteStoreAction extends TransportClusterManagerNodeAction<
+    RestoreRemoteStoreRequest,
+    RestoreRemoteStoreResponse> {
     private final RestoreService restoreService;
 
     @Inject
