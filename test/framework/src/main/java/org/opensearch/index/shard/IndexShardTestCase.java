@@ -34,6 +34,7 @@ package org.opensearch.index.shard;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexCommit;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FilterDirectory;
 import org.opensearch.OpenSearchException;
 import org.opensearch.Version;
 import org.opensearch.action.admin.indices.flush.FlushRequest;
@@ -106,7 +107,10 @@ import org.opensearch.test.OpenSearchTestCase;
 import org.opensearch.threadpool.TestThreadPool;
 import org.opensearch.threadpool.ThreadPool;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.rmi.Remote;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -284,7 +288,7 @@ public abstract class IndexShardTestCase extends OpenSearchTestCase {
             .settings(indexSettings)
             .primaryTerm(0, primaryTerm)
             .putMapping("{ \"properties\": {} }");
-        return newShard(shardRouting, metadata.build(), null, engineFactory, () -> {}, RetentionLeaseSyncer.EMPTY, listeners);
+        return newShard(shardRouting, metadata.build(), null, engineFactory, () -> {}, RetentionLeaseSyncer.EMPTY, null, listeners);
     }
 
     /**
@@ -353,7 +357,8 @@ public abstract class IndexShardTestCase extends OpenSearchTestCase {
             readerWrapper,
             new InternalEngineFactory(),
             globalCheckpointSyncer,
-            RetentionLeaseSyncer.EMPTY
+            RetentionLeaseSyncer.EMPTY,
+            null
         );
     }
 
@@ -372,7 +377,7 @@ public abstract class IndexShardTestCase extends OpenSearchTestCase {
         EngineFactory engineFactory,
         IndexingOperationListener... listeners
     ) throws IOException {
-        return newShard(routing, indexMetadata, indexReaderWrapper, engineFactory, () -> {}, RetentionLeaseSyncer.EMPTY, listeners);
+        return newShard(routing, indexMetadata, indexReaderWrapper, engineFactory, () -> {}, RetentionLeaseSyncer.EMPTY, null, listeners);
     }
 
     /**
@@ -391,6 +396,7 @@ public abstract class IndexShardTestCase extends OpenSearchTestCase {
         @Nullable EngineFactory engineFactory,
         Runnable globalCheckpointSyncer,
         RetentionLeaseSyncer retentionLeaseSyncer,
+        RemoteStoreRefreshListener remoteStoreRefreshListener,
         IndexingOperationListener... listeners
     ) throws IOException {
         // add node id as name to settings for proper logging
@@ -408,6 +414,7 @@ public abstract class IndexShardTestCase extends OpenSearchTestCase {
             globalCheckpointSyncer,
             retentionLeaseSyncer,
             EMPTY_EVENT_LISTENER,
+            remoteStoreRefreshListener,
             listeners
         );
     }
@@ -435,6 +442,7 @@ public abstract class IndexShardTestCase extends OpenSearchTestCase {
         Runnable globalCheckpointSyncer,
         RetentionLeaseSyncer retentionLeaseSyncer,
         IndexEventListener indexEventListener,
+        RemoteStoreRefreshListener remoteStoreRefreshListener,
         IndexingOperationListener... listeners
     ) throws IOException {
         return newShard(
@@ -449,6 +457,7 @@ public abstract class IndexShardTestCase extends OpenSearchTestCase {
             retentionLeaseSyncer,
             indexEventListener,
             SegmentReplicationCheckpointPublisher.EMPTY,
+            remoteStoreRefreshListener,
             listeners
         );
     }
@@ -477,6 +486,7 @@ public abstract class IndexShardTestCase extends OpenSearchTestCase {
         RetentionLeaseSyncer retentionLeaseSyncer,
         IndexEventListener indexEventListener,
         SegmentReplicationCheckpointPublisher checkpointPublisher,
+        @Nullable RemoteStoreRefreshListener remoteStoreRefreshListener,
         IndexingOperationListener... listeners
     ) throws IOException {
         final Settings nodeSettings = Settings.builder().put("node.name", routing.currentNodeId()).build();
@@ -504,6 +514,13 @@ public abstract class IndexShardTestCase extends OpenSearchTestCase {
                 Collections.emptyList(),
                 clusterSettings
             );
+            if(remoteStoreRefreshListener == null && indexSettings.isRemoteStoreEnabled()) {
+                ShardId shardId = shardPath.getShardId();
+                NodeEnvironment.NodePath remoteNodePath = new NodeEnvironment.NodePath(createTempDir());
+                ShardPath remoteShardPath = new ShardPath(false, remoteNodePath.resolve(shardId), remoteNodePath.resolve(shardId), shardId);
+                Directory remoteDirectory = newFSDirectory(remoteShardPath.resolveIndex());
+                remoteStoreRefreshListener = new RemoteStoreRefreshListener(store.directory(), remoteDirectory);
+            }
             indexShard = new IndexShard(
                 routing,
                 indexSettings,
@@ -526,7 +543,7 @@ public abstract class IndexShardTestCase extends OpenSearchTestCase {
                 retentionLeaseSyncer,
                 breakerService,
                 checkpointPublisher,
-                null
+                remoteStoreRefreshListener
             );
             indexShard.addShardFailureCallback(DEFAULT_SHARD_FAILURE_HANDLER);
             success = true;
@@ -568,6 +585,7 @@ public abstract class IndexShardTestCase extends OpenSearchTestCase {
             current.indexSettings.getIndexMetadata(),
             current.engineFactory,
             current.engineConfigFactory,
+            current.getRemoteStoreRefreshListener(),
             listeners
         );
     }
@@ -586,6 +604,7 @@ public abstract class IndexShardTestCase extends OpenSearchTestCase {
         IndexMetadata indexMetadata,
         EngineFactory engineFactory,
         EngineConfigFactory engineConfigFactory,
+        RemoteStoreRefreshListener remoteStoreRefreshListener,
         IndexingOperationListener... listeners
     ) throws IOException {
         closeShards(current);
@@ -600,6 +619,7 @@ public abstract class IndexShardTestCase extends OpenSearchTestCase {
             current.getGlobalCheckpointSyncer(),
             current.getRetentionLeaseSyncer(),
             EMPTY_EVENT_LISTENER,
+            remoteStoreRefreshListener,
             listeners
         );
     }

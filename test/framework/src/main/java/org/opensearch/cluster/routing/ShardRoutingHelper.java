@@ -77,7 +77,7 @@ public class ShardRoutingHelper {
         return routing.moveToUnassigned(info);
     }
 
-    public static ShardRouting newWithRestoreSource(ShardRouting routing, SnapshotRecoverySource recoverySource) {
+    public static ShardRouting newWithRestoreSource(ShardRouting routing, RecoverySource recoverySource) {
         return new ShardRouting(
             routing.shardId(),
             routing.currentNodeId(),

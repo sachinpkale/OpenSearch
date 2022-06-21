@@ -18,22 +18,18 @@ import org.opensearch.cluster.metadata.IndexNameExpressionResolver;
 import org.opensearch.cluster.service.ClusterService;
 import org.opensearch.common.inject.Inject;
 import org.opensearch.common.io.stream.StreamInput;
-import org.opensearch.snapshots.RestoreInfo;
 import org.opensearch.snapshots.RestoreService;
 import org.opensearch.threadpool.ThreadPool;
 import org.opensearch.transport.TransportService;
 
 import java.io.IOException;
-import java.util.List;
 
 /**
  * Transport action for restore remote store operation
  *
  * @opensearch.internal
  */
-public class TransportRestoreRemoteStoreAction extends TransportClusterManagerNodeAction<
-    RestoreRemoteStoreRequest,
-    RestoreRemoteStoreResponse> {
+public class TransportRestoreRemoteStoreAction extends TransportClusterManagerNodeAction<RestoreRemoteStoreRequest, RestoreRemoteStoreResponse> {
     private final RestoreService restoreService;
 
     @Inject
@@ -85,9 +81,19 @@ public class TransportRestoreRemoteStoreAction extends TransportClusterManagerNo
         final ClusterState state,
         final ActionListener<RestoreRemoteStoreResponse> listener
     ) {
-        // Following is the dummy implementation that gives constant response for a given input
-        // ToDo: Call restoreService.restoreFromRemoteStore and set listener response
-        RestoreInfo remoteStoreRestoreInfo = new RestoreInfo("remote_store", List.of(request.indices()), 0, 0);
-        listener.onResponse(new RestoreRemoteStoreResponse(remoteStoreRestoreInfo));
+        restoreService.restoreFromRemoteStore(
+            request,
+            ActionListener.delegateFailure(listener, (delegatedListener, restoreCompletionResponse) -> {
+                if (restoreCompletionResponse.getRestoreInfo() == null && request.waitForCompletion()) {
+                    RemoteStoreRestoreClusterStateListener.createAndRegisterListener(
+                        clusterService,
+                        restoreCompletionResponse,
+                        delegatedListener
+                    );
+                } else {
+                    delegatedListener.onResponse(new RestoreRemoteStoreResponse(restoreCompletionResponse.getRestoreInfo()));
+                }
+            })
+        );
     }
 }
