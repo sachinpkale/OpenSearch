@@ -519,7 +519,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
                     this.indexSettings,
                     remoteDirectory,
                     lock,
-                    new StoreCloseListener(shardId, () -> eventListener.onStoreClosed(shardId))
+                    Store.OnClose.EMPTY
                 );
             }
 
