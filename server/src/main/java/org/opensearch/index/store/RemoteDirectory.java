@@ -98,7 +98,7 @@ public final class RemoteDirectory extends Directory {
      */
     @Override
     public void close() throws IOException {
-        blobContainer.delete();
+        // No Op
     }
 
     /**
@@ -151,7 +151,7 @@ public final class RemoteDirectory extends Directory {
      */
     @Override
     public void sync(Collection<String> names) throws IOException {
-        throw new UnsupportedOperationException();
+        // No Op
     }
 
     /**
@@ -163,7 +163,7 @@ public final class RemoteDirectory extends Directory {
      */
     @Override
     public void syncMetaData() {
-        throw new UnsupportedOperationException();
+        // No Op
     }
 
     /**
@@ -175,8 +175,8 @@ public final class RemoteDirectory extends Directory {
      */
     @Override
     public void rename(String source, String dest) throws IOException {
-        throw new UnsupportedOperationException();
-
+        copyFrom(this, source, dest, IOContext.DEFAULT);
+        deleteFile(source);
     }
 
     /**

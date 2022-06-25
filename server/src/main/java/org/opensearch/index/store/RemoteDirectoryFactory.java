@@ -20,6 +20,7 @@ import org.opensearch.repositories.RepositoryMissingException;
 import org.opensearch.repositories.blobstore.BlobStoreRepository;
 
 import java.io.IOException;
+import java.util.function.Supplier;
 
 /**
  * Factory for a remote store directory
@@ -28,24 +29,31 @@ import java.io.IOException;
  */
 public class RemoteDirectoryFactory implements IndexStorePlugin.RemoteDirectoryFactory {
 
-    private final RepositoriesService repositoriesService;
+    private final Supplier<RepositoriesService> repositoriesService;
 
-    public RemoteDirectoryFactory(RepositoriesService repositoriesService) {
+    public RemoteDirectoryFactory(Supplier<RepositoriesService> repositoriesService) {
         this.repositoriesService = repositoriesService;
     }
 
     @Override
     public Directory newDirectory(String repositoryName, IndexSettings indexSettings, ShardPath path) throws IOException {
+        Repository repository = getRepository(repositoryName);
+        BlobPath blobPath = new BlobPath();
+        blobPath = blobPath.add(indexSettings.getIndex().getName());
+        if(path != null) {
+            blobPath = blobPath.add(String.valueOf(path.getShardId().getId()));
+        }
+        BlobContainer blobContainer = ((BlobStoreRepository) repository).blobStore().blobContainer(blobPath);
+        return new RemoteDirectory(blobContainer);
+    }
+
+    public Repository getRepository(String repositoryName) {
         try {
-            Repository repository = repositoriesService.repository(repositoryName);
+            Repository repository = repositoriesService.get().repository(repositoryName);
             assert repository instanceof BlobStoreRepository : "repository should be instance of BlobStoreRepository";
-            BlobPath blobPath = new BlobPath();
-            blobPath = blobPath.add(indexSettings.getIndex().getName()).add(String.valueOf(path.getShardId().getId()));
-            BlobContainer blobContainer = ((BlobStoreRepository) repository).blobStore().blobContainer(blobPath);
-            return new RemoteDirectory(blobContainer);
+            return repository;
         } catch (RepositoryMissingException e) {
             throw new IllegalArgumentException("Repository should be created before creating index with remote_store enabled setting", e);
         }
     }
-
 }
