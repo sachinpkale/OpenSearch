@@ -55,6 +55,7 @@ import org.opensearch.common.xcontent.XContentFactory;
 import org.opensearch.common.xcontent.XContentParser;
 import org.opensearch.common.xcontent.XContentType;
 import org.opensearch.core.internal.io.IOUtils;
+import org.opensearch.index.store.RemoteDirectory;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -206,7 +207,11 @@ public abstract class MetadataStateFormat<T> {
      * See also {@link #write(Object, Path...)} and {@link #cleanupOldFiles(long, Path[])}.
      */
     public final long writeAndCleanup(final T state, final Path... locations) throws WriteStateException {
-        return write(state, true, locations);
+        return write(state, true, null, locations);
+    }
+
+    public final long writeAndCleanup(final T state, RemoteDirectory remoteDirectory, final Path... locations) throws WriteStateException {
+        return write(state, true, remoteDirectory, locations);
     }
 
     /**
@@ -230,10 +235,15 @@ public abstract class MetadataStateFormat<T> {
      * @return generation of newly written state.
      */
     public final long write(final T state, final Path... locations) throws WriteStateException {
-        return write(state, false, locations);
+        return write(state, false, null, locations);
     }
 
-    private long write(final T state, boolean cleanup, final Path... locations) throws WriteStateException {
+    public final long write(final T state, RemoteDirectory remoteDirectory, final Path... locations) throws WriteStateException {
+        return write(state, false, remoteDirectory, locations);
+    }
+
+    private long write(final T state, boolean cleanup, RemoteDirectory remoteDirectory, final Path... locations)
+        throws WriteStateException {
         if (locations == null) {
             throw new IllegalArgumentException("Locations must not be null");
         }
@@ -263,6 +273,9 @@ public abstract class MetadataStateFormat<T> {
                     throw new WriteStateException(false, "failed to open state directory " + stateLocation, e);
                 }
             }
+            if (remoteDirectory != null) {
+                directories.add(new Tuple<>(locations[0], remoteDirectory));
+            }
 
             writeStateToFirstLocation(state, directories.get(0).v1(), directories.get(0).v2(), tmpFileName);
             copyStateToExtraLocations(directories, tmpFileName);
@@ -270,7 +283,7 @@ public abstract class MetadataStateFormat<T> {
             performStateDirectoriesFsync(directories);
         } catch (WriteStateException e) {
             if (cleanup) {
-                cleanupOldFiles(oldGenerationId, locations);
+                cleanupOldFiles(oldGenerationId, remoteDirectory, locations);
             }
             throw e;
         } finally {
@@ -281,7 +294,7 @@ public abstract class MetadataStateFormat<T> {
         }
 
         if (cleanup) {
-            cleanupOldFiles(newGenerationId, locations);
+            cleanupOldFiles(newGenerationId, remoteDirectory, locations);
         }
 
         return newGenerationId;
@@ -349,6 +362,10 @@ public abstract class MetadataStateFormat<T> {
      * @param locations         state paths.
      */
     public void cleanupOldFiles(final long currentGeneration, Path[] locations) {
+        cleanupOldFiles(currentGeneration, null, locations);
+    }
+
+    private void cleanupOldFiles(final long currentGeneration, Directory remoteDirectory, Path[] locations) {
         final String fileNameToKeep = getStateFileName(currentGeneration);
         for (Path location : locations) {
             logger.trace("cleanupOldFiles: cleaning up {}", location);
@@ -361,6 +378,17 @@ public abstract class MetadataStateFormat<T> {
                 }
             } catch (Exception e) {
                 logger.trace("clean up failed for state location {}", stateLocation);
+            }
+        }
+        if (remoteDirectory != null) {
+            try {
+                for (String file : remoteDirectory.listAll()) {
+                    if (file.startsWith(prefix) && file.equals(fileNameToKeep) == false) {
+                        deleteFileIgnoreExceptions(locations[0], remoteDirectory, file);
+                    }
+                }
+            } catch (IOException e) {
+                logger.trace("clean up failed for remote store");
             }
         }
     }
