@@ -63,7 +63,6 @@ import org.opensearch.env.NodeEnvironment;
 import org.opensearch.env.ShardLock;
 import org.opensearch.env.ShardLockObtainFailedException;
 import org.opensearch.gateway.MetadataStateFormat;
-import org.opensearch.gateway.WriteStateException;
 import org.opensearch.index.analysis.IndexAnalyzers;
 import org.opensearch.index.cache.IndexCache;
 import org.opensearch.index.cache.bitset.BitsetFilterCache;
@@ -87,6 +86,7 @@ import org.opensearch.index.shard.ShardNotFoundException;
 import org.opensearch.index.shard.ShardNotInPrimaryModeException;
 import org.opensearch.index.shard.ShardPath;
 import org.opensearch.index.similarity.SimilarityService;
+import org.opensearch.index.store.RemoteDirectory;
 import org.opensearch.index.store.Store;
 import org.opensearch.index.translog.Translog;
 import org.opensearch.indices.breaker.CircuitBreakerService;
@@ -392,8 +392,18 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
             return;
         }
         try {
-            IndexMetadata.FORMAT.writeAndCleanup(getMetadata(), nodeEnv.indexPaths(index()));
-        } catch (WriteStateException e) {
+            if (this.indexSettings.isRemoteStoreEnabled()) {
+                Directory remoteDirectory = remoteDirectoryFactory.newDirectory(
+                    clusterService.state().metadata().clusterUUID(),
+                    this.indexSettings,
+                    null
+                );
+                IndexMetadata.FORMAT.writeAndCleanup(getMetadata(), (RemoteDirectory) remoteDirectory, nodeEnv.indexPaths(index()));
+            } else {
+                IndexMetadata.FORMAT.writeAndCleanup(getMetadata(), nodeEnv.indexPaths(index()));
+            }
+
+        } catch (IOException e) {
             logger.warn(() -> new ParameterizedMessage("failed to write dangling indices state for index {}", index()), e);
         }
     }

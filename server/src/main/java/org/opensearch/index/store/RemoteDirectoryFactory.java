@@ -40,7 +40,10 @@ public class RemoteDirectoryFactory implements IndexStorePlugin.RemoteDirectoryF
         try (Repository repository = repositoriesService.get().repository(repositoryName)) {
             assert repository instanceof BlobStoreRepository : "repository should be instance of BlobStoreRepository";
             BlobPath blobPath = new BlobPath();
-            blobPath = blobPath.add(indexSettings.getIndex().getName()).add(String.valueOf(path.getShardId().getId()));
+            blobPath = blobPath.add(indexSettings.getIndex().getName());
+            if (path != null) {
+                blobPath = blobPath.add(String.valueOf(path.getShardId().getId()));
+            }
             BlobContainer blobContainer = ((BlobStoreRepository) repository).blobStore().blobContainer(blobPath);
             return new RemoteDirectory(blobContainer);
         } catch (RepositoryMissingException e) {
