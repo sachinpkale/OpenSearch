@@ -9,40 +9,45 @@
 package org.opensearch.index.shard;
 
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.index.IndexNotFoundException;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LogByteSizeMergePolicy;
-import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.tests.store.RawDirectoryWrapper;
 import org.junit.After;
 import org.opensearch.common.concurrent.GatedCloseable;
 import org.opensearch.index.engine.EngineException;
 import org.opensearch.index.store.Store;
+import org.opensearch.index.store.StoreFileMetadata;
 import org.opensearch.test.OpenSearchTestCase;
 import org.opensearch.threadpool.ThreadPool;
 
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
+import java.util.Map;
+import java.util.Set;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.startsWith;
+import static org.mockito.Mockito.doThrow;
 import static org.opensearch.index.shard.RemoteStoreRefreshListener.REFRESHED_SEGMENTINFOS_FILENAME;
 
 public class RemoteStoreRefreshListenerTests extends OpenSearchTestCase {
@@ -134,61 +139,61 @@ public class RemoteStoreRefreshListenerTests extends OpenSearchTestCase {
 //        assertFalse(actualMetadata.containsKey("random_segment"));
 //    }
 
-//    public void testDeleteStaleSegmentsNoPriorRefresh() throws IOException {
-//        setup(4);
-//        when(remoteDirectory.listAll()).thenReturn(storeDirectory.listAll());
-//
-//        remoteStoreRefreshListener.deleteStaleSegments(localFiles);
-//
-//        verify(remoteDirectory, times(0)).openChecksumInput(any(), any());
-//    }
-//
-//    public void testDeleteStaleSegmentsPostRefreshNoDelete() throws IOException {
-//        setup(4);
-//
-//        remoteStoreRefreshListener.afterRefresh(true);
-//        when(remoteDirectory.listAll()).thenReturn(storeDirectory.listAll());
-//        for (String file : storeDirectory.listAll()) {
-//            when(remoteDirectory.openChecksumInput(file, IOContext.READ)).thenAnswer(
-//                i -> storeDirectory.openChecksumInput(file, IOContext.READ)
-//            );
-//        }
-//        remoteStoreRefreshListener.deleteStaleSegments(localFiles);
-//
-//        verify(remoteDirectory, times(0)).openChecksumInput(startsWith(REFRESHED_SEGMENTINFOS_FILENAME), eq(IOContext.DEFAULT));
-//        verify(remoteDirectory, times(0)).deleteFile(any());
-//    }
-//
-//    public void testDeleteStaleSegmentsPostRefreshDelete() throws IOException {
-//        setup(4);
-//        remoteStoreRefreshListener.afterRefresh(true);
-//        writeDocsToLocalDirectory(storeDirectory, 3);
-//        remoteStoreRefreshListener.afterRefresh(true);
-//        writeDocsToLocalDirectory(storeDirectory, 5);
-//        remoteStoreRefreshListener.afterRefresh(true);
-//
-//        String[] localFiles = storeDirectory.listAll();
-//        String[] remoteFiles = new String[localFiles.length + 1];
-//        int i = 0;
-//        for (String file : localFiles) {
-//            remoteFiles[i] = file;
-//            i++;
-//        }
-//        remoteFiles[i] = "random_segment";
-//        when(remoteDirectory.listAll()).thenReturn(remoteFiles);
-//
-//        for (String file : storeDirectory.listAll()) {
-//            when(remoteDirectory.openChecksumInput(file, IOContext.READ)).thenAnswer(
-//                j -> storeDirectory.openChecksumInput(file, IOContext.READ)
-//            );
-//        }
-//        remoteStoreRefreshListener.deleteStaleSegments(localFiles);
-//
-//        verify(remoteDirectory, times(0)).openChecksumInput(startsWith(REFRESHED_SEGMENTINFOS_FILENAME), eq(IOContext.DEFAULT));
-//        verify(remoteDirectory, times(1)).deleteFile("random_segment");
-//        verify(remoteDirectory, times(1)).deleteFile(REFRESHED_SEGMENTINFOS_FILENAME + 1);
-//        verify(remoteDirectory, times(1)).deleteFile(REFRESHED_SEGMENTINFOS_FILENAME + 2);
-//    }
+    public void testDeleteStaleSegmentsNoPriorRefresh() throws IOException {
+        setup(4);
+        when(remoteDirectory.listAll()).thenReturn(storeDirectory.listAll());
+
+        remoteStoreRefreshListener.deleteStaleSegments();
+
+        verify(remoteDirectory, times(0)).openChecksumInput(any(), any());
+    }
+
+    public void testDeleteStaleSegmentsPostRefreshNoDelete() throws IOException {
+        setup(4);
+
+        remoteStoreRefreshListener.afterRefresh(true);
+        when(remoteDirectory.listAll()).thenReturn(storeDirectory.listAll());
+        for (String file : storeDirectory.listAll()) {
+            when(remoteDirectory.openChecksumInput(file, IOContext.READ)).thenAnswer(
+                i -> storeDirectory.openChecksumInput(file, IOContext.READ)
+            );
+        }
+        remoteStoreRefreshListener.deleteStaleSegments();
+
+        verify(remoteDirectory, times(0)).openChecksumInput(startsWith(REFRESHED_SEGMENTINFOS_FILENAME), eq(IOContext.DEFAULT));
+        verify(remoteDirectory, times(0)).deleteFile(any());
+    }
+
+    public void testDeleteStaleSegmentsPostRefreshDelete() throws IOException {
+        setup(4);
+        remoteStoreRefreshListener.afterRefresh(true);
+        writeDocsToLocalDirectory(storeDirectory, 3);
+        remoteStoreRefreshListener.afterRefresh(true);
+        writeDocsToLocalDirectory(storeDirectory, 5);
+        remoteStoreRefreshListener.afterRefresh(true);
+
+        String[] localFiles = storeDirectory.listAll();
+        String[] remoteFiles = new String[localFiles.length + 1];
+        int i = 0;
+        for (String file : localFiles) {
+            remoteFiles[i] = file;
+            i++;
+        }
+        remoteFiles[i] = "random_segment";
+        when(remoteDirectory.listAll()).thenReturn(remoteFiles);
+
+        for (String file : storeDirectory.listAll()) {
+            when(remoteDirectory.openChecksumInput(file, IOContext.READ)).thenAnswer(
+                j -> storeDirectory.openChecksumInput(file, IOContext.READ)
+            );
+        }
+        remoteStoreRefreshListener.deleteStaleSegments();
+
+        verify(remoteDirectory, times(0)).openChecksumInput(startsWith(REFRESHED_SEGMENTINFOS_FILENAME), eq(IOContext.DEFAULT));
+        verify(remoteDirectory, times(1)).deleteFile("random_segment");
+        verify(remoteDirectory, times(1)).deleteFile(REFRESHED_SEGMENTINFOS_FILENAME + 1);
+        verify(remoteDirectory, times(1)).deleteFile(REFRESHED_SEGMENTINFOS_FILENAME + 2);
+    }
 
     public void testAfterRefreshFalse() throws IOException {
         setup(0);
@@ -204,6 +209,7 @@ public class RemoteStoreRefreshListenerTests extends OpenSearchTestCase {
     public void testAfterRefreshTrueNoLocalFiles() throws IOException {
         setup(0);
 
+        writeDocsToLocalDirectory(storeDirectory, 4);
         remoteStoreRefreshListener.afterRefresh(true);
 
         verify(indexShard).getSegmentInfosSnapshot();
