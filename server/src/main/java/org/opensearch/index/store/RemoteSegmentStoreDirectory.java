@@ -29,7 +29,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -61,6 +60,7 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory {
      * To prevent explosion of refresh metadata files, we replace refresh files for the given primary term and generation
      * This is achieved by uploading refresh metadata file with the same UUID suffix as that of last commit metadata file.
      */
+    private String refreshMetadataFileUniqueSuffix;
     private String lastCommitMetadataInRemoteStore;
 
     /**
@@ -89,7 +89,12 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory {
     public void init() throws IOException {
         Collection<String> commitMetadataFiles = remoteMetadataDirectory.listFilesByPrefix(MetadataFilenameUtils.COMMIT_METADATA_PREFIX);
         Collection<String> refreshMetadataFiles = remoteMetadataDirectory.listFilesByPrefix(MetadataFilenameUtils.REFRESH_METADATA_PREFIX);
-        commitMetadataFiles.stream().max(new MetadataFilenameUtils.MetadataFilenameComparator()).ifPresent(s -> this.lastCommitMetadataInRemoteStore = s);
+        Optional<String> lastCommitMetadata = commitMetadataFiles.stream().max(new MetadataFilenameUtils.MetadataFilenameComparator());
+        if(lastCommitMetadata.isPresent()) {
+            this.lastCommitMetadataInRemoteStore = lastCommitMetadata.get();
+        } else {
+            this.refreshMetadataFileUniqueSuffix = UUIDs.base64UUID();
+        }
         this.segmentsUploadedToRemoteStore = new ConcurrentHashMap<>(readLatestMetadataFile(commitMetadataFiles, refreshMetadataFiles));
     }
 
@@ -356,6 +361,7 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory {
         );
         uploadMetadataFile(committedFiles, storeDirectory, commitFilename);
         this.lastCommitMetadataInRemoteStore = commitFilename;
+        this.refreshMetadataFileUniqueSuffix = UUIDs.base64UUID();
     }
 
     /**
@@ -368,11 +374,13 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory {
      */
     public void uploadRefreshMetadata(Collection<String> refreshedFiles, Directory storeDirectory, long primaryTerm, long generation)
         throws IOException {
-        String refreshMetadataUUID = UUIDs.base64UUID();
+        String refreshMetadataUUID;
         if(this.lastCommitMetadataInRemoteStore != null
             && MetadataFilenameUtils.getPrimaryTerm(this.lastCommitMetadataInRemoteStore) == primaryTerm
             && MetadataFilenameUtils.getGeneration(this.lastCommitMetadataInRemoteStore) == generation) {
             refreshMetadataUUID = MetadataFilenameUtils.getUuid(this.lastCommitMetadataInRemoteStore);
+        } else {
+            refreshMetadataUUID = this.refreshMetadataFileUniqueSuffix;
         }
         String refreshFilename = MetadataFilenameUtils.getMetadataFilename(
             MetadataFilenameUtils.REFRESH_METADATA_PREFIX,
