@@ -90,11 +90,8 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory {
         Collection<String> commitMetadataFiles = remoteMetadataDirectory.listFilesByPrefix(MetadataFilenameUtils.COMMIT_METADATA_PREFIX);
         Collection<String> refreshMetadataFiles = remoteMetadataDirectory.listFilesByPrefix(MetadataFilenameUtils.REFRESH_METADATA_PREFIX);
         Optional<String> lastCommitMetadata = commitMetadataFiles.stream().max(new MetadataFilenameUtils.MetadataFilenameComparator());
-        if(lastCommitMetadata.isPresent()) {
-            this.lastCommitMetadataInRemoteStore = lastCommitMetadata.get();
-        } else {
-            this.refreshMetadataFileUniqueSuffix = UUIDs.base64UUID();
-        }
+        lastCommitMetadata.ifPresent(s -> this.lastCommitMetadataInRemoteStore = s);
+        this.refreshMetadataFileUniqueSuffix = UUIDs.base64UUID();
         this.segmentsUploadedToRemoteStore = new ConcurrentHashMap<>(readLatestMetadataFile(commitMetadataFiles, refreshMetadataFiles));
     }
 
