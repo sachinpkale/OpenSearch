@@ -94,7 +94,7 @@ public class RemoteStoreRefreshListener implements ReferenceManager.RefreshListe
                             Collection<String> refreshedLocalFiles = segmentInfos.files(true);
                             boolean uploadStatus = uploadNewSegments(refreshedLocalFiles);
                             if (uploadStatus) {
-                                remoteDirectory.uploadRefreshMetadata(refreshedLocalFiles, storeDirectory, indexShard.getOperationPrimaryTerm(), segmentInfos.getGeneration());
+                                remoteDirectory.uploadRefreshMetadata(refreshedLocalFiles, lastCommittedLocalSegmentFileName, storeDirectory, indexShard.getOperationPrimaryTerm(), segmentInfos.getGeneration());
                             }
                         } catch (EngineException e) {
                             logger.warn("Exception while reading SegmentInfosSnapshot", e);
