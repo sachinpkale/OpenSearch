@@ -64,7 +64,7 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory {
      * To prevent explosion of refresh metadata files, we replace refresh files for the given primary term and generation
      * This is achieved by uploading refresh metadata file with the same UUID suffix as that of last commit metadata file.
      */
-    private String refreshMetadataFileUniqueSuffix;
+    private String metadataFileUniqueSuffix;
 
     /**
      * Keeps track of local segment filename to uploaded filename along with other attributes like checksum.
@@ -90,7 +90,7 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory {
      * @throws IOException if there were any failures in reading the metadata file
      */
     public void init() throws IOException {
-        this.refreshMetadataFileUniqueSuffix = UUIDs.base64UUID();
+        this.metadataFileUniqueSuffix = UUIDs.base64UUID();
         this.segmentsUploadedToRemoteStore = new ConcurrentHashMap<>(readLatestMetadataFile());
     }
 
@@ -112,30 +112,16 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory {
     private Map<String, UploadedSegmentMetadata> readLatestMetadataFile() throws IOException {
         Map<String, UploadedSegmentMetadata> segmentMetadataMap = new HashMap<>();
 
-        Collection<String> commitMetadataFiles = remoteMetadataDirectory.listFilesByPrefix(MetadataFilenameUtils.COMMIT_METADATA_PREFIX);
-        Optional<String> latestCommitMetadataFile = commitMetadataFiles.stream().max(metadataFilenameComparator);
+        Collection<String> metadataFiles = remoteMetadataDirectory.listFilesByPrefix(MetadataFilenameUtils.METADATA_PREFIX);
+        Optional<String> latestMetadataFile = metadataFiles.stream().max(metadataFilenameComparator);
 
-        if (latestCommitMetadataFile.isPresent()) {
-            logger.info("Reading latest commit Metadata file {}", latestCommitMetadataFile.get());
-            segmentMetadataMap = readMetadataFile(latestCommitMetadataFile.get());
+        if (latestMetadataFile.isPresent()) {
+            logger.info("Reading latest Metadata file {}", latestMetadataFile.get());
+            segmentMetadataMap = readMetadataFile(latestMetadataFile.get());
         } else {
-            logger.info("No commit metadata file found");
+            logger.info("No metadata file found");
         }
 
-        Collection<String> refreshMetadataFiles = remoteMetadataDirectory.listFilesByPrefix(MetadataFilenameUtils.REFRESH_METADATA_PREFIX);
-        Optional<String> latestRefreshMetadataFile = refreshMetadataFiles.stream()
-            .filter(
-                file -> latestCommitMetadataFile.map(
-                    s -> metadataFilenameComparator.comparePrimaryTermGeneration(file, s) == 0
-                        && MetadataFilenameUtils.getUuid(file).equals(MetadataFilenameUtils.getUuid(s))
-                ).orElse(true)
-            )
-            .max(metadataFilenameComparator);
-
-        if (latestRefreshMetadataFile.isPresent()) {
-            logger.info("Reading latest refresh metadata file {}", latestRefreshMetadataFile.get());
-            segmentMetadataMap.putAll(readMetadataFile(latestRefreshMetadataFile.get()));
-        }
         return segmentMetadataMap;
     }
 
@@ -180,8 +166,7 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory {
      */
     static class MetadataFilenameUtils {
         public static final String SEPARATOR = "__";
-        public static final String COMMIT_METADATA_PREFIX = "commit_metadata";
-        public static final String REFRESH_METADATA_PREFIX = "refresh_metadata";
+        public static final String METADATA_PREFIX = "metadata";
 
         /**
          * Comparator to sort the metadata filenames. The order of sorting is: Primary Term, Generation, UUID
@@ -216,10 +201,6 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory {
                     }
                 }
             }
-        }
-
-        public static String getMetadataFilename(String prefix, long primaryTerm, long generation) {
-            return getMetadataFilename(prefix, primaryTerm, generation, UUIDs.base64UUID());
         }
 
         public static String getMetadataFilename(String prefix, long primaryTerm, long generation, String uuid) {
@@ -337,47 +318,19 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory {
 
     /**
      * Upload commit metadata file
-     * @param committedFiles segment files that are part of the latest segments_N file
-     * @param storeDirectory instance of local directory to temporarily create metadata file before upload
-     * @param primaryTerm primary term to be used in the name of metadata file
-     * @param generation commit generation
-     * @throws IOException in case of I/O error while uploading the metadata file
-     */
-    public void uploadCommitMetadata(Collection<String> committedFiles, Directory storeDirectory, long primaryTerm, long generation)
-        throws IOException {
-        String commitFilename = MetadataFilenameUtils.getMetadataFilename(
-            MetadataFilenameUtils.COMMIT_METADATA_PREFIX,
-            primaryTerm,
-            generation
-        );
-        uploadMetadataFile(committedFiles, storeDirectory, commitFilename);
-        this.refreshMetadataFileUniqueSuffix = UUIDs.base64UUID();
-    }
-
-    /**
-     * Upload commit metadata file
      * @param refreshedFiles segment files that are created since last commit and part of the latest refresh
      * @param storeDirectory instance of local directory to temporarily create metadata file before upload
      * @param primaryTerm primary term to be used in the name of metadata file
      * @param generation commit generation
      * @throws IOException in case of I/O error while uploading the metadata file
      */
-    public void uploadRefreshMetadata(Collection<String> refreshedFiles, String lastCommitFile, Directory storeDirectory, long primaryTerm, long generation)
+    public void uploadMetadata(Collection<String> refreshedFiles, Directory storeDirectory, long primaryTerm, long generation)
         throws IOException {
-        String refreshMetadataUUID;
-        if(lastCommitFile != null && containsFile(lastCommitFile, getChecksumOfLocalFile(storeDirectory, lastCommitFile))) {
-            refreshMetadataUUID = MetadataFilenameUtils.getUuid(segmentsUploadedToRemoteStore.get(lastCommitFile).uploadedFilename);
-        } else {
-            if(this.refreshMetadataFileUniqueSuffix == null) {
-                this.refreshMetadataFileUniqueSuffix = UUIDs.base64UUID();
-            }
-            refreshMetadataUUID = this.refreshMetadataFileUniqueSuffix;
-        }
         String refreshFilename = MetadataFilenameUtils.getMetadataFilename(
-            MetadataFilenameUtils.REFRESH_METADATA_PREFIX,
+            MetadataFilenameUtils.METADATA_PREFIX,
             primaryTerm,
             generation,
-            refreshMetadataUUID
+            this.metadataFileUniqueSuffix
         );
         uploadMetadataFile(refreshedFiles, storeDirectory, refreshFilename);
     }
@@ -426,20 +379,20 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory {
         return this.segmentsUploadedToRemoteStore;
     }
 
-    public void deleteStaleCommits(int lastNCommitsToKeep) throws IOException {
-        Collection<String> commitMappingFiles = remoteMetadataDirectory.listFilesByPrefix(MetadataFilenameUtils.COMMIT_METADATA_PREFIX);
-        List<String> sortedMappingFileList = commitMappingFiles.stream().sorted(new MetadataFilenameUtils.MetadataFilenameComparator()).collect(Collectors.toList());
-        if(sortedMappingFileList.size() <= lastNCommitsToKeep) {
-            logger.info("Number of commits in remote segment store={}, lastNCommitsToKeep={}", sortedMappingFileList.size(), lastNCommitsToKeep);
+    public void deleteStaleCommits(int lastNMetadataFilesToKeep) throws IOException {
+        Collection<String> metadataFiles = remoteMetadataDirectory.listFilesByPrefix(MetadataFilenameUtils.METADATA_PREFIX);
+        List<String> sortedMetadataFileList = metadataFiles.stream().sorted(new MetadataFilenameUtils.MetadataFilenameComparator()).collect(Collectors.toList());
+        if(sortedMetadataFileList.size() <= lastNMetadataFilesToKeep) {
+            logger.info("Number of commits in remote segment store={}, lastNMetadataFilesToKeep={}", sortedMetadataFileList.size(), lastNMetadataFilesToKeep);
             return;
         }
-        List<String> latestNCommitFiles = sortedMappingFileList.subList(sortedMappingFileList.size() - lastNCommitsToKeep, sortedMappingFileList.size());
+        List<String> latestNMetadataFiles = sortedMetadataFileList.subList(sortedMetadataFileList.size() - lastNMetadataFilesToKeep, sortedMetadataFileList.size());
         Map<String, UploadedSegmentMetadata> activeSegmentFilesMetadataMap = new HashMap<>();
-        for(String commitFile: latestNCommitFiles) {
-            activeSegmentFilesMetadataMap.putAll(readMetadataFile(commitFile));
+        for(String metadataFile: latestNMetadataFiles) {
+            activeSegmentFilesMetadataMap.putAll(readMetadataFile(metadataFile));
         }
         Set<String> activeSegmentRemoteFilenames = activeSegmentFilesMetadataMap.values().stream().map(metadata -> metadata.uploadedFilename).collect(Collectors.toSet());
-        for(String commitFile: sortedMappingFileList.subList(0, sortedMappingFileList.size() - lastNCommitsToKeep)) {
+        for(String commitFile: sortedMetadataFileList.subList(0, sortedMetadataFileList.size() - lastNMetadataFilesToKeep)) {
             Map<String, UploadedSegmentMetadata> staleSegmentFilesMetadataMap = readMetadataFile(commitFile);
             Set<String> staleSegmentRemoteFilenames = staleSegmentFilesMetadataMap.values().stream().map(metadata -> metadata.uploadedFilename).collect(Collectors.toSet());
             AtomicBoolean deletionSuccessful = new AtomicBoolean(true);
@@ -451,13 +404,12 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory {
                     }
                 } catch (IOException e) {
                     deletionSuccessful.set(false);
-                    logger.info("Exception while deleting segment files related to commit file {}. Deletion will be re-tried", commitFile);
+                    logger.info("Exception while deleting segment files related to metadata file {}. Deletion will be re-tried", commitFile);
                 }
             });
             if(deletionSuccessful.get()) {
-                logger.info("Deleting stale commit metadata file {} from remote segment store", commitFile);
+                logger.info("Deleting stale metadata file {} from remote segment store", commitFile);
                 remoteMetadataDirectory.deleteFile(commitFile);
-                remoteMetadataDirectory.deleteFile(MetadataFilenameUtils.REFRESH_METADATA_PREFIX + commitFile.substring(MetadataFilenameUtils.COMMIT_METADATA_PREFIX.length()));
             }
         }
     }

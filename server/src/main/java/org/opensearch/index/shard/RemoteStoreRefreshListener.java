@@ -78,23 +78,14 @@ public class RemoteStoreRefreshListener implements ReferenceManager.RefreshListe
                     try {
                         String lastCommittedLocalSegmentFileName = SegmentInfos.getLastCommitSegmentsFileName(storeDirectory);
                         if (!remoteDirectory.containsFile(lastCommittedLocalSegmentFileName, getChecksumOfLocalFile(lastCommittedLocalSegmentFileName))) {
-                            SegmentInfos commitSegmentInfos = SegmentInfos.readCommit(storeDirectory, lastCommittedLocalSegmentFileName);
-                            Collection<String> committedLocalFiles = commitSegmentInfos.files(true);
-                            boolean uploadStatus = uploadNewSegments(committedLocalFiles);
-                            if (uploadStatus) {
-                                remoteDirectory.copyFrom(storeDirectory, lastCommittedLocalSegmentFileName, lastCommittedLocalSegmentFileName, IOContext.DEFAULT);
-                                remoteDirectory.uploadCommitMetadata(committedLocalFiles, storeDirectory, indexShard.getOperationPrimaryTerm(), commitSegmentInfos.getGeneration());
-                                deleteStaleCommits();
-                            }
-                        } else {
-                            logger.debug("Latest commit point {} is present in remote store", lastCommittedLocalSegmentFileName);
+                            remoteDirectory.deleteStaleCommits(10);
                         }
                         try (GatedCloseable<SegmentInfos> segmentInfosGatedCloseable = indexShard.getSegmentInfosSnapshot()) {
                             SegmentInfos segmentInfos = segmentInfosGatedCloseable.get();
                             Collection<String> refreshedLocalFiles = segmentInfos.files(true);
                             boolean uploadStatus = uploadNewSegments(refreshedLocalFiles);
                             if (uploadStatus) {
-                                remoteDirectory.uploadRefreshMetadata(refreshedLocalFiles, lastCommittedLocalSegmentFileName, storeDirectory, indexShard.getOperationPrimaryTerm(), segmentInfos.getGeneration());
+                                remoteDirectory.uploadMetadata(refreshedLocalFiles, storeDirectory, indexShard.getOperationPrimaryTerm(), segmentInfos.getGeneration());
                             }
                         } catch (EngineException e) {
                             logger.warn("Exception while reading SegmentInfosSnapshot", e);
