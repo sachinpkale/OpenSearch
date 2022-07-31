@@ -12,6 +12,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.apache.lucene.codecs.CodecUtil;
+import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.search.ReferenceManager;
 import org.apache.lucene.store.Directory;
@@ -25,8 +26,10 @@ import org.opensearch.index.store.RemoteSegmentStoreDirectory;
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
 import java.util.Collection;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 /**
  * RefreshListener implementation to upload newly created segment files to the remote store
@@ -78,12 +81,28 @@ public class RemoteStoreRefreshListener implements ReferenceManager.RefreshListe
                     try {
                         String lastCommittedLocalSegmentFileName = SegmentInfos.getLastCommitSegmentsFileName(storeDirectory);
                         if (!remoteDirectory.containsFile(lastCommittedLocalSegmentFileName, getChecksumOfLocalFile(lastCommittedLocalSegmentFileName))) {
-                            remoteDirectory.deleteStaleCommits(10);
+                            deleteStaleCommits();
                         }
                         try (GatedCloseable<SegmentInfos> segmentInfosGatedCloseable = indexShard.getSegmentInfosSnapshot()) {
                             SegmentInfos segmentInfos = segmentInfosGatedCloseable.get();
                             Collection<String> refreshedLocalFiles = segmentInfos.files(true);
+
+                            if(!refreshedLocalFiles.contains(lastCommittedLocalSegmentFileName)) {
+                                int beforeSize = refreshedLocalFiles.size();
+                                refreshedLocalFiles.addAll(SegmentInfos.readCommit(storeDirectory, lastCommittedLocalSegmentFileName).files(true));
+                                int afterSize = refreshedLocalFiles.size();
+                                if(afterSize > beforeSize) {
+                                    logger.info("Changed: before = {}, after = {}", beforeSize, refreshedLocalFiles.size());
+                                }
+                                List<String> segmentInfosFiles = refreshedLocalFiles.stream().filter(file -> file.startsWith(IndexFileNames.SEGMENTS)).collect(Collectors.toList());
+                                segmentInfosFiles.stream().filter(file -> !file.equals(lastCommittedLocalSegmentFileName)).forEach(refreshedLocalFiles::remove);
+                                if(refreshedLocalFiles.size() < afterSize) {
+                                    logger.info("Deleted extra segments_N from file list");
+                                }
+                            }
+
                             boolean uploadStatus = uploadNewSegments(refreshedLocalFiles);
+                            //if (uploadStatus && segmentInfosFiles.size() == 1) {
                             if (uploadStatus) {
                                 remoteDirectory.uploadMetadata(refreshedLocalFiles, storeDirectory, indexShard.getOperationPrimaryTerm(), segmentInfos.getGeneration());
                             }
@@ -118,8 +137,6 @@ public class RemoteStoreRefreshListener implements ReferenceManager.RefreshListe
             .forEach(file -> {
                 try {
                     remoteDirectory.copyFrom(storeDirectory, file, file, IOContext.DEFAULT);
-                } catch (NoSuchFileException e) {
-                    logger.info("The file {} does not exist anymore.", file);
                 } catch (IOException e) {
                     uploadSuccess.set(false);
                     // ToDO: Handle transient and permanent un-availability of the remote store (GitHub #3397)
@@ -140,7 +157,7 @@ public class RemoteStoreRefreshListener implements ReferenceManager.RefreshListe
 
     private void deleteStaleCommits() {
         try {
-            remoteDirectory.deleteStaleCommits(5);
+            remoteDirectory.deleteStaleCommits(10);
         } catch(IOException e) {
             logger.info("Exception while deleting stale commits from remote segment store, will retry delete post next commit", e);
         }
