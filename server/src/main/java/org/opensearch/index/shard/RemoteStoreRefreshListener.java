@@ -26,7 +26,9 @@ import org.opensearch.index.store.RemoteSegmentStoreDirectory;
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -42,6 +44,7 @@ public class RemoteStoreRefreshListener implements ReferenceManager.RefreshListe
     private final IndexShard indexShard;
     private final Directory storeDirectory;
     private final RemoteSegmentStoreDirectory remoteDirectory;
+    private final Map<String, String> localSegmentChecksumMap;
     private boolean isPrimary;
     private static final Logger logger = LogManager.getLogger(RemoteStoreRefreshListener.class);
 
@@ -57,6 +60,7 @@ public class RemoteStoreRefreshListener implements ReferenceManager.RefreshListe
                 logger.error("Exception while initialising RemoteSegmentStoreDirectory", e);
             }
         }
+        localSegmentChecksumMap = new HashMap<>();
     }
 
     @Override
@@ -102,9 +106,9 @@ public class RemoteStoreRefreshListener implements ReferenceManager.RefreshListe
                             }
 
                             boolean uploadStatus = uploadNewSegments(refreshedLocalFiles);
-                            //if (uploadStatus && segmentInfosFiles.size() == 1) {
                             if (uploadStatus) {
                                 remoteDirectory.uploadMetadata(refreshedLocalFiles, storeDirectory, indexShard.getOperationPrimaryTerm(), segmentInfos.getGeneration());
+                                localSegmentChecksumMap.keySet().stream().filter(file -> !refreshedLocalFiles.contains(file)).collect(Collectors.toSet()).forEach(localSegmentChecksumMap::remove);
                             }
                         } catch (EngineException e) {
                             logger.warn("Exception while reading SegmentInfosSnapshot", e);
@@ -150,9 +154,13 @@ public class RemoteStoreRefreshListener implements ReferenceManager.RefreshListe
     }
 
     private String getChecksumOfLocalFile(String file) throws IOException {
-        try (IndexInput indexInput = storeDirectory.openInput(file, IOContext.DEFAULT)) {
-            return Long.toString(CodecUtil.retrieveChecksum(indexInput));
+        if (!localSegmentChecksumMap.containsKey(file)) {
+            try (IndexInput indexInput = storeDirectory.openInput(file, IOContext.DEFAULT)) {
+                String checksum = Long.toString(CodecUtil.retrieveChecksum(indexInput));
+                localSegmentChecksumMap.put(file, checksum);
+            }
         }
+        return localSegmentChecksumMap.get(file);
     }
 
     private void deleteStaleCommits() {
