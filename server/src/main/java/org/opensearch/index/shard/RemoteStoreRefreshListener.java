@@ -26,9 +26,11 @@ import org.opensearch.index.store.RemoteSegmentStoreDirectory;
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -91,24 +93,18 @@ public class RemoteStoreRefreshListener implements ReferenceManager.RefreshListe
                             SegmentInfos segmentInfos = segmentInfosGatedCloseable.get();
                             Collection<String> refreshedLocalFiles = segmentInfos.files(true);
 
-                            if(!refreshedLocalFiles.contains(lastCommittedLocalSegmentFileName)) {
-                                int beforeSize = refreshedLocalFiles.size();
-                                refreshedLocalFiles.addAll(SegmentInfos.readCommit(storeDirectory, lastCommittedLocalSegmentFileName).files(true));
-                                int afterSize = refreshedLocalFiles.size();
-                                if(afterSize > beforeSize) {
-                                    logger.info("Changed: before = {}, after = {}", beforeSize, refreshedLocalFiles.size());
-                                }
-                                List<String> segmentInfosFiles = refreshedLocalFiles.stream().filter(file -> file.startsWith(IndexFileNames.SEGMENTS)).collect(Collectors.toList());
-                                segmentInfosFiles.stream().filter(file -> !file.equals(lastCommittedLocalSegmentFileName)).forEach(refreshedLocalFiles::remove);
-                                if(refreshedLocalFiles.size() < afterSize) {
-                                    logger.info("Deleted extra segments_N from file list");
-                                }
-                            }
+                            List<String> segmentInfosFiles = refreshedLocalFiles.stream().filter(file -> file.startsWith(IndexFileNames.SEGMENTS)).collect(Collectors.toList());
+                            Optional<String> latestSegmentInfos = segmentInfosFiles.stream().max(Comparator.comparingLong(IndexFileNames::parseGeneration));
 
-                            boolean uploadStatus = uploadNewSegments(refreshedLocalFiles);
-                            if (uploadStatus) {
-                                remoteDirectory.uploadMetadata(refreshedLocalFiles, storeDirectory, indexShard.getOperationPrimaryTerm(), segmentInfos.getGeneration());
-                                localSegmentChecksumMap.keySet().stream().filter(file -> !refreshedLocalFiles.contains(file)).collect(Collectors.toSet()).forEach(localSegmentChecksumMap::remove);
+                            if(latestSegmentInfos.isPresent()) {
+                                refreshedLocalFiles.addAll(SegmentInfos.readCommit(storeDirectory, latestSegmentInfos.get()).files(true));
+                                segmentInfosFiles.stream().filter(file -> !file.equals(latestSegmentInfos.get())).forEach(refreshedLocalFiles::remove);
+
+                                boolean uploadStatus = uploadNewSegments(refreshedLocalFiles);
+                                if (uploadStatus) {
+                                    remoteDirectory.uploadMetadata(refreshedLocalFiles, storeDirectory, indexShard.getOperationPrimaryTerm(), segmentInfos.getGeneration());
+                                    localSegmentChecksumMap.keySet().stream().filter(file -> !refreshedLocalFiles.contains(file)).collect(Collectors.toSet()).forEach(localSegmentChecksumMap::remove);
+                                }
                             }
                         } catch (EngineException e) {
                             logger.warn("Exception while reading SegmentInfosSnapshot", e);
