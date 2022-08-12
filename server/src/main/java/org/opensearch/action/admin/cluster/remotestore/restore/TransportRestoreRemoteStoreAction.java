@@ -9,6 +9,7 @@
 package org.opensearch.action.admin.cluster.remotestore.restore;
 
 import org.opensearch.action.ActionListener;
+import org.opensearch.action.admin.cluster.snapshots.restore.RestoreClusterStateListener;
 import org.opensearch.action.support.ActionFilters;
 import org.opensearch.action.support.clustermanager.TransportClusterManagerNodeAction;
 import org.opensearch.cluster.ClusterState;
@@ -29,7 +30,7 @@ import java.io.IOException;
  *
  * @opensearch.internal
  */
-public class TransportRestoreRemoteStoreAction extends TransportClusterManagerNodeAction<
+public final class TransportRestoreRemoteStoreAction extends TransportClusterManagerNodeAction<
     RestoreRemoteStoreRequest,
     RestoreRemoteStoreResponse> {
     private final RestoreService restoreService;
@@ -78,17 +79,25 @@ public class TransportRestoreRemoteStoreAction extends TransportClusterManagerNo
     }
 
     @Override
-    protected void masterOperation(
+    protected void clusterManagerOperation(
         final RestoreRemoteStoreRequest request,
         final ClusterState state,
         final ActionListener<RestoreRemoteStoreResponse> listener
     ) {
-        restoreService.restoreFromRemoteStore(request, ActionListener.delegateFailure(listener, (delegatedListener, restoreCompletionResponse) -> {
-            if (restoreCompletionResponse.getRestoreInfo() == null && request.waitForCompletion()) {
-                RemoteStoreRestoreClusterStateListener.createAndRegisterListener(clusterService, restoreCompletionResponse, delegatedListener);
-            } else {
-                delegatedListener.onResponse(new RestoreRemoteStoreResponse(restoreCompletionResponse.getRestoreInfo()));
-            }
-        }));
+        restoreService.restoreFromRemoteStore(
+            request,
+            ActionListener.delegateFailure(listener, (delegatedListener, restoreCompletionResponse) -> {
+                if (restoreCompletionResponse.getRestoreInfo() == null && request.waitForCompletion()) {
+                    RestoreClusterStateListener.createAndRegisterListener(
+                        clusterService,
+                        restoreCompletionResponse,
+                        delegatedListener,
+                        RestoreRemoteStoreResponse::new
+                    );
+                } else {
+                    delegatedListener.onResponse(new RestoreRemoteStoreResponse(restoreCompletionResponse.getRestoreInfo()));
+                }
+            })
+        );
     }
 }
