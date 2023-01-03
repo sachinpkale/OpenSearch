@@ -72,7 +72,7 @@ public class RemoteStoreIT extends OpenSearchIntegTestCase {
         assertAcked(clusterAdmin().prepareDeleteRepository(REPOSITORY_NAME));
     }
 
-    public void testRemoteStoreRestoreOperations() {
+    public void testRemoteStoreRestoreOnCommit() {
         internalCluster().startNode();
         createIndex(INDEX_NAME);
         ensureYellowAndNoInitializingShards(INDEX_NAME);
@@ -80,7 +80,6 @@ public class RemoteStoreIT extends OpenSearchIntegTestCase {
 
         client().prepareIndex(INDEX_NAME).setId("1").setSource("foo", "bar").setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE).get();
         client().prepareIndex(INDEX_NAME).setId("2").setSource("bar", "baz").setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE).get();
-        refresh(INDEX_NAME);
         flush(INDEX_NAME);
 
         assertAcked(client().admin().indices().prepareClose(INDEX_NAME));
@@ -95,8 +94,34 @@ public class RemoteStoreIT extends OpenSearchIntegTestCase {
         assertHitCount(client().prepareSearch(INDEX_NAME).setSize(0).get(), 2);
 
         client().prepareIndex(INDEX_NAME).setId("3").setSource("abc", "xyz").setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE).get();
-        refresh(INDEX_NAME);
         flush(INDEX_NAME);
+
+        assertHitCount(client().prepareSearch(INDEX_NAME).setSize(0).get(), 3);
+    }
+
+    public void testRemoteStoreRestoreOnRefresh() {
+        internalCluster().startNode();
+        createIndex(INDEX_NAME);
+        ensureYellowAndNoInitializingShards(INDEX_NAME);
+        ensureGreen(INDEX_NAME);
+
+        client().prepareIndex(INDEX_NAME).setId("1").setSource("foo", "bar").setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE).get();
+        client().prepareIndex(INDEX_NAME).setId("2").setSource("bar", "baz").setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE).get();
+        refresh(INDEX_NAME);
+
+        assertAcked(client().admin().indices().prepareClose(INDEX_NAME));
+
+        client()
+            .admin()
+            .cluster()
+            .restoreRemoteStore(new RestoreRemoteStoreRequest().indices(INDEX_NAME), PlainActionFuture.newFuture());
+
+        ensureYellowAndNoInitializingShards(INDEX_NAME);
+        ensureGreen(INDEX_NAME);
+        assertHitCount(client().prepareSearch(INDEX_NAME).setSize(0).get(), 2);
+
+        client().prepareIndex(INDEX_NAME).setId("3").setSource("abc", "xyz").setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE).get();
+        refresh(INDEX_NAME);
 
         assertHitCount(client().prepareSearch(INDEX_NAME).setSize(0).get(), 3);
     }
