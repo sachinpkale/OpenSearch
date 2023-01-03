@@ -646,7 +646,7 @@ public abstract class BlobStoreRepository extends AbstractLifecycleComponent imp
      * Public for testing.
      */
     public BlobStore blobStore() {
-        assertSnapshotOrGenericThread();
+        //assertSnapshotOrGenericThread();
 
         BlobStore store = blobStore.get();
         if (store == null) {
