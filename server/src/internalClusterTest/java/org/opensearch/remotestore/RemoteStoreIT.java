@@ -110,8 +110,7 @@ public class RemoteStoreIT extends OpenSearchIntegTestCase {
         ensureGreen(INDEX_NAME);
         assertHitCount(client().prepareSearch(INDEX_NAME).setSize(0).get(), 2);
 
-        client().prepareIndex(INDEX_NAME).setId("3").setSource("abc", "xyz").get();
-        flush(INDEX_NAME);
+        client().prepareIndex(INDEX_NAME).setId("3").setSource("abc", "xyz").setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE).get();
 
         assertHitCount(client().prepareSearch(INDEX_NAME).setSize(0).get(), 3);
     }
@@ -138,8 +137,7 @@ public class RemoteStoreIT extends OpenSearchIntegTestCase {
         ensureGreen(INDEX_NAME);
         assertHitCount(client().prepareSearch(INDEX_NAME).setSize(0).get(), 2);
 
-        client().prepareIndex(INDEX_NAME).setId("3").setSource("abc", "xyz").get();
-        refresh(INDEX_NAME);
+        client().prepareIndex(INDEX_NAME).setId("3").setSource("abc", "xyz").setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE).get();
 
         assertHitCount(client().prepareSearch(INDEX_NAME).setSize(0).get(), 3);
     }
@@ -156,7 +154,7 @@ public class RemoteStoreIT extends OpenSearchIntegTestCase {
 
         client().prepareIndex(INDEX_NAME).setId("3").setSource("abc", "xyz").get();
 
-        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(primaryNodeName()));
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(primaryNodeName(INDEX_NAME)));
         assertAcked(client().admin().indices().prepareClose(INDEX_NAME));
 
         client()
@@ -169,14 +167,7 @@ public class RemoteStoreIT extends OpenSearchIntegTestCase {
         assertHitCount(client().prepareSearch(INDEX_NAME).setSize(0).get(), 3);
 
         client().prepareIndex(INDEX_NAME).setId("4").setSource("jkl", "pqr").setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE).get();
-        refresh(INDEX_NAME);
 
         assertHitCount(client().prepareSearch(INDEX_NAME).setSize(0).get(), 4);
-    }
-
-    private String primaryNodeName() {
-        ClusterState clusterState = client().admin().cluster().prepareState().get().getState();
-        String nodeId = clusterState.getRoutingTable().index(INDEX_NAME).shard(0).primaryShard().currentNodeId();
-        return clusterState.getRoutingNodes().node(nodeId).node().getName();
     }
 }
