@@ -376,7 +376,7 @@ public class IndexMetadata implements Diffable<IndexMetadata>, ToXContentFragmen
                     + setting.getKey()
                     + " can ont be set/enabled when "
                     + INDEX_REMOTE_STORE_ENABLED_SETTING.getKey()
-                    + " is set to true"
+                    + " is set to false"
             );
         }
     }
