@@ -98,7 +98,7 @@ public class RemoteStoreIT extends OpenSearchIntegTestCase {
         client().prepareIndex(INDEX_NAME).setId("2").setSource("bar", "baz").get();
         flush(INDEX_NAME);
 
-        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(primaryNodeName()));
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(primaryNodeName(INDEX_NAME)));
         assertAcked(client().admin().indices().prepareClose(INDEX_NAME));
 
         client()
@@ -125,7 +125,7 @@ public class RemoteStoreIT extends OpenSearchIntegTestCase {
         client().prepareIndex(INDEX_NAME).setId("2").setSource("bar", "baz").get();
         refresh(INDEX_NAME);
 
-        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(primaryNodeName()));
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(primaryNodeName(INDEX_NAME)));
         assertAcked(client().admin().indices().prepareClose(INDEX_NAME));
 
         client()
