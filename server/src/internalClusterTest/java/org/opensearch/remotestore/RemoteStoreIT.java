@@ -155,7 +155,7 @@ public class RemoteStoreIT extends OpenSearchIntegTestCase {
 
         client().prepareIndex(INDEX_NAME).setId("1").setSource("foo", "bar").get();
         client().prepareIndex(INDEX_NAME).setId("2").setSource("bar", "baz").get();
-        refresh(INDEX_NAME);
+        flush(INDEX_NAME);
 
         client().prepareIndex(INDEX_NAME).setId("3").setSource("abc", "xyz").get();
 
@@ -186,7 +186,7 @@ public class RemoteStoreIT extends OpenSearchIntegTestCase {
         client().prepareIndex(INDEX_NAME).setId("1").setSource("foo", "bar").setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE).get();
         refresh(INDEX_NAME);
 
-        waitForNRTReplicaUpdate();
+        //waitForNRTReplicaUpdate();
         assertHitCount(client(primary).prepareSearch(INDEX_NAME).setSize(0).setPreference("_only_local").get(), 1);
         assertHitCount(client(replica).prepareSearch(INDEX_NAME).setSize(0).setPreference("_only_local").get(), 1);
 
