@@ -41,15 +41,15 @@ public class RemoteStoreIT extends OpenSearchIntegTestCase {
 
     @Override
     public Settings indexSettings() {
-        return remoteStoreIndexSettings();
+        return remoteStoreIndexSettings(0);
     }
 
-    private Settings remoteStoreIndexSettings() {
+    private Settings remoteStoreIndexSettings(int numberOfReplicas) {
         return Settings.builder()
             .put(super.indexSettings())
             .put("index.refresh_interval", "300s")
             .put(IndexMetadata.SETTING_NUMBER_OF_SHARDS, 1)
-            .put(IndexMetadata.SETTING_NUMBER_OF_REPLICAS, 0)
+            .put(IndexMetadata.SETTING_NUMBER_OF_REPLICAS, numberOfReplicas)
             .put(IndexModule.INDEX_QUERY_CACHE_ENABLED_SETTING.getKey(), false)
             .put(IndexMetadata.SETTING_REPLICATION_TYPE, ReplicationType.SEGMENT)
             .put(IndexMetadata.SETTING_REMOTE_STORE_ENABLED, true)
@@ -57,9 +57,9 @@ public class RemoteStoreIT extends OpenSearchIntegTestCase {
             .build();
     }
 
-    private Settings remoteTranslogIndexSettings() {
+    private Settings remoteTranslogIndexSettings(int numberOfReplicas) {
         return Settings.builder()
-            .put(remoteStoreIndexSettings())
+            .put(remoteStoreIndexSettings(numberOfReplicas))
             .put(IndexMetadata.SETTING_REMOTE_TRANSLOG_STORE_ENABLED, true)
             .put(IndexMetadata.SETTING_REMOTE_TRANSLOG_STORE_REPOSITORY, REPOSITORY_NAME)
             .build();
@@ -68,6 +68,11 @@ public class RemoteStoreIT extends OpenSearchIntegTestCase {
     @Override
     protected Collection<Class<? extends Plugin>> nodePlugins() {
         return Arrays.asList(MockTransportService.TestPlugin.class);
+    }
+
+    @Override
+    protected boolean addMockInternalEngine() {
+        return false;
     }
 
     @BeforeClass
@@ -90,7 +95,7 @@ public class RemoteStoreIT extends OpenSearchIntegTestCase {
 
     public void testRemoteStoreRestoreOnCommit() throws IOException {
         internalCluster().startNodes(3);
-        createIndex(INDEX_NAME, remoteStoreIndexSettings());
+        createIndex(INDEX_NAME, remoteStoreIndexSettings(0));
         ensureYellowAndNoInitializingShards(INDEX_NAME);
         ensureGreen(INDEX_NAME);
 
@@ -117,7 +122,7 @@ public class RemoteStoreIT extends OpenSearchIntegTestCase {
 
     public void testRemoteStoreRestoreOnRefresh() throws IOException {
         internalCluster().startNodes(3);
-        createIndex(INDEX_NAME, remoteStoreIndexSettings());
+        createIndex(INDEX_NAME, remoteStoreIndexSettings(0));
         ensureYellowAndNoInitializingShards(INDEX_NAME);
         ensureGreen(INDEX_NAME);
 
@@ -144,7 +149,7 @@ public class RemoteStoreIT extends OpenSearchIntegTestCase {
 
     public void testRemoteTranslogRestore() throws IOException {
         internalCluster().startNodes(3);
-        createIndex(INDEX_NAME, remoteTranslogIndexSettings());
+        createIndex(INDEX_NAME, remoteTranslogIndexSettings(0));
         ensureYellowAndNoInitializingShards(INDEX_NAME);
         ensureGreen(INDEX_NAME);
 
@@ -169,5 +174,37 @@ public class RemoteStoreIT extends OpenSearchIntegTestCase {
         client().prepareIndex(INDEX_NAME).setId("4").setSource("jkl", "pqr").setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE).get();
 
         assertHitCount(client().prepareSearch(INDEX_NAME).setSize(0).get(), 4);
+    }
+
+    public void testRemoteStoreFailover() throws Exception {
+        final String primary = internalCluster().startNode();
+        createIndex(INDEX_NAME);
+        ensureYellowAndNoInitializingShards(INDEX_NAME);
+        final String replica = internalCluster().startNode();
+        ensureGreen(INDEX_NAME);
+
+        client().prepareIndex(INDEX_NAME).setId("1").setSource("foo", "bar").setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE).get();
+        refresh(INDEX_NAME);
+
+        waitForNRTReplicaUpdate();
+        assertHitCount(client(primary).prepareSearch(INDEX_NAME).setSize(0).setPreference("_only_local").get(), 1);
+        assertHitCount(client(replica).prepareSearch(INDEX_NAME).setSize(0).setPreference("_only_local").get(), 1);
+
+        // ToDo: Delete data from secondary before stopping primary so that we can test segment download part.
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(primary));
+        assertAcked(client().admin().indices().prepareClose(INDEX_NAME));
+
+        client()
+            .admin()
+            .cluster()
+            .restoreRemoteStore(new RestoreRemoteStoreRequest().indices(INDEX_NAME), PlainActionFuture.newFuture());
+
+        ensureYellowAndNoInitializingShards(INDEX_NAME);
+        ensureGreen(INDEX_NAME);
+        assertHitCount(client().prepareSearch(INDEX_NAME).setSize(0).get(), 2);
+
+        client().prepareIndex(INDEX_NAME).setId("3").setSource("abc", "xyz").setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE).get();
+
+        assertHitCount(client().prepareSearch(INDEX_NAME).setSize(0).get(), 3);
     }
 }
