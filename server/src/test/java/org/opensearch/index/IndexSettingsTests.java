@@ -1013,7 +1013,6 @@ public class IndexSettingsTests extends OpenSearchTestCase {
         assertEquals("tlog-store", settings.getRemoteStoreTranslogRepository());
     }
 
-
     public void testSetRemoteTranslogRepositoryFailsWhenRemoteTranslogIsNotEnabled() {
         Settings indexSettings = Settings.builder()
             .put("index.replication.type", ReplicationType.SEGMENT)
