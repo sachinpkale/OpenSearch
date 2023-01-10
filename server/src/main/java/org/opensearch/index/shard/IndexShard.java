@@ -3421,6 +3421,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
             () -> getOperationPrimaryTerm(),
             tombstoneDocSupplier(),
             isReadOnlyReplica,
+            replicationTracker::isPrimaryMode,
             translogFactorySupplier.apply(indexSettings, shardRouting)
         );
     }
