@@ -12,13 +12,22 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.opensearch.action.admin.cluster.remotestore.restore.RestoreRemoteStoreRequest;
+import org.opensearch.action.admin.indices.segments.IndexShardSegments;
+import org.opensearch.action.admin.indices.segments.IndicesSegmentResponse;
+import org.opensearch.action.admin.indices.segments.IndicesSegmentsRequest;
+import org.opensearch.action.admin.indices.segments.ShardSegments;
 import org.opensearch.action.support.PlainActionFuture;
 import org.opensearch.action.support.WriteRequest;
 import org.opensearch.cluster.ClusterState;
 import org.opensearch.cluster.metadata.IndexMetadata;
+import org.opensearch.cluster.routing.ShardRouting;
+import org.opensearch.common.io.FileSystemUtils;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.common.util.FeatureFlags;
+import org.opensearch.env.Environment;
 import org.opensearch.index.IndexModule;
+import org.opensearch.index.engine.Segment;
+import org.opensearch.indices.replication.SegmentReplicationIT;
 import org.opensearch.indices.replication.common.ReplicationType;
 import org.opensearch.plugins.Plugin;
 import org.opensearch.test.InternalTestCluster;
@@ -29,6 +38,12 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertAcked;
 import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertHitCount;
@@ -177,34 +192,40 @@ public class RemoteStoreIT extends OpenSearchIntegTestCase {
     }
 
     public void testRemoteStoreFailover() throws Exception {
-        final String primary = internalCluster().startNode();
-        createIndex(INDEX_NAME);
+        internalCluster().startNodes(2);
+        createIndex(INDEX_NAME, remoteStoreIndexSettings(1));
         ensureYellowAndNoInitializingShards(INDEX_NAME);
-        final String replica = internalCluster().startNode();
+        final String primary = primaryNodeName(INDEX_NAME);
+        final String replica = replicaNodeName(INDEX_NAME);
         ensureGreen(INDEX_NAME);
 
         client().prepareIndex(INDEX_NAME).setId("1").setSource("foo", "bar").setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE).get();
         refresh(INDEX_NAME);
 
-        //waitForNRTReplicaUpdate();
         assertHitCount(client(primary).prepareSearch(INDEX_NAME).setSize(0).setPreference("_only_local").get(), 1);
         assertHitCount(client(replica).prepareSearch(INDEX_NAME).setSize(0).setPreference("_only_local").get(), 1);
 
+        final String replicaDataPath = Environment.PATH_DATA_SETTING.get(internalCluster().dataPathSettings(replica)).get(0);
+        System.out.println("################################################################");
+        System.out.println(replicaDataPath);
+        System.out.println("################################################################");
+        for
+        FileSystemUtils.files(Path.of(replicaDataPath))
         // ToDo: Delete data from secondary before stopping primary so that we can test segment download part.
         internalCluster().stopRandomNode(InternalTestCluster.nameFilter(primary));
-        assertAcked(client().admin().indices().prepareClose(INDEX_NAME));
-
-        client()
-            .admin()
-            .cluster()
-            .restoreRemoteStore(new RestoreRemoteStoreRequest().indices(INDEX_NAME), PlainActionFuture.newFuture());
 
         ensureYellowAndNoInitializingShards(INDEX_NAME);
-        ensureGreen(INDEX_NAME);
-        assertHitCount(client().prepareSearch(INDEX_NAME).setSize(0).get(), 2);
+        assertHitCount(client(replica).prepareSearch(INDEX_NAME).setSize(0).get(), 1);
 
-        client().prepareIndex(INDEX_NAME).setId("3").setSource("abc", "xyz").setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE).get();
+        client().prepareIndex(INDEX_NAME).setId("2").setSource("abc", "xyz").setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE).get();
+        refresh(INDEX_NAME);
 
-        assertHitCount(client().prepareSearch(INDEX_NAME).setSize(0).get(), 3);
+        assertHitCount(client(replica).prepareSearch(INDEX_NAME).setSize(0).get(), 2);
+    }
+
+    protected String replicaNodeName(String indexName) {
+        ClusterState clusterState = client().admin().cluster().prepareState().get().getState();
+        String nodeId = clusterState.getRoutingTable().index(indexName).shard(0).replicaShards().get(0).currentNodeId();
+        return clusterState.getRoutingNodes().node(nodeId).node().getName();
     }
 }
