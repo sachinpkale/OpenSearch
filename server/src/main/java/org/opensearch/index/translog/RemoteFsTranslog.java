@@ -249,7 +249,6 @@ public class RemoteFsTranslog extends Translog {
 
     private void logUploadStats(long uploadStartTime, boolean uploadStatus) {
         logger.debug("Translog Upload status={} timeTaken={}", uploadStatus, (System.currentTimeMillis() - uploadStartTime));
-
     }
 
     // Visible for testing
