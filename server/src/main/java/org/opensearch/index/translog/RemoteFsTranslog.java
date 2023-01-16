@@ -202,6 +202,7 @@ public class RemoteFsTranslog extends Translog {
     }
 
     private boolean upload(Long primaryTerm, Long generation) throws IOException {
+        long uploadStartTime = System.currentTimeMillis();
         boolean primaryMode = primaryModeSupplier.getAsBoolean();
         if (primaryMode == false) {
             logger.trace("skipped uploading translog for {} {}", primaryTerm, generation);
@@ -227,11 +228,13 @@ public class RemoteFsTranslog extends Translog {
                     closeFilesIfNoPendingRetentionLocks();
                     maxRemoteTranslogGenerationUploaded = generation;
                     logger.trace("uploaded translog for {} {} ", primaryTerm, generation);
+                    logUploadStats(uploadStartTime, true);
                 }
 
                 @Override
                 public void onUploadFailed(TransferSnapshot transferSnapshot, Exception ex) throws IOException {
                     transferReleasable.close();
+                    logUploadStats(uploadStartTime, false);
                     closeFilesIfNoPendingRetentionLocks();
                     if (ex instanceof IOException) {
                         throw (IOException) ex;
@@ -241,6 +244,11 @@ public class RemoteFsTranslog extends Translog {
                 }
             });
         }
+
+    }
+
+    private void logUploadStats(long uploadStartTime, boolean uploadStatus) {
+        logger.info("Translog Upload status={} timeTaken={}", uploadStatus, (System.currentTimeMillis() - uploadStartTime));
 
     }
 
