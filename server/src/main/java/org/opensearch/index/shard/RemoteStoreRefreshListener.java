@@ -12,17 +12,27 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.apache.lucene.codecs.CodecUtil;
+import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentInfos;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.search.ReferenceManager;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.SortField;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.opensearch.common.concurrent.GatedCloseable;
+import org.opensearch.common.lucene.search.Queries;
+import org.opensearch.common.lucene.uid.VersionsAndSeqNoResolver;
+import org.opensearch.index.engine.Engine;
 import org.opensearch.index.engine.EngineException;
 import org.opensearch.index.engine.InternalEngine;
+import org.opensearch.index.mapper.IdFieldMapper;
+import org.opensearch.index.mapper.SeqNoFieldMapper;
 import org.opensearch.index.seqno.SequenceNumbers;
 import org.opensearch.index.store.RemoteSegmentStoreDirectory;
 
@@ -172,6 +182,20 @@ public final class RemoteStoreRefreshListener implements ReferenceManager.Refres
         }
     }
 
+    private long getMaxSeqNoRefreshed() throws IOException {
+        long start = System.currentTimeMillis();
+        try (Engine.Searcher searcher = indexShard.getEngine().acquireSearcher("remote-store-refresh-listener", Engine.SearcherScope.INTERNAL)) {
+            searcher.setQueryCache(null);
+            ScoreDoc[] docs = searcher.search(Queries.newMatchAllQuery(), 1, new Sort(new SortField(SeqNoFieldMapper.NAME, SortField.Type.DOC, true))).scoreDocs;
+            Document document = searcher.storedFields().document(docs[0].doc);
+            Term uidTerm = new Term(IdFieldMapper.NAME, document.getField(IdFieldMapper.NAME).binaryValue());
+            final VersionsAndSeqNoResolver.DocIdAndVersion docIdAndVersion = VersionsAndSeqNoResolver.loadDocIdAndVersion(searcher.getIndexReader(), uidTerm, true);
+            assert docIdAndVersion != null;
+            logger.info("Time taken in getMaxSeqNoRefreshed: {}", System.currentTimeMillis() - start);
+            return docIdAndVersion.seqNo;
+        }
+    }
+
     private boolean isRefreshAfterCommit() throws IOException {
         String lastCommittedLocalSegmentFileName = SegmentInfos.getLastCommitSegmentsFileName(storeDirectory);
         return (lastCommittedLocalSegmentFileName != null
@@ -188,7 +212,7 @@ public final class RemoteStoreRefreshListener implements ReferenceManager.Refres
         // will not be replayed.
         assert indexShard.getEngine() instanceof InternalEngine : "Expected shard with InternalEngine, got: "
             + indexShard.getEngine().getClass();
-        final long lastRefreshedCheckpoint = ((InternalEngine) indexShard.getEngine()).lastRefreshedCheckpoint();
+        final long lastRefreshedCheckpoint = getMaxSeqNoRefreshed(); //((InternalEngine) indexShard.getEngine()).lastRefreshedCheckpoint();
 
         Map<String, String> userData = segmentInfosSnapshot.getUserData();
         userData.put(LOCAL_CHECKPOINT_KEY, String.valueOf(lastRefreshedCheckpoint));

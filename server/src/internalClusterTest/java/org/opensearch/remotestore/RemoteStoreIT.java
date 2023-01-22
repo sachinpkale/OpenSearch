@@ -35,6 +35,7 @@ import org.opensearch.test.OpenSearchIntegTestCase;
 import org.opensearch.test.transport.MockTransportService;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collection;
@@ -170,7 +171,7 @@ public class RemoteStoreIT extends OpenSearchIntegTestCase {
 
         client().prepareIndex(INDEX_NAME).setId("1").setSource("foo", "bar").get();
         client().prepareIndex(INDEX_NAME).setId("2").setSource("bar", "baz").get();
-        flush(INDEX_NAME);
+        refresh(INDEX_NAME);
 
         client().prepareIndex(INDEX_NAME).setId("3").setSource("abc", "xyz").get();
 
@@ -206,11 +207,9 @@ public class RemoteStoreIT extends OpenSearchIntegTestCase {
         assertHitCount(client(replica).prepareSearch(INDEX_NAME).setSize(0).setPreference("_only_local").get(), 1);
 
         final String replicaDataPath = Environment.PATH_DATA_SETTING.get(internalCluster().dataPathSettings(replica)).get(0);
-        System.out.println("################################################################");
-        System.out.println(replicaDataPath);
-        System.out.println("################################################################");
-        for
-        FileSystemUtils.files(Path.of(replicaDataPath))
+        for(Path file: FileSystemUtils.files(Path.of(replicaDataPath))) {
+            Files.delete(file);
+        }
         // ToDo: Delete data from secondary before stopping primary so that we can test segment download part.
         internalCluster().stopRandomNode(InternalTestCluster.nameFilter(primary));
 
