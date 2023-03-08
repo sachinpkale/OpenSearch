@@ -8,9 +8,12 @@
 
 package org.opensearch.index.store.remote.metadata;
 
+import java.io.IOException;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.IndexOutput;
 import org.opensearch.index.store.RemoteSegmentStoreDirectory;
 
 /**
@@ -33,8 +36,14 @@ public class RemoteSegmentMetadata {
      */
     private final Map<String, RemoteSegmentStoreDirectory.UploadedSegmentMetadata> metadata;
 
-    public RemoteSegmentMetadata(Map<String, RemoteSegmentStoreDirectory.UploadedSegmentMetadata> metadata) {
+    /**
+     * Timestamp of the file at the time of creation
+     */
+    private final Long timestamp;
+
+    public RemoteSegmentMetadata(Map<String, RemoteSegmentStoreDirectory.UploadedSegmentMetadata> metadata, Long timestamp) {
         this.metadata = metadata;
+        this.timestamp = timestamp;
     }
 
     /**
@@ -46,28 +55,10 @@ public class RemoteSegmentMetadata {
     }
 
     /**
-     * Generate {@code Map<String, String>} from {@link RemoteSegmentMetadata}
-     * @return {@code Map<String, String>}
+     * Get creation timestamp of the metadata
+     * @return {@code timestamp}
      */
-    public Map<String, String> toMapOfStrings() {
-        return this.metadata.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().toString()));
-    }
-
-    /**
-     * Generate {@link RemoteSegmentMetadata} from {@code segmentMetadata}
-     * @param segmentMetadata metadata content in the form of {@code Map<String, String>}
-     * @return {@link RemoteSegmentMetadata}
-     */
-    public static RemoteSegmentMetadata fromMapOfStrings(Map<String, String> segmentMetadata) {
-        return new RemoteSegmentMetadata(
-            segmentMetadata.entrySet()
-                .stream()
-                .collect(
-                    Collectors.toMap(
-                        Map.Entry::getKey,
-                        entry -> RemoteSegmentStoreDirectory.UploadedSegmentMetadata.fromString(entry.getValue())
-                    )
-                )
-        );
+    public long getMetadataCreationTimestamp() {
+        return timestamp;
     }
 }

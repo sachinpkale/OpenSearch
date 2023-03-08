@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -117,26 +118,22 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory {
      * @return Map of segment filename to uploaded filename with checksum
      * @throws IOException if there were any failures in reading the metadata file
      */
-    private Map<String, UploadedSegmentMetadata> readLatestMetadataFile() throws IOException {
-        Map<String, UploadedSegmentMetadata> segmentMetadataMap = new HashMap<>();
-
+    private RemoteSegmentMetadata readLatestMetadataFile() throws IOException {
         Collection<String> metadataFiles = remoteMetadataDirectory.listFilesByPrefix(MetadataFilenameUtils.METADATA_PREFIX);
         Optional<String> latestMetadataFile = metadataFiles.stream().max(METADATA_FILENAME_COMPARATOR);
 
         if (latestMetadataFile.isPresent()) {
             logger.info("Reading latest Metadata file {}", latestMetadataFile.get());
-            segmentMetadataMap = readMetadataFile(latestMetadataFile.get());
+            return readMetadataFile(latestMetadataFile.get());
         } else {
             logger.info("No metadata file found, this can happen for new index with no data uploaded to remote segment store");
+            return null;
         }
-
-        return segmentMetadataMap;
     }
 
-    private Map<String, UploadedSegmentMetadata> readMetadataFile(String metadataFilename) throws IOException {
+    private RemoteSegmentMetadata readMetadataFile(String metadataFilename) throws IOException {
         try (IndexInput indexInput = remoteMetadataDirectory.openInput(metadataFilename, IOContext.DEFAULT)) {
-            RemoteSegmentMetadata metadata = metadataStreamWrapper.readStream(indexInput);
-            return metadata.getMetadata();
+            return metadataStreamWrapper.readStream(indexInput);
         }
     }
 
@@ -151,7 +148,7 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory {
         private final String uploadedFilename;
         private final String checksum;
 
-        UploadedSegmentMetadata(String originalFilename, String uploadedFilename, String checksum) {
+        public UploadedSegmentMetadata(String originalFilename, String uploadedFilename, String checksum) {
             this.originalFilename = originalFilename;
             this.uploadedFilename = uploadedFilename;
             this.checksum = checksum;
@@ -169,6 +166,19 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory {
         public static UploadedSegmentMetadata fromString(String uploadedFilename) {
             String[] values = uploadedFilename.split(SEPARATOR);
             return new UploadedSegmentMetadata(values[0], values[1], values[2]);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            UploadedSegmentMetadata metadata = (UploadedSegmentMetadata) o;
+            return Objects.equals(originalFilename, metadata.originalFilename) && Objects.equals(uploadedFilename, metadata.uploadedFilename) && Objects.equals(checksum, metadata.checksum);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(originalFilename, uploadedFilename, checksum);
         }
     }
 
@@ -197,13 +207,7 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory {
                 if (firstPrimaryTerm != secondPrimaryTerm) {
                     return firstPrimaryTerm > secondPrimaryTerm ? 1 : -1;
                 } else {
-                    long firstGeneration = getGeneration(firstTokens);
-                    long secondGeneration = getGeneration(secondTokens);
-                    if (firstGeneration != secondGeneration) {
-                        return firstGeneration > secondGeneration ? 1 : -1;
-                    } else {
-                        return getUuid(firstTokens).compareTo(getUuid(secondTokens));
-                    }
+                    return 0;
                 }
             }
         }
@@ -245,7 +249,7 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory {
      */
     @Override
     public String[] listAll() throws IOException {
-        return readLatestMetadataFile().keySet().toArray(new String[0]);
+        return readLatestMetadataFile().getMetadata().keySet().toArray(new String[0]);
     }
 
     /**
@@ -353,15 +357,15 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory {
         synchronized (this) {
             String metadataFilename = MetadataFilenameUtils.getMetadataFilename(primaryTerm, generation, this.commonFilenameSuffix);
             IndexOutput indexOutput = storeDirectory.createOutput(metadataFilename, IOContext.DEFAULT);
-            Map<String, String> uploadedSegments = new HashMap<>();
+            Map<String, UploadedSegmentMetadata> uploadedSegments = new HashMap<>();
             for (String file : segmentFiles) {
                 if (segmentsUploadedToRemoteStore.containsKey(file)) {
-                    uploadedSegments.put(file, segmentsUploadedToRemoteStore.get(file).toString());
+                    uploadedSegments.put(file, segmentsUploadedToRemoteStore.get(file));
                 } else {
                     throw new NoSuchFileException(file);
                 }
             }
-            metadataStreamWrapper.writeStream(indexOutput, RemoteSegmentMetadata.fromMapOfStrings(uploadedSegments));
+            metadataStreamWrapper.writeStream(indexOutput, new RemoteSegmentMetadata(uploadedSegments, System.currentTimeMillis()));
             indexOutput.close();
             storeDirectory.sync(Collections.singleton(metadataFilename));
             remoteMetadataDirectory.copyFrom(storeDirectory, metadataFilename, metadataFilename, IOContext.DEFAULT);
