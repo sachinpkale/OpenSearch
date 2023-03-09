@@ -26,9 +26,11 @@ import org.opensearch.test.transport.MockTransportService;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertAcked;
@@ -114,14 +116,14 @@ public class RemoteStoreIT extends OpenSearchIntegTestCase {
         long totalOperations = 0;
         long refreshedOrFlushedOperations = 0;
         long maxSeqNo = -1;
-        long maxSeqNoRefreshedOrFlushed = -1;
+        List<Long> maxSeqNoRefreshedOrFlushed = new ArrayList<>(List.of(-1L));
         for (int i = 0; i < numberOfIterations; i++) {
             if (invokeFlush) {
                 flush(INDEX_NAME);
             } else {
                 refresh(INDEX_NAME);
             }
-            maxSeqNoRefreshedOrFlushed = maxSeqNo;
+            maxSeqNoRefreshedOrFlushed.add(maxSeqNo);
             refreshedOrFlushedOperations = totalOperations;
             int numberOfOperations = randomIntBetween(20, 50);
             for (int j = 0; j < numberOfOperations; j++) {
@@ -134,7 +136,7 @@ public class RemoteStoreIT extends OpenSearchIntegTestCase {
         indexingStats.put(TOTAL_OPERATIONS, totalOperations);
         indexingStats.put(REFRESHED_OR_FLUSHED_OPERATIONS, refreshedOrFlushedOperations);
         indexingStats.put(MAX_SEQ_NO_TOTAL, maxSeqNo);
-        indexingStats.put(MAX_SEQ_NO_REFRESHED_OR_FLUSHED, maxSeqNoRefreshedOrFlushed);
+        indexingStats.put(MAX_SEQ_NO_REFRESHED_OR_FLUSHED, maxSeqNoRefreshedOrFlushed.get(maxSeqNoRefreshedOrFlushed.size() - 2));
         return indexingStats;
     }
 
