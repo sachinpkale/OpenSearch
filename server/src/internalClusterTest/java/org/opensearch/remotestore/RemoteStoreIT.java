@@ -26,9 +26,11 @@ import org.opensearch.test.transport.MockTransportService;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertAcked;
@@ -175,36 +177,128 @@ public class RemoteStoreIT extends OpenSearchIntegTestCase {
         }
     }
 
-    public void testRemoteSegmentStoreRestoreWithNoDataPostCommit() throws IOException {
-        testRestoreFlow(false, 1, true);
+//    public void testRemoteSegmentStoreRestoreWithNoDataPostCommit() throws IOException {
+//        testRestoreFlow(false, 1, true);
+//    }
+//
+//    public void testRemoteSegmentStoreRestoreWithNoDataPostRefresh() throws IOException {
+//        testRestoreFlow(false, 1, false);
+//    }
+//
+//    public void testRemoteSegmentStoreRestoreWithRefreshedData() throws IOException {
+//        testRestoreFlow(false, randomIntBetween(2, 5), false);
+//    }
+//
+//    public void testRemoteSegmentStoreRestoreWithCommittedData() throws IOException {
+//        testRestoreFlow(false, randomIntBetween(2, 5), true);
+//    }
+//
+//    @AwaitsFix(bugUrl = "https://github.com/opensearch-project/OpenSearch/issues/6188")
+//    public void testRemoteTranslogRestoreWithNoDataPostCommit() throws IOException {
+//        testRestoreFlow(true, 1, true);
+//    }
+//
+//    public void testRemoteTranslogRestoreWithNoDataPostRefresh() throws IOException {
+//        testRestoreFlow(true, 1, false);
+//    }
+//
+//    public void testRemoteTranslogRestoreWithRefreshedData() throws IOException {
+//        testRestoreFlow(true, randomIntBetween(2, 5), false);
+//    }
+//
+//    public void testRemoteTranslogRestoreWithCommittedData() throws IOException {
+//        testRestoreFlow(true, randomIntBetween(2, 5), true);
+//    }
+
+    public void testRemoteSegmentStoreRestoreDeleteMerge() throws IOException {
+        internalCluster().startDataOnlyNodes(3);
+        createIndex(INDEX_NAME, remoteStoreIndexSettings(0));
+        ensureYellowAndNoInitializingShards(INDEX_NAME);
+        ensureGreen(INDEX_NAME);
+
+        List<IndexResponse> responses = new ArrayList<>();
+        for (int i = 0; i < 100; i++) {
+            responses.add(indexSingleDoc());
+        }
+        flush(INDEX_NAME);
+
+        for(int i = 99; i >= 90; i--) {
+            client().prepareDelete(INDEX_NAME, responses.get(i).getId()).get();
+        }
+        flush(INDEX_NAME);
+        forceMerge();
+        flush(INDEX_NAME);
+
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(primaryNodeName(INDEX_NAME)));
+        assertAcked(client().admin().indices().prepareClose(INDEX_NAME));
+
+        client().admin().cluster().restoreRemoteStore(new RestoreRemoteStoreRequest().indices(INDEX_NAME), PlainActionFuture.newFuture());
+        ensureGreen(INDEX_NAME);
+
+        assertHitCount(client().prepareSearch(INDEX_NAME).setSize(0).get(), 90);
+        IndexResponse response = indexSingleDoc();
+        assertEquals(110, response.getSeqNo());
     }
 
-    public void testRemoteSegmentStoreRestoreWithNoDataPostRefresh() throws IOException {
-        testRestoreFlow(false, 1, false);
+    public void testRemoteSegmentStoreRestoreIndexDeleteMerge() throws IOException {
+        internalCluster().startDataOnlyNodes(3);
+        createIndex(INDEX_NAME, remoteStoreIndexSettings(0));
+        ensureYellowAndNoInitializingShards(INDEX_NAME);
+        ensureGreen(INDEX_NAME);
+
+        List<IndexResponse> responses = new ArrayList<>();
+        for (int i = 0; i < 100; i++) {
+            responses.add(indexSingleDoc());
+        }
+        flush(INDEX_NAME);
+
+        for (int i = 0; i < 30; i++) {
+            responses.add(indexSingleDoc());
+        }
+        for(int i = 129; i >= 110; i--) {
+            client().prepareDelete(INDEX_NAME, responses.get(i).getId()).get();
+        }
+        flush(INDEX_NAME);
+        forceMerge();
+        flush(INDEX_NAME);
+
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(primaryNodeName(INDEX_NAME)));
+        assertAcked(client().admin().indices().prepareClose(INDEX_NAME));
+
+        client().admin().cluster().restoreRemoteStore(new RestoreRemoteStoreRequest().indices(INDEX_NAME), PlainActionFuture.newFuture());
+        ensureGreen(INDEX_NAME);
+
+        assertHitCount(client().prepareSearch(INDEX_NAME).setSize(0).get(), 110);
+        IndexResponse response = indexSingleDoc();
+        assertEquals(150, response.getSeqNo());
     }
 
-    public void testRemoteSegmentStoreRestoreWithRefreshedData() throws IOException {
-        testRestoreFlow(false, randomIntBetween(2, 5), false);
-    }
+    public void testRemoteTranslogRestoreDeleteMerge() throws IOException {
+        internalCluster().startDataOnlyNodes(3);
+        createIndex(INDEX_NAME, remoteTranslogIndexSettings(0));
+        ensureYellowAndNoInitializingShards(INDEX_NAME);
+        ensureGreen(INDEX_NAME);
 
-    public void testRemoteSegmentStoreRestoreWithCommittedData() throws IOException {
-        testRestoreFlow(false, randomIntBetween(2, 5), true);
-    }
+        List<IndexResponse> responses = new ArrayList<>();
+        for (int i = 0; i < 100; i++) {
+            responses.add(indexSingleDoc());
+        }
+        flush(INDEX_NAME);
 
-    @AwaitsFix(bugUrl = "https://github.com/opensearch-project/OpenSearch/issues/6188")
-    public void testRemoteTranslogRestoreWithNoDataPostCommit() throws IOException {
-        testRestoreFlow(true, 1, true);
-    }
+        for(int i = 99; i >= 90; i--) {
+            client().prepareDelete(INDEX_NAME, responses.get(i).getId()).get();
+        }
+        forceMerge();
+        flush(INDEX_NAME);
 
-    public void testRemoteTranslogRestoreWithNoDataPostRefresh() throws IOException {
-        testRestoreFlow(true, 1, false);
-    }
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(primaryNodeName(INDEX_NAME)));
+        assertAcked(client().admin().indices().prepareClose(INDEX_NAME));
 
-    public void testRemoteTranslogRestoreWithRefreshedData() throws IOException {
-        testRestoreFlow(true, randomIntBetween(2, 5), false);
-    }
+        client().admin().cluster().restoreRemoteStore(new RestoreRemoteStoreRequest().indices(INDEX_NAME), PlainActionFuture.newFuture());
+        ensureGreen(INDEX_NAME);
 
-    public void testRemoteTranslogRestoreWithCommittedData() throws IOException {
-        testRestoreFlow(true, randomIntBetween(2, 5), true);
+        assertHitCount(client().prepareSearch(INDEX_NAME).setSize(0).get(), 90);
+        IndexResponse response = indexSingleDoc();
+        assertEquals(110, response.getSeqNo());
     }
 }

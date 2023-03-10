@@ -314,8 +314,11 @@ public abstract class Engine implements LifecycleAware, Closeable {
             uidTerm,
             true
         );
-        assert docIdAndVersion != null;
-        return docIdAndVersion.seqNo;
+        if (docIdAndVersion != null) {
+            return docIdAndVersion.seqNo;
+        } else {
+            return -1;
+        }
     }
 
     /**

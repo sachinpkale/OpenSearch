@@ -57,6 +57,7 @@ public final class RemoteStoreRefreshListener implements ReferenceManager.Refres
     private final RemoteSegmentStoreDirectory remoteDirectory;
     private final Map<String, String> localSegmentChecksumMap;
     private long primaryTerm;
+    private long lastUploadedMaxSeqNo;
     private static final Logger logger = LogManager.getLogger(RemoteStoreRefreshListener.class);
 
     public RemoteStoreRefreshListener(IndexShard indexShard) {
@@ -73,6 +74,7 @@ public final class RemoteStoreRefreshListener implements ReferenceManager.Refres
                 logger.error("Exception while initialising RemoteSegmentStoreDirectory", e);
             }
         }
+        lastUploadedMaxSeqNo = -1;
     }
 
     @Override
@@ -179,7 +181,12 @@ public final class RemoteStoreRefreshListener implements ReferenceManager.Refres
     }
 
     String uploadSegmentInfosSnapshot(String latestSegmentsNFilename, SegmentInfos segmentInfosSnapshot) throws IOException {
-        final long maxSeqNoFromSegmentInfos = indexShard.getEngine().getMaxSeqNoFromSegmentInfos(segmentInfosSnapshot);
+        long maxSeqNoFromSegmentInfos = indexShard.getEngine().getMaxSeqNoFromSegmentInfos(segmentInfosSnapshot);
+        if (maxSeqNoFromSegmentInfos < lastUploadedMaxSeqNo) {
+            maxSeqNoFromSegmentInfos = lastUploadedMaxSeqNo;
+        } else {
+            lastUploadedMaxSeqNo = maxSeqNoFromSegmentInfos;
+        }
 
         Map<String, String> userData = segmentInfosSnapshot.getUserData();
         userData.put(LOCAL_CHECKPOINT_KEY, String.valueOf(maxSeqNoFromSegmentInfos));
