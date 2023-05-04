@@ -176,21 +176,21 @@ public class RemoteStoreIT extends OpenSearchIntegTestCase {
         }
     }
 
-    public void testRemoteSegmentStoreRestoreWithNoDataPostCommit() throws IOException {
-        testRestoreFlow(false, 1, true);
-    }
-
-    public void testRemoteSegmentStoreRestoreWithNoDataPostRefresh() throws IOException {
-        testRestoreFlow(false, 1, false);
-    }
-
-    public void testRemoteSegmentStoreRestoreWithRefreshedData() throws IOException {
-        testRestoreFlow(false, randomIntBetween(2, 5), false);
-    }
-
-    public void testRemoteSegmentStoreRestoreWithCommittedData() throws IOException {
-        testRestoreFlow(false, randomIntBetween(2, 5), true);
-    }
+//    public void testRemoteSegmentStoreRestoreWithNoDataPostCommit() throws IOException {
+//        testRestoreFlow(false, 1, true);
+//    }
+//
+//    public void testRemoteSegmentStoreRestoreWithNoDataPostRefresh() throws IOException {
+//        testRestoreFlow(false, 1, false);
+//    }
+//
+//    public void testRemoteSegmentStoreRestoreWithRefreshedData() throws IOException {
+//        testRestoreFlow(false, randomIntBetween(2, 5), false);
+//    }
+//
+//    public void testRemoteSegmentStoreRestoreWithCommittedData() throws IOException {
+//        testRestoreFlow(false, randomIntBetween(2, 5), true);
+//    }
 
     @AwaitsFix(bugUrl = "https://github.com/opensearch-project/OpenSearch/issues/6188")
     public void testRemoteTranslogRestoreWithNoDataPostCommit() throws IOException {

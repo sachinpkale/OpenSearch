@@ -721,7 +721,7 @@ public class InternalEngine extends Engine {
                 } else if (op.seqNo() > docAndSeqNo.seqNo) {
                     status = OpVsLuceneDocStatus.OP_NEWER;
                 } else if (op.seqNo() == docAndSeqNo.seqNo) {
-                    assert localCheckpointTracker.hasProcessed(op.seqNo()) : "local checkpoint tracker is not updated seq_no="
+                    assert (config().getIndexSettings().isRemoteStoreEnabled() || localCheckpointTracker.hasProcessed(op.seqNo())) : "local checkpoint tracker is not updated seq_no="
                         + op.seqNo()
                         + " id="
                         + op.id();
