@@ -462,6 +462,8 @@ public class RemoteSegmentStoreDirectoryTests extends OpenSearchTestCase {
             startsWith("metadata__12__o"),
             eq(IOContext.DEFAULT)
         );
+        verify(storeDirectory).deleteFile(startsWith("metadata__12__o"));
+
         String metadataString = remoteSegmentStoreDirectory.getSegmentsUploadedToRemoteStore().get("_0.si").toString();
 
         ByteArrayIndexInput expectedMetadataFileContent = createMetadataFileBytes(Map.of("_0.si", metadataString));
@@ -470,6 +472,30 @@ public class RemoteSegmentStoreDirectoryTests extends OpenSearchTestCase {
         expectedMetadataFileContent.readBytes(expectedBytes, 0, expectedBytesLength);
 
         assertArrayEquals(expectedBytes, BytesReference.toBytes(output.bytes()));
+    }
+
+    public void testUploadMetadataErrorOnUpload() throws IOException {
+        populateMetadata();
+        remoteSegmentStoreDirectory.init();
+
+        Directory storeDirectory = mock(Directory.class);
+        BytesStreamOutput output = new BytesStreamOutput();
+        IndexOutput indexOutput = new OutputStreamIndexOutput("segment metadata", "metadata output stream", output, 4096);
+        when(storeDirectory.createOutput(startsWith("metadata__12__o"), eq(IOContext.DEFAULT))).thenReturn(indexOutput);
+
+        Collection<String> segmentFiles = List.of("_0.si");
+
+        doThrow(new IOException("Error")).when(remoteMetadataDirectory).copyFrom(eq(storeDirectory), startsWith("metadata__12__o"), startsWith("metadata__12__o"), eq(IOContext.DEFAULT));
+
+        assertThrows(IOException.class, () -> remoteSegmentStoreDirectory.uploadMetadata(segmentFiles, storeDirectory, 12L, 24L));
+        verify(remoteMetadataDirectory).copyFrom(
+            eq(storeDirectory),
+            startsWith("metadata__12__o"),
+            startsWith("metadata__12__o"),
+            eq(IOContext.DEFAULT)
+        );
+
+        verify(storeDirectory).deleteFile(startsWith("metadata__12__o"));
     }
 
     public void testNoMetadataHeaderCorruptIndexException() throws IOException {

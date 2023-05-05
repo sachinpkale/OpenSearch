@@ -130,7 +130,8 @@ public final class RemoteStoreRefreshListener implements ReferenceManager.Refres
 
                                 boolean uploadStatus = uploadNewSegments(localSegmentsPostRefresh);
                                 if (uploadStatus) {
-                                    segmentInfoSnapshotFilename = uploadSegmentInfosSnapshot(latestSegmentInfos.get(), segmentInfos);
+                                    segmentInfoSnapshotFilename = getSegmentInfoSnapshotFilename(latestSegmentInfos.get());
+                                    uploadSegmentInfosSnapshot(segmentInfoSnapshotFilename, segmentInfos);
                                     localSegmentsPostRefresh.add(segmentInfoSnapshotFilename);
 
                                     remoteDirectory.uploadMetadata(
@@ -178,7 +179,12 @@ public final class RemoteStoreRefreshListener implements ReferenceManager.Refres
             && !remoteDirectory.containsFile(lastCommittedLocalSegmentFileName, getChecksumOfLocalFile(lastCommittedLocalSegmentFileName)));
     }
 
-    String uploadSegmentInfosSnapshot(String latestSegmentsNFilename, SegmentInfos segmentInfosSnapshot) throws IOException {
+    private String getSegmentInfoSnapshotFilename(String segmentsNFilename) {
+        long commitGeneration = SegmentInfos.generationFromSegmentsFileName(segmentsNFilename);
+        return SEGMENT_INFO_SNAPSHOT_FILENAME_PREFIX + "__" + commitGeneration;
+    }
+
+    void uploadSegmentInfosSnapshot(String segmentInfoSnapshotFilename, SegmentInfos segmentInfosSnapshot) throws IOException {
         final long maxSeqNoFromSegmentInfos = indexShard.getEngine().getMaxSeqNoFromSegmentInfos(segmentInfosSnapshot);
 
         Map<String, String> userData = segmentInfosSnapshot.getUserData();
@@ -186,14 +192,11 @@ public final class RemoteStoreRefreshListener implements ReferenceManager.Refres
         userData.put(SequenceNumbers.MAX_SEQ_NO, Long.toString(maxSeqNoFromSegmentInfos));
         segmentInfosSnapshot.setUserData(userData, false);
 
-        long commitGeneration = SegmentInfos.generationFromSegmentsFileName(latestSegmentsNFilename);
-        String segmentInfoSnapshotFilename = SEGMENT_INFO_SNAPSHOT_FILENAME_PREFIX + "__" + commitGeneration;
         try (IndexOutput indexOutput = storeDirectory.createOutput(segmentInfoSnapshotFilename, IOContext.DEFAULT)) {
             segmentInfosSnapshot.write(indexOutput);
         }
         storeDirectory.sync(Collections.singleton(segmentInfoSnapshotFilename));
         remoteDirectory.copyFrom(storeDirectory, segmentInfoSnapshotFilename, segmentInfoSnapshotFilename, IOContext.DEFAULT, true);
-        return segmentInfoSnapshotFilename;
     }
 
     // Visible for testing

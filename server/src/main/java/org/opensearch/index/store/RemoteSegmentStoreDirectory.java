@@ -376,8 +376,11 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory {
             metadataStreamWrapper.writeStream(indexOutput, RemoteSegmentMetadata.fromMapOfStrings(uploadedSegments));
             indexOutput.close();
             storeDirectory.sync(Collections.singleton(metadataFilename));
-            remoteMetadataDirectory.copyFrom(storeDirectory, metadataFilename, metadataFilename, IOContext.DEFAULT);
-            storeDirectory.deleteFile(metadataFilename);
+            try {
+                remoteMetadataDirectory.copyFrom(storeDirectory, metadataFilename, metadataFilename, IOContext.DEFAULT);
+            } finally {
+                storeDirectory.deleteFile(metadataFilename);
+            }
         }
     }
 
