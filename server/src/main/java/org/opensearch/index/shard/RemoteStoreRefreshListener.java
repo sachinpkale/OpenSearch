@@ -361,7 +361,7 @@ public final class RemoteStoreRefreshListener implements ReferenceManager.Refres
             segmentInfosSnapshot.write(indexOutput);
         }
         storeDirectory.sync(Collections.singleton(segmentInfoSnapshotFilename));
-        remoteDirectory.copyFrom(storeDirectory, segmentInfoSnapshotFilename, segmentInfoSnapshotFilename, IOContext.DEFAULT, true);
+        remoteDirectory.copyFrom(storeDirectory, segmentInfoSnapshotFilename, segmentInfoSnapshotFilename, IOContext.DEFAULT);
         return segmentInfoSnapshotFilename;
     }
 
