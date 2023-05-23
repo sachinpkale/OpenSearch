@@ -40,14 +40,14 @@ public class RemoteSegmentMetadataHandlerTests extends OpenSearchTestCase {
         RemoteSegmentMetadata metadata = remoteSegmentMetadataHandler.readContent(
             new ByteArrayIndexInput("dummy bytes", BytesReference.toBytes(output.bytes()))
         );
-        assertEquals(expectedOutput, metadata.toMapOfStrings());
+        assertEquals(expectedOutput, metadata.serialize());
     }
 
     public void testWriteContent() throws IOException {
         BytesStreamOutput output = new BytesStreamOutput();
         OutputStreamIndexOutput indexOutput = new OutputStreamIndexOutput("dummy bytes", "dummy stream", output, 4096);
         Map<String, String> expectedOutput = getDummyData();
-        remoteSegmentMetadataHandler.writeContent(indexOutput, RemoteSegmentMetadata.fromMapOfStrings(expectedOutput));
+        remoteSegmentMetadataHandler.writeContent(indexOutput, RemoteSegmentMetadata.deserialize(expectedOutput));
         indexOutput.close();
         Map<String, String> actualOutput = new ByteArrayIndexInput("dummy bytes", BytesReference.toBytes(output.bytes()))
             .readMapOfStrings();
