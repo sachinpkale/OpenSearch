@@ -66,6 +66,6 @@ public class RemoteSegmentStoreDirectoryFactory implements IndexStorePlugin.Dire
     private RemoteDirectory createRemoteDirectory(Repository repository, BlobPath commonBlobPath, String extention) {
         BlobPath extendedPath = commonBlobPath.add(extention);
         BlobContainer dataBlobContainer = ((BlobStoreRepository) repository).blobStore().blobContainer(extendedPath);
-        return new RemoteDirectory(dataBlobContainer);
+        return new RemoteBufferedOutputDirectory(dataBlobContainer);
     }
 }

@@ -471,12 +471,12 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
             };
 
             Store remoteStore = null;
-            if (this.indexSettings.isRemoteStoreEnabled()) {
-                Directory remoteDirectory = remoteDirectoryFactory.newDirectory(this.indexSettings, path);
-                remoteStore = new Store(shardId, this.indexSettings, remoteDirectory, lock, Store.OnClose.EMPTY);
-            }
+//            if (this.indexSettings.isRemoteStoreEnabled()) {
+//                Directory remoteDirectory = remoteDirectoryFactory.newDirectory(this.indexSettings, path);
+//                remoteStore = new Store(shardId, this.indexSettings, remoteDirectory, lock, Store.OnClose.EMPTY);
+//            }
 
-            Directory directory = directoryFactory.newDirectory(this.indexSettings, path);
+            Directory directory = remoteDirectoryFactory.newDirectory(this.indexSettings, path);
             store = new Store(
                 shardId,
                 this.indexSettings,
