@@ -13,6 +13,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.Lock;
+import org.apache.lucene.store.NoLockFactory;
 import org.opensearch.common.blobstore.BlobContainer;
 import org.opensearch.common.blobstore.BlobMetadata;
 
@@ -21,8 +22,10 @@ import java.io.IOException;
 import java.nio.file.NoSuchFileException;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * A {@code RemoteDirectory} provides an abstraction layer for storing a list of files to a remote store.
@@ -34,6 +37,8 @@ import java.util.Set;
  * @opensearch.internal
  */
 public class RemoteDirectory extends Directory {
+
+    private final AtomicLong nextTempFileCounter = new AtomicLong();
 
     protected final BlobContainer blobContainer;
 
@@ -138,7 +143,7 @@ public class RemoteDirectory extends Directory {
      */
     @Override
     public Set<String> getPendingDeletions() throws IOException {
-        throw new UnsupportedOperationException();
+        return new HashSet<>();
     }
 
     /**
@@ -149,7 +154,8 @@ public class RemoteDirectory extends Directory {
      */
     @Override
     public IndexOutput createTempOutput(String prefix, String suffix, IOContext context) {
-        throw new UnsupportedOperationException();
+        String name = getTempFileName(prefix, suffix, nextTempFileCounter.getAndIncrement());
+        return createOutput(name, IOContext.DEFAULT);
     }
 
     /**
@@ -162,7 +168,7 @@ public class RemoteDirectory extends Directory {
      */
     @Override
     public void sync(Collection<String> names) throws IOException {
-        throw new UnsupportedOperationException();
+        // do nothing
     }
 
     /**
@@ -174,7 +180,7 @@ public class RemoteDirectory extends Directory {
      */
     @Override
     public void syncMetaData() {
-        throw new UnsupportedOperationException();
+        // do nothing
     }
 
     /**
@@ -186,8 +192,8 @@ public class RemoteDirectory extends Directory {
      */
     @Override
     public void rename(String source, String dest) throws IOException {
-        throw new UnsupportedOperationException();
-
+        copyFrom(this, source, dest, IOContext.DEFAULT);
+        deleteFile(source);
     }
 
     /**
@@ -199,6 +205,6 @@ public class RemoteDirectory extends Directory {
      */
     @Override
     public Lock obtainLock(String name) throws IOException {
-        throw new UnsupportedOperationException();
+        return NoLockFactory.INSTANCE.obtainLock(this, name);
     }
 }

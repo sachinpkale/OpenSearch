@@ -30,7 +30,7 @@ public class RemoteBufferedIndexOutput extends RemoteIndexOutput {
     private final BytesStreamOutput out;
     private final OutputStreamIndexOutput indexOutputBuffer;
     // visible for testing
-    static final int BUFFER_SIZE = 4096;
+    static final int BUFFER_SIZE = 409600000;
 
     public RemoteBufferedIndexOutput(String name, BlobContainer blobContainer, int bufferSize) {
         super(name, blobContainer);
