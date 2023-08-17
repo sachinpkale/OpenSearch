@@ -433,21 +433,12 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory implement
      * @param listener Listener to handle upload callback events
      */
     public void copyFrom(Directory from, String src, IOContext context, ActionListener<Void> listener) {
-        if (remoteDataDirectory.getBlobContainer() instanceof VerifyingMultiStreamBlobContainer) {
-            try {
-                String remoteFilename = getNewRemoteSegmentFilename(src);
-                uploadBlob(from, src, remoteFilename, context, listener);
-            } catch (Exception e) {
-                listener.onFailure(e);
-            }
-        } else {
-            try {
-                copyFrom(from, src, src, context);
-                listener.onResponse(null);
-            } catch (Exception e) {
-                logger.warn(() -> new ParameterizedMessage("Exception while uploading file {} to the remote segment store", src), e);
-                listener.onFailure(e);
-            }
+        try {
+            copyFrom(from, src, src, context);
+            listener.onResponse(null);
+        } catch (Exception e) {
+            logger.warn(() -> new ParameterizedMessage("Exception while uploading file {} to the remote segment store", src), e);
+            listener.onFailure(e);
         }
     }
 
@@ -466,7 +457,7 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory implement
             WritePriority.NORMAL,
             (size, position) -> new OffsetRangeIndexInputStream(from.openInput(src, ioContext), size, position),
             expectedChecksum,
-            remoteDataDirectory.getBlobContainer() instanceof VerifyingMultiStreamBlobContainer
+            false
         );
         ActionListener<Void> completionListener = ActionListener.wrap(resp -> {
             try {

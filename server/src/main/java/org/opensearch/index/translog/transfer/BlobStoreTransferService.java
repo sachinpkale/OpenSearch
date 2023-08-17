@@ -92,11 +92,7 @@ public class BlobStoreTransferService implements TransferService {
     ) {
         fileSnapshots.forEach(fileSnapshot -> {
             BlobPath blobPath = blobPaths.get(fileSnapshot.getPrimaryTerm());
-            if (!(blobStore.blobContainer(blobPath) instanceof VerifyingMultiStreamBlobContainer)) {
-                uploadBlob(ThreadPool.Names.TRANSLOG_TRANSFER, fileSnapshot, blobPath, listener, writePriority);
-            } else {
-                uploadBlob(fileSnapshot, listener, blobPath, writePriority);
-            }
+            uploadBlob(fileSnapshot, listener, blobPath, writePriority);
         });
 
     }
@@ -122,7 +118,7 @@ public class BlobStoreTransferService implements TransferService {
                 writePriority,
                 (size, position) -> new OffsetRangeFileInputStream(fileSnapshot.getPath(), size, position),
                 Objects.requireNonNull(fileSnapshot.getChecksum()),
-                blobStore.blobContainer(blobPath) instanceof VerifyingMultiStreamBlobContainer
+                false
             );
             ActionListener<Void> completionListener = ActionListener.wrap(resp -> listener.onResponse(fileSnapshot), ex -> {
                 logger.error(() -> new ParameterizedMessage("Failed to upload blob {}", fileSnapshot.getName()), ex);
