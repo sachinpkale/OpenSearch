@@ -1131,14 +1131,7 @@ public class Node implements Closeable {
                         .toInstance(new PeerRecoveryTargetService(threadPool, transportService, recoverySettings, clusterService));
                     b.bind(SegmentReplicationTargetService.class)
                         .toInstance(
-                            new SegmentReplicationTargetService(
-                                threadPool,
-                                recoverySettings,
-                                transportService,
-                                new SegmentReplicationSourceFactory(transportService, recoverySettings, clusterService),
-                                indicesService,
-                                clusterService
-                            )
+                            newSegmentReplicationTargetService(threadPool, clusterService, indicesService, transportService, recoverySettings)
                         );
                     b.bind(SegmentReplicationSourceService.class)
                         .toInstance(new SegmentReplicationSourceService(indicesService, transportService, recoverySettings));
@@ -1203,6 +1196,17 @@ public class Node implements Closeable {
                 IOUtils.closeWhileHandlingException(resourcesToClose);
             }
         }
+    }
+
+    protected SegmentReplicationTargetService newSegmentReplicationTargetService(ThreadPool threadPool, ClusterService clusterService, IndicesService indicesService, TransportService transportService, RecoverySettings recoverySettings) {
+        return new SegmentReplicationTargetService(
+            threadPool,
+            recoverySettings,
+            transportService,
+            new SegmentReplicationSourceFactory(transportService, recoverySettings, clusterService),
+            indicesService,
+            clusterService
+        );
     }
 
     protected TransportService newTransportService(

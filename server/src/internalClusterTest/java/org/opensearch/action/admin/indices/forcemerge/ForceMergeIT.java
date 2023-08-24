@@ -47,14 +47,16 @@ import org.opensearch.indices.IndicesService;
 import org.opensearch.test.OpenSearchIntegTestCase;
 
 import java.io.IOException;
+import java.util.List;
 
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
+import static org.opensearch.indices.replication.SegmentReplicationBaseIT.waitForCurrentReplicas;
 
 public class ForceMergeIT extends OpenSearchIntegTestCase {
 
-    public void testForceMergeUUIDConsistent() throws IOException {
+    public void testForceMergeUUIDConsistent() throws Exception {
         internalCluster().ensureAtLeastNumDataNodes(2);
         final String index = "test-index";
         createIndex(
@@ -95,7 +97,9 @@ public class ForceMergeIT extends OpenSearchIntegTestCase {
         final String primaryForceMergeUUID = getForceMergeUUID(primary);
         assertThat(primaryForceMergeUUID, notNullValue());
 
+//        waitForCurrentReplicas(List.of(replica));
         final String replicaForceMergeUUID = getForceMergeUUID(replica);
+        logger.info("FM UUID ON PRIMARY {}", primaryForceMergeUUID);
         assertThat(replicaForceMergeUUID, notNullValue());
         assertThat(primaryForceMergeUUID, is(replicaForceMergeUUID));
     }

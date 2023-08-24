@@ -152,7 +152,7 @@ public class NRTReplicationEngineTests extends EngineTestCase {
             assertEquals(2, nrtEngine.getLastCommittedSegmentInfos().getGeneration());
 
             // commit the infos to push us to segments_3.
-            nrtEngine.commitSegmentInfos();
+            nrtEngine.flush();
             assertEquals(3, nrtEngine.getLastCommittedSegmentInfos().getGeneration());
             assertEquals(3, nrtEngine.getLatestSegmentInfos().getGeneration());
 
@@ -304,7 +304,7 @@ public class NRTReplicationEngineTests extends EngineTestCase {
             LocalCheckpointTracker localCheckpointTracker = nrtEngine.getLocalCheckpointTracker();
             final long maxSeqNo = localCheckpointTracker.getMaxSeqNo();
             final long processedCheckpoint = localCheckpointTracker.getProcessedCheckpoint();
-            nrtEngine.commitSegmentInfos();
+            nrtEngine.flush();
 
             // ensure getLatestSegmentInfos returns an updated infos ref with correct userdata.
             final SegmentInfos latestSegmentInfos = nrtEngine.getLatestSegmentInfos();

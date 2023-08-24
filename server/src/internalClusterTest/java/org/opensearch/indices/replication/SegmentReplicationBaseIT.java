@@ -8,6 +8,8 @@
 
 package org.opensearch.indices.replication;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.opensearch.action.search.SearchResponse;
 import org.opensearch.cluster.ClusterState;
 import org.opensearch.cluster.metadata.IndexMetadata;
@@ -67,6 +69,11 @@ public class SegmentReplicationBaseIT extends OpenSearchIntegTestCase {
     }
 
     @Override
+    protected boolean addMockNRTReplicationEngine() {
+        return false;
+    }
+
+    @Override
     public Settings indexSettings() {
         return Settings.builder()
             .put(super.indexSettings())
@@ -115,17 +122,42 @@ public class SegmentReplicationBaseIT extends OpenSearchIntegTestCase {
         waitForSearchableDocs(INDEX_NAME, docCount, nodes);
     }
 
-    public static void waitForSearchableDocs(String indexName, long docCount, List<String> nodes) throws Exception {
-        // wait until the replica has the latest segment generation.
+    public static void waitForCurrentReplicas(String index, List<String> nodes) throws Exception {
         assertBusy(() -> {
             for (String node : nodes) {
-                final SearchResponse response = client(node).prepareSearch(indexName).setSize(0).setPreference("_only_local").get();
-                final long hits = response.getHits().getTotalHits().value;
-                if (hits < docCount) {
-                    fail("Expected search hits on node: " + node + " to be at least " + docCount + " but was: " + hits);
-                }
+                final IndexShard indexShard = getIndexShard(node, index);
+                indexShard.getReplicationEngine().ifPresent((engine) -> {
+                    final boolean current = engine.isCurrent();
+                    logger.info("Node {} {}", node, current);
+                    assertTrue(current);
+                });
             }
-        }, 1, TimeUnit.MINUTES);
+        });
+    }
+
+    public static void waitForCurrentReplicas(List<IndexShard> shards) throws Exception {
+        assertBusy(() -> {
+        for (IndexShard indexShard : shards) {
+            indexShard.getReplicationEngine().ifPresent((engine) -> {
+                final boolean current = engine.isCurrent();
+                assertTrue(current);
+            });
+        }
+        });
+    }
+
+    protected static final Logger logger = LogManager.getLogger(SegmentReplicationBaseIT.class);
+
+
+    public static void waitForSearchableDocs(String indexName, long docCount, List<String> nodes) throws Exception {
+        waitForCurrentReplicas(indexName, nodes);
+        for (String node : nodes) {
+            final SearchResponse response = client(node).prepareSearch(indexName).setSize(0).setPreference("_only_local").get();
+            final long hits = response.getHits().getTotalHits().value;
+            if (hits < docCount) {
+                fail("Expected search hits on node: " + node + " to be at least " + docCount + " but was: " + hits);
+            }
+        }
     }
 
     protected void waitForSearchableDocs(long docCount, String... nodes) throws Exception {
@@ -195,7 +227,7 @@ public class SegmentReplicationBaseIT extends OpenSearchIntegTestCase {
     /**
      * Fetch IndexShard, assumes only a single shard per node.
      */
-    protected IndexShard getIndexShard(String node, String indexName) {
+    protected static IndexShard getIndexShard(String node, String indexName) {
         final Index index = resolveIndex(indexName);
         IndicesService indicesService = internalCluster().getInstance(IndicesService.class, node);
         IndexService indexService = indicesService.indexServiceSafe(index);
