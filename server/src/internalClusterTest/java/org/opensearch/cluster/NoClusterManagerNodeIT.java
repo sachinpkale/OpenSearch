@@ -87,6 +87,11 @@ public class NoClusterManagerNodeIT extends OpenSearchIntegTestCase {
         return Collections.singletonList(MockTransportService.TestPlugin.class);
     }
 
+    @Override
+    protected boolean addMockNRTReplicationEngine() {
+        return false;
+    }
+
     public void testNoClusterManagerActions() throws Exception {
         Settings settings = Settings.builder()
             .put(AutoCreateIndex.AUTO_CREATE_INDEX_SETTING.getKey(), true)
