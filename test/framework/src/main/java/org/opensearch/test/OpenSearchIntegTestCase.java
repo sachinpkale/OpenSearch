@@ -2120,7 +2120,9 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
             if (addMockInternalEngine() && randomBoolean()) {
                 mocks.add(MockEngineFactoryPlugin.class);
             } else {
-                mocks.add(MockNRTEngineFactoryPlugin.class);
+                if (addMockNRTReplicationEngine()) {
+                    mocks.add(MockNRTEngineFactoryPlugin.class);
+                }
             }
             if (randomBoolean()) {
                 mocks.add(MockSearchService.TestPlugin.class);
