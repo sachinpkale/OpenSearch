@@ -208,13 +208,14 @@ public class SegmentReplicationTargetService implements IndexEventListener {
      * @param replicaShard       replica shard on which checkpoint is received
      */
     public synchronized void onNewCheckpoint(final ReplicationCheckpoint receivedCheckpoint, final IndexShard replicaShard) {
-        logger.trace(() -> new ParameterizedMessage("Replica received new replication checkpoint from primary [{}]", receivedCheckpoint));
+        logger.info(() -> new ParameterizedMessage("Replica received new replication checkpoint from primary [{}]", receivedCheckpoint));
         // if the shard is in any state
         if (replicaShard.state().equals(IndexShardState.CLOSED)) {
             // ignore if shard is closed
             logger.trace(() -> "Ignoring checkpoint, Shard is closed");
             return;
         }
+        replicaShard.getReplicationEngine().ifPresent(engine -> engine.updateLatestReceivedCheckpoint(receivedCheckpoint.getSegmentInfosVersion()));
         updateLatestReceivedCheckpoint(receivedCheckpoint, replicaShard);
         // Checks if replica shard is in the correct STARTED state to process checkpoints (avoids parallel replication events taking place)
         // This check ensures we do not try to process a received checkpoint while the shard is still recovering, yet we stored the latest
