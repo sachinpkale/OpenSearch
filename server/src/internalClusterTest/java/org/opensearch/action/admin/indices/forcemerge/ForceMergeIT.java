@@ -97,9 +97,7 @@ public class ForceMergeIT extends OpenSearchIntegTestCase {
         final String primaryForceMergeUUID = getForceMergeUUID(primary);
         assertThat(primaryForceMergeUUID, notNullValue());
 
-//        waitForCurrentReplicas(List.of(replica));
         final String replicaForceMergeUUID = getForceMergeUUID(replica);
-        logger.info("FM UUID ON PRIMARY {}", primaryForceMergeUUID);
         assertThat(replicaForceMergeUUID, notNullValue());
         assertThat(primaryForceMergeUUID, is(replicaForceMergeUUID));
     }

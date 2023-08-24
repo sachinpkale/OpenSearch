@@ -10,6 +10,7 @@ package org.opensearch.test.engine;
 
 import org.apache.lucene.index.IndexCommit;
 import org.apache.lucene.index.SegmentInfos;
+import org.opensearch.action.support.PlainActionFuture;
 import org.opensearch.common.collect.Tuple;
 import org.opensearch.common.concurrent.GatedCloseable;
 import org.opensearch.index.engine.EngineConfig;
@@ -21,14 +22,19 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+
+import static org.opensearch.index.seqno.SequenceNumbers.NO_OPS_PERFORMED;
 
 public class MockNRTReplicationEngine extends NRTReplicationEngine {
 
-    protected volatile Long latestReceivedCheckpoint = SequenceNumbers.NO_OPS_PERFORMED;
+    protected volatile Long latestReceivedCheckpoint = NO_OPS_PERFORMED;
 
     final List<Tuple<Long, Consumer<Boolean>>> listeners = new ArrayList<>();
     final List<Tuple<Long, Consumer<Boolean>>> checkpointListeners = new ArrayList<>();
+    private final AtomicBoolean mergePending = new AtomicBoolean(false);
 
     public MockNRTReplicationEngine(EngineConfig config) {
         super(config);
@@ -57,7 +63,7 @@ public class MockNRTReplicationEngine extends NRTReplicationEngine {
     private void awaitCheckpointUpdate(Consumer<Boolean> listener) {
         synchronized (checkpointListeners) {
             final long localVersion = getLatestSegmentInfos().getVersion();
-            if (latestReceivedCheckpoint == localVersion) {
+            if (latestReceivedCheckpoint != -1 && latestReceivedCheckpoint <= localVersion) {
                 listener.accept(true);
             } else {
                 checkpointListeners.add(new Tuple<>(latestReceivedCheckpoint, listener));
@@ -79,18 +85,32 @@ public class MockNRTReplicationEngine extends NRTReplicationEngine {
             if (listener.v1() <= localVersion) {
                 listener.v2().accept(true);
                 listenersToClear.add(listener);
-            } else {
-                logger.info("still waiting listener on {} {}", listener.v1(), localVersion);
             }
         }
         checkpointListeners.removeAll(listenersToClear);
     }
 
     @Override
+    public void forceMerge(boolean flush, int maxNumSegments, boolean onlyExpungeDeletes, boolean upgrade, boolean upgradeOnlyAncientSegments, String forceMergeUUID) throws EngineException, IOException {
+        mergePending.compareAndSet(false, true);
+        awaitCheckpointUpdate((b) -> {
+            mergePending.compareAndSet(true, false);
+        });
+    }
+
+    @Override
     public GatedCloseable<IndexCommit> acquireLastIndexCommit(boolean flushFirst) throws EngineException {
         // wait until we are caught up to return this.
-        if (flushFirst) {
-           awaitCheckpointUpdate((b) -> super.acquireLastIndexCommit(flushFirst));
+        if (mergePending.get()) {
+           CountDownLatch latch = new CountDownLatch(1);
+           awaitCheckpointUpdate((b) -> {
+               latch.countDown();
+           });
+            try {
+                latch.await(1, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                throw new EngineException(shardId, "failed", e);
+            }
         }
         return super.acquireLastIndexCommit(flushFirst);
     }

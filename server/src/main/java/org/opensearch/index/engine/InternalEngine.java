@@ -2820,8 +2820,6 @@ public class InternalEngine extends Engine {
         public void beforeRefresh() {
             // all changes until this point should be visible after refresh
             pendingCheckpoint.updateAndGet(curr -> Math.max(curr, localCheckpointTracker.getProcessedCheckpoint()));
-//            logger.info("Pending before refresh {}", pendingCheckpoint.get());
-//            logger.info("Latest before refresh {}", refreshedCheckpoint.get());
         }
 
         @Override
@@ -2837,6 +2835,7 @@ public class InternalEngine extends Engine {
             // This shouldn't be required ideally, but we're also invoking this method from refresh as of now.
             // This change is added as safety check to ensure that our checkpoint values are consistent at all times.
             pendingCheckpoint.updateAndGet(curr -> Math.max(curr, checkpoint));
+            // TODO: compute and store latest copyState separately from reader infos.
             try {
                 final SegmentInfos segmentInfos = getLatestSegmentInfos();
                 final Map<String, String> userData = segmentInfos.getUserData();

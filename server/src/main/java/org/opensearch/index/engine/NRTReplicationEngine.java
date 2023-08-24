@@ -154,7 +154,6 @@ public class NRTReplicationEngine extends Engine {
             ensureOpen();
             final long maxSeqNo = Long.parseLong(infos.userData.get(MAX_SEQ_NO));
             final String uuid = infos.userData.get(FORCE_MERGE_UUID_KEY);
-            logger.info("FM UUID {}", uuid);
             final long incomingGeneration = infos.getGeneration();
             readerManager.updateSegments(infos);
             // Ensure that we commit and clear the local translog if a new commit has been made on the primary.

@@ -772,7 +772,9 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
                 ).getStringRep()
             );
         }
-        builder.put(INDEX_REPLICATION_TYPE_SETTING.getKey(), ReplicationType.SEGMENT);
+        if (addMockNRTReplicationEngine()) {
+            builder.put(INDEX_REPLICATION_TYPE_SETTING.getKey(), ReplicationType.SEGMENT);
+        }
 
         return builder.build();
     }
@@ -1927,7 +1929,9 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
             // when tests are run with concurrent segment search enabled
             builder.put(SearchService.CONCURRENT_SEGMENT_SEARCH_TARGET_MAX_SLICE_COUNT_KEY, 2);
         }
-        builder.put(CLUSTER_REPLICATION_TYPE_SETTING.getKey(), ReplicationType.SEGMENT);
+        if (addMockNRTReplicationEngine()) {
+            builder.put(CLUSTER_REPLICATION_TYPE_SETTING.getKey(), ReplicationType.SEGMENT);
+        }
         return builder.build();
     }
 
