@@ -2135,7 +2135,9 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
                 mocks.add(MockFieldFilterPlugin.class);
             }
         } else {
-            mocks.add(MockNRTEngineFactoryPlugin.class);
+            if (addMockNRTReplicationEngine()) {
+                mocks.add(MockNRTEngineFactoryPlugin.class);
+            }
         }
         if (addMockTransportService()) {
             mocks.add(getTestTransportPlugin());
