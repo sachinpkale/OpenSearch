@@ -28,8 +28,10 @@ import org.opensearch.repositories.Repository;
 import org.opensearch.repositories.blobstore.BlobStoreRepository;
 import org.opensearch.threadpool.ThreadPool;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Locale;
@@ -139,7 +141,15 @@ public class RemoteFsTranslog extends Translog {
             shardId,
             fileTransferTracker
         );
-        RemoteFsTranslog.download(translogTransferManager, location, logger);
+        try {
+            download(translogTransferManager, location, logger);
+        } catch (NoSuchFileException | FileNotFoundException e) {
+            // In primary allocation/relocation, it is possible that the metadata file that is read in download
+            // is already deleted from the remote translog. To mitigate such race condition, we retry once.
+            // It is also possible to retry the entire recovery. With this logic, we try to avoid the re-recovery.
+            logger.warn("Retrying translog download due to NoSuchFileException/FileNotFoundException");
+            download(translogTransferManager, location, logger);
+        }
     }
 
     public static void download(TranslogTransferManager translogTransferManager, Path location, Logger logger) throws IOException {

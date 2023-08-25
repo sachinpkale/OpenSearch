@@ -34,6 +34,7 @@ public class RemoteIndexPrimaryRelocationIT extends IndexPrimaryRelocationIT {
         );
     }
 
+    @Override
     protected Settings nodeSettings(int nodeOrdinal) {
         return Settings.builder()
             .put(super.nodeSettings(nodeOrdinal))
@@ -62,10 +63,5 @@ public class RemoteIndexPrimaryRelocationIT extends IndexPrimaryRelocationIT {
             .put(FeatureFlags.REMOTE_STORE, "true")
             .put(FeatureFlags.SEGMENT_REPLICATION_EXPERIMENTAL, "true")
             .build();
-    }
-
-    @AwaitsFix(bugUrl = "https://github.com/opensearch-project/OpenSearch/issues/9191")
-    public void testPrimaryRelocationWhileIndexing() throws Exception {
-        super.testPrimaryRelocationWhileIndexing();
     }
 }
