@@ -22,12 +22,14 @@ import org.opensearch.action.admin.indices.stats.IndicesStatsResponse;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.common.unit.TimeValue;
 import org.opensearch.plugins.Plugin;
+import org.opensearch.test.InternalTestCluster;
 import org.opensearch.test.OpenSearchIntegTestCase;
 import org.opensearch.test.transport.MockTransportService;
 import org.opensearch.test.transport.StubbableTransport;
 import org.opensearch.transport.ReceiveTimeoutTransportException;
 import org.opensearch.transport.TransportService;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -46,10 +48,11 @@ public class ClientTimeoutIT extends OpenSearchIntegTestCase {
         return Collections.singletonList(MockTransportService.TestPlugin.class);
     }
 
-    public void testNodesInfoTimeout() {
+    public void testNodesInfoTimeout() throws IOException {
         String clusterManagerNode = internalCluster().startClusterManagerOnlyNode();
         String dataNode = internalCluster().startDataOnlyNode();
         String anotherDataNode = internalCluster().startDataOnlyNode();
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(REPOSITORY_NODE));
 
         // Happy case
         NodesInfoResponse response = dataNodeClient().admin().cluster().prepareNodesInfo().get();
@@ -68,10 +71,11 @@ public class ClientTimeoutIT extends OpenSearchIntegTestCase {
         assertThat(nodes.contains(clusterManagerNode), is(true));
     }
 
-    public void testNodesStatsTimeout() {
+    public void testNodesStatsTimeout() throws IOException {
         String clusterManagerNode = internalCluster().startClusterManagerOnlyNode();
         String dataNode = internalCluster().startDataOnlyNode();
         String anotherDataNode = internalCluster().startDataOnlyNode();
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(REPOSITORY_NODE));
         TimeValue timeout = TimeValue.timeValueMillis(1000);
 
         // Happy case
@@ -90,10 +94,11 @@ public class ClientTimeoutIT extends OpenSearchIntegTestCase {
         assertThat(nodes.contains(clusterManagerNode), is(true));
     }
 
-    public void testListTasksTimeout() {
+    public void testListTasksTimeout() throws IOException {
         String clusterManagerNode = internalCluster().startClusterManagerOnlyNode();
         String dataNode = internalCluster().startDataOnlyNode();
         String anotherDataNode = internalCluster().startDataOnlyNode();
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(REPOSITORY_NODE));
         TimeValue timeout = TimeValue.timeValueMillis(1000);
 
         // Happy case
@@ -107,10 +112,11 @@ public class ClientTimeoutIT extends OpenSearchIntegTestCase {
         assertNull(response.getPerNodeTasks().get(anotherDataNode));
     }
 
-    public void testRecoveriesWithTimeout() {
+    public void testRecoveriesWithTimeout() throws IOException {
         internalCluster().startClusterManagerOnlyNode();
         String dataNode = internalCluster().startDataOnlyNode();
         String anotherDataNode = internalCluster().startDataOnlyNode();
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(REPOSITORY_NODE));
 
         int numShards = 4;
         assertAcked(
@@ -147,10 +153,11 @@ public class ClientTimeoutIT extends OpenSearchIntegTestCase {
         assertThat(recoveryResponse.getShardFailures()[0].reason(), containsString("ReceiveTimeoutTransportException"));
     }
 
-    public void testStatsWithTimeout() {
+    public void testStatsWithTimeout() throws IOException {
         internalCluster().startClusterManagerOnlyNode();
         String dataNode = internalCluster().startDataOnlyNode();
         String anotherDataNode = internalCluster().startDataOnlyNode();
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(REPOSITORY_NODE));
 
         int numShards = 4;
         logger.info("-->  creating index");

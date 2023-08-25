@@ -70,6 +70,7 @@ import org.opensearch.snapshots.RestoreInfo;
 import org.opensearch.snapshots.SnapshotInfo;
 import org.opensearch.snapshots.SnapshotState;
 import org.opensearch.test.InternalSettingsPlugin;
+import org.opensearch.test.InternalTestCluster;
 import org.opensearch.test.OpenSearchIntegTestCase;
 import org.hamcrest.Matcher;
 import org.junit.After;
@@ -114,12 +115,13 @@ public class DiskThresholdDeciderIT extends OpenSearchIntegTestCase {
     private FileSystem defaultFileSystem;
 
     @Before
-    public void installFilesystemProvider() {
+    public void installFilesystemProvider() throws Exception {
         assertNull(defaultFileSystem);
         defaultFileSystem = PathUtils.getDefaultFileSystem();
         assertNull(fileSystemProvider);
         fileSystemProvider = new TestFileSystemProvider(defaultFileSystem, createTempDir());
         PathUtilsForTesting.installMock(fileSystemProvider.getFileSystem(null));
+        setupRepoGlobal();
     }
 
     @After
@@ -130,8 +132,8 @@ public class DiskThresholdDeciderIT extends OpenSearchIntegTestCase {
         defaultFileSystem = null;
     }
 
-    private static final long WATERMARK_BYTES = new ByteSizeValue(10, ByteSizeUnit.KB).getBytes();
-    private static final long TOTAL_SPACE_BYTES = new ByteSizeValue(100, ByteSizeUnit.KB).getBytes();
+    private static final long WATERMARK_BYTES = new ByteSizeValue(1, ByteSizeUnit.KB).getBytes();
+    private static final long TOTAL_SPACE_BYTES = new ByteSizeValue(10, ByteSizeUnit.KB).getBytes();
     private static final String INDEX_ROUTING_ALLOCATION_NODE_SETTING = "index.routing.allocation.include._name";
 
     @Override
@@ -151,6 +153,7 @@ public class DiskThresholdDeciderIT extends OpenSearchIntegTestCase {
             .put(DiskThresholdSettings.CLUSTER_ROUTING_ALLOCATION_HIGH_DISK_WATERMARK_SETTING.getKey(), WATERMARK_BYTES + "b")
             .put(DiskThresholdSettings.CLUSTER_ROUTING_ALLOCATION_DISK_FLOOD_STAGE_WATERMARK_SETTING.getKey(), "0b")
             .put(DiskThresholdSettings.CLUSTER_ROUTING_ALLOCATION_REROUTE_INTERVAL_SETTING.getKey(), "0ms")
+            .put(remoteStoreGlobalClusterSettings(REPOSITORY_NAME, REPOSITORY_2_NAME, true))
             .build();
     }
 
@@ -159,10 +162,12 @@ public class DiskThresholdDeciderIT extends OpenSearchIntegTestCase {
         return List.of(InternalSettingsPlugin.class, MockInternalClusterInfoService.TestPlugin.class);
     }
 
+    //////////////////////////////////////////////////////////////////////////////////////////////////
     public void testHighWatermarkNotExceeded() throws Exception {
         internalCluster().startClusterManagerOnlyNode();
         internalCluster().startDataOnlyNode();
         final String dataNodeName = internalCluster().startDataOnlyNode();
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(REPOSITORY_NODE));
         ensureStableCluster(3);
 
         final InternalClusterInfoService clusterInfoService = (InternalClusterInfoService) internalCluster()
@@ -193,6 +198,7 @@ public class DiskThresholdDeciderIT extends OpenSearchIntegTestCase {
 
         internalCluster().startClusterManagerOnlyNode(settings);
         internalCluster().startDataOnlyNodes(2, settings);
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(REPOSITORY_NODE));
         ensureStableCluster(3);
         final MockInternalClusterInfoService clusterInfoService = getMockInternalClusterInfoService();
         // Reduce disk space of all node until all of them is breaching high disk watermark.
@@ -208,6 +214,7 @@ public class DiskThresholdDeciderIT extends OpenSearchIntegTestCase {
     public void testIndexCreateBlockNotAppliedWhenAnyNodesBelowHighWatermark() throws Exception {
         internalCluster().startClusterManagerOnlyNode();
         internalCluster().startDataOnlyNodes(2);
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(REPOSITORY_NODE));
         ensureStableCluster(3);
 
         final InternalClusterInfoService clusterInfoService = (InternalClusterInfoService) internalCluster()
@@ -226,6 +233,7 @@ public class DiskThresholdDeciderIT extends OpenSearchIntegTestCase {
 
         internalCluster().startClusterManagerOnlyNode(settings);
         internalCluster().startDataOnlyNodes(2, settings);
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(REPOSITORY_NODE));
         ensureStableCluster(3);
 
         final MockInternalClusterInfoService clusterInfoService = getMockInternalClusterInfoService();
@@ -260,6 +268,7 @@ public class DiskThresholdDeciderIT extends OpenSearchIntegTestCase {
 
         internalCluster().startClusterManagerOnlyNode(settings);
         internalCluster().startDataOnlyNodes(2, settings);
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(REPOSITORY_NODE));
         ensureStableCluster(3);
 
         final MockInternalClusterInfoService clusterInfoService = getMockInternalClusterInfoService();
@@ -294,6 +303,7 @@ public class DiskThresholdDeciderIT extends OpenSearchIntegTestCase {
 
         internalCluster().startClusterManagerOnlyNode(settings);
         internalCluster().startDataOnlyNodes(2, settings);
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(REPOSITORY_NODE));
         ensureStableCluster(3);
 
         // User applies index create block.
@@ -331,6 +341,7 @@ public class DiskThresholdDeciderIT extends OpenSearchIntegTestCase {
 
         internalCluster().startClusterManagerOnlyNode(settings);
         final List<String> dataNodeNames = internalCluster().startDataOnlyNodes(2, settings);
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(REPOSITORY_NODE));
         ensureStableCluster(3);
 
         final MockInternalClusterInfoService clusterInfoService = getMockInternalClusterInfoService();
@@ -360,6 +371,7 @@ public class DiskThresholdDeciderIT extends OpenSearchIntegTestCase {
         internalCluster().startClusterManagerOnlyNode();
         internalCluster().startDataOnlyNode();
         final String dataNodeName = internalCluster().startDataOnlyNode();
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(REPOSITORY_NODE));
         ensureStableCluster(3);
 
         assertAcked(
@@ -441,6 +453,7 @@ public class DiskThresholdDeciderIT extends OpenSearchIntegTestCase {
 
         internalCluster().startClusterManagerOnlyNode(settings);
         internalCluster().startDataOnlyNodes(2, settings);
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(REPOSITORY_NODE));
         ensureStableCluster(3);
 
         final MockInternalClusterInfoService clusterInfoService = getMockInternalClusterInfoService();
@@ -532,7 +545,7 @@ public class DiskThresholdDeciderIT extends OpenSearchIntegTestCase {
      */
     private long createReasonableSizedShards(final String indexName) throws InterruptedException {
         while (true) {
-            final IndexRequestBuilder[] indexRequestBuilders = new IndexRequestBuilder[scaledRandomIntBetween(100, 10000)];
+            final IndexRequestBuilder[] indexRequestBuilders = new IndexRequestBuilder[scaledRandomIntBetween(10, 1000)];
             for (int i = 0; i < indexRequestBuilders.length; i++) {
                 indexRequestBuilders[i] = client().prepareIndex(indexName).setSource("field", randomAlphaOfLength(10));
             }

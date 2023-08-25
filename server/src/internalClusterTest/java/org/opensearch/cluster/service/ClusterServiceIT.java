@@ -40,6 +40,7 @@ import org.opensearch.cluster.node.DiscoveryNode;
 import org.opensearch.common.Nullable;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.common.unit.TimeValue;
+import org.opensearch.test.InternalTestCluster;
 import org.opensearch.test.OpenSearchIntegTestCase;
 import org.opensearch.test.OpenSearchIntegTestCase.ClusterScope;
 import org.opensearch.test.OpenSearchIntegTestCase.Scope;
@@ -61,6 +62,7 @@ public class ClusterServiceIT extends OpenSearchIntegTestCase {
 
     public void testAckedUpdateTask() throws Exception {
         internalCluster().startNode();
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(REPOSITORY_NODE));
         ClusterService clusterService = internalCluster().getInstance(ClusterService.class);
 
         final AtomicBoolean allNodesAcked = new AtomicBoolean(false);
@@ -134,6 +136,7 @@ public class ClusterServiceIT extends OpenSearchIntegTestCase {
 
     public void testAckedUpdateTaskSameClusterState() throws Exception {
         internalCluster().startNode();
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(REPOSITORY_NODE));
         ClusterService clusterService = internalCluster().getInstance(ClusterService.class);
 
         final AtomicBoolean allNodesAcked = new AtomicBoolean(false);
@@ -202,6 +205,7 @@ public class ClusterServiceIT extends OpenSearchIntegTestCase {
 
     public void testAckedUpdateTaskNoAckExpected() throws Exception {
         internalCluster().startNode();
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(REPOSITORY_NODE));
         ClusterService clusterService = internalCluster().getInstance(ClusterService.class);
 
         final AtomicBoolean allNodesAcked = new AtomicBoolean(false);
@@ -270,6 +274,7 @@ public class ClusterServiceIT extends OpenSearchIntegTestCase {
 
     public void testAckedUpdateTaskTimeoutZero() throws Exception {
         internalCluster().startNode();
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(REPOSITORY_NODE));
         ClusterService clusterService = internalCluster().getInstance(ClusterService.class);
 
         final AtomicBoolean allNodesAcked = new AtomicBoolean(false);
@@ -343,6 +348,7 @@ public class ClusterServiceIT extends OpenSearchIntegTestCase {
 
     public void testPendingUpdateTask() throws Exception {
         String node_0 = internalCluster().startNode();
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(REPOSITORY_NODE));
         internalCluster().startCoordinatingOnlyNode(Settings.EMPTY);
 
         final ClusterService clusterService = internalCluster().getInstance(ClusterService.class, node_0);
