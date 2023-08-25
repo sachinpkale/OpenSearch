@@ -10,6 +10,7 @@ package org.opensearch.test.engine;
 
 import org.apache.lucene.index.IndexCommit;
 import org.apache.lucene.index.SegmentInfos;
+import org.opensearch.ExceptionsHelper;
 import org.opensearch.action.support.PlainActionFuture;
 import org.opensearch.common.collect.Tuple;
 import org.opensearch.common.concurrent.GatedCloseable;
@@ -25,6 +26,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 import static org.opensearch.index.seqno.SequenceNumbers.NO_OPS_PERFORMED;
 
@@ -42,46 +44,38 @@ public class MockNRTReplicationEngine extends NRTReplicationEngine {
 
     public synchronized void updateSegments(final SegmentInfos infos) throws IOException {
         super.updateSegments(infos);
-        synchronized (listeners) {
             fireListeners(getProcessedLocalCheckpoint(), listeners);
-        }
+            fireListeners(getLatestSegmentInfos().getVersion(), checkpointListeners);
     }
 
     @Override
-    public void awaitCurrent(Consumer<Boolean> listener) {
-        synchronized (listeners) {
+    public synchronized void awaitCurrent(Consumer<Boolean> listener) {
             final long processedLocalCheckpoint = getProcessedLocalCheckpoint();
             final long maxSeqNo = getLocalCheckpointTracker().getMaxSeqNo();
-            if (processedLocalCheckpoint == maxSeqNo) {
+            if (processedLocalCheckpoint >= maxSeqNo) {
                 listener.accept(true);
             } else {
                 listeners.add(new Tuple<>(maxSeqNo, listener));
             }
-        }
     }
 
-    private void awaitCheckpointUpdate(Consumer<Boolean> listener) {
-        synchronized (checkpointListeners) {
+    private synchronized void awaitCheckpointUpdate(Consumer<Boolean> listener) {
             final long localVersion = getLatestSegmentInfos().getVersion();
-            if (latestReceivedCheckpoint != -1 && latestReceivedCheckpoint <= localVersion) {
+            if (latestReceivedCheckpoint <= localVersion) {
                 listener.accept(true);
             } else {
                 checkpointListeners.add(new Tuple<>(latestReceivedCheckpoint, listener));
             }
-        }
     }
 
     @Override
-    public void updateLatestReceivedCheckpoint(Long cp) {
+    public synchronized void updateLatestReceivedCheckpoint(Long cp) {
         this.latestReceivedCheckpoint = cp;
-        synchronized (checkpointListeners) {
-            fireListeners(getLatestSegmentInfos().getVersion(), checkpointListeners);
-        }
     }
 
-    private void fireListeners(long localVersion, List<Tuple<Long, Consumer<Boolean>>> checkpointListeners) {
+    private synchronized void fireListeners(final long localVersion, final List<Tuple<Long, Consumer<Boolean>>> checkpointListeners) {
         List<Tuple> listenersToClear = new ArrayList<>();
-        for (Tuple<Long, Consumer<Boolean>> listener : listeners) {
+        for (Tuple<Long, Consumer<Boolean>> listener : checkpointListeners) {
             if (listener.v1() <= localVersion) {
                 listener.v2().accept(true);
                 listenersToClear.add(listener);
