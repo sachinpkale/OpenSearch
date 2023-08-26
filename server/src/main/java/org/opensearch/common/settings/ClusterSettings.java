@@ -672,6 +672,7 @@ public final class ClusterSettings extends AbstractScopedSettings {
                 RemoteClusterStateService.REMOTE_CLUSTER_STATE_ENABLED_SETTING,
                 RemoteClusterStateService.REMOTE_CLUSTER_STATE_REPOSITORY_SETTING
                 RemoteStoreService.REMOTE_STORE_MIGRATION_SETTING
+                RemoteStoreService.REMOTE_STORE_COMPATIBILITY_MODE_SETTING
             )
         )
     );
