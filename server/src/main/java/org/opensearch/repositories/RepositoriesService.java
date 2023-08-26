@@ -577,6 +577,13 @@ public class RepositoriesService extends AbstractLifecycleComponent implements C
     }
 
     /**
+     * Creates repository holder. This method starts the non-internal repository
+     */
+    public Repository createRepository(RepositoryMetadata repositoryMetadata) {
+        return this.createRepository(repositoryMetadata, typesRegistry);
+    }
+
+    /**
      * Creates repository holder. This method starts the repository
      */
     private Repository createRepository(RepositoryMetadata repositoryMetadata, Map<String, Repository.Factory> factories) {
@@ -600,7 +607,7 @@ public class RepositoriesService extends AbstractLifecycleComponent implements C
         }
     }
 
-    private static void validate(final String repositoryName) {
+    public static void validate(final String repositoryName) {
         if (Strings.hasLength(repositoryName) == false) {
             throw new RepositoryException(repositoryName, "cannot be empty");
         }
