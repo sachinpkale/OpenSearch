@@ -662,7 +662,7 @@ public final class ClusterSettings extends AbstractScopedSettings {
                 // Related to monitoring of task cancellation
                 TaskCancellationMonitoringSettings.IS_ENABLED_SETTING,
                 TaskCancellationMonitoringSettings.DURATION_MILLIS_SETTING,
-                RemoteStoreService.REMOTE_STORE_MIGRATION_SETTING
+                RemoteStoreService.REMOTE_STORE_COMPATIBILITY_MODE_SETTING
             )
         )
     );
