@@ -45,6 +45,7 @@ import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
 import static org.opensearch.index.seqno.SequenceNumbers.MAX_SEQ_NO;
+import static org.opensearch.index.seqno.SequenceNumbers.NO_OPS_PERFORMED;
 
 /**
  * This is an {@link Engine} implementation intended for replica shards when Segment Replication
@@ -62,6 +63,7 @@ public class NRTReplicationEngine extends Engine {
     private final WriteOnlyTranslogManager translogManager;
     private final Lock flushLock = new ReentrantLock();
     protected final ReplicaFileTracker replicaFileTracker;
+    protected volatile Long latestReceivedCheckpoint = NO_OPS_PERFORMED;
 
     private volatile long lastReceivedPrimaryGen = SequenceNumbers.NO_OPS_PERFORMED;
 
@@ -153,6 +155,13 @@ public class NRTReplicationEngine extends Engine {
             // Update the current infos reference on the Engine's reader.
             ensureOpen();
             final long maxSeqNo = Long.parseLong(infos.userData.get(MAX_SEQ_NO));
+            final String str = infos.userData.get("test");
+            if (str != null) {
+                final long test = Long.parseLong(str);
+                logger.info("MaxSeqNo {} TEST NUM {}", maxSeqNo, test);
+            } else {
+                logger.info("TEST MISSING");
+            }
             final String uuid = infos.userData.get(FORCE_MERGE_UUID_KEY);
             final long incomingGeneration = infos.getGeneration();
             readerManager.updateSegments(infos);
@@ -167,7 +176,6 @@ public class NRTReplicationEngine extends Engine {
             }
             this.lastReceivedPrimaryGen = incomingGeneration;
             localCheckpointTracker.fastForwardProcessedSeqNo(maxSeqNo);
-            logger.info("UPDATED processed {} - local max {} received {}", localCheckpointTracker.getProcessedCheckpoint(), localCheckpointTracker.getMaxSeqNo(), maxSeqNo);
             assert localCheckpointTracker.getMaxSeqNo() >= localCheckpointTracker.getProcessedCheckpoint();
         }
     }
@@ -178,7 +186,7 @@ public class NRTReplicationEngine extends Engine {
      */
     public boolean isCurrent() {
 //        logger.info("PROCESSED {} - {}", localCheckpointTracker.getProcessedCheckpoint(), localCheckpointTracker.getMaxSeqNo());
-        return localCheckpointTracker.getProcessedCheckpoint() == localCheckpointTracker.getMaxSeqNo();
+        return localCheckpointTracker.getProcessedCheckpoint() == localCheckpointTracker.getMaxSeqNo() || getLatestSegmentInfos().getVersion() == latestReceivedCheckpoint;
     }
 
     /**
@@ -252,7 +260,6 @@ public class NRTReplicationEngine extends Engine {
         deleteResult.setTook(System.nanoTime() - delete.startTime());
         deleteResult.freeze();
         localCheckpointTracker.advanceMaxSeqNo(delete.seqNo());
-//        logger.info("ADVANCED MAX TO {}", localCheckpointTracker.getMaxSeqNo());
         return deleteResult;
     }
 
@@ -520,8 +527,9 @@ public class NRTReplicationEngine extends Engine {
         return new SoftDeletesDirectoryReaderWrapper(DirectoryReader.open(store.directory()), Lucene.SOFT_DELETES_FIELD);
     }
 
-    public void updateLatestReceivedCheckpoint(Long cp) {}
-
+    public void updateLatestReceivedCheckpoint(Long cp) {
+        this.latestReceivedCheckpoint = cp;
+    }
     public void awaitCurrent(Consumer<Boolean> listener) {
         listener.accept(false);
     }

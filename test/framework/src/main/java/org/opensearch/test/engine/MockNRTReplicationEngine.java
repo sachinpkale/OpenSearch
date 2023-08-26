@@ -11,13 +11,11 @@ package org.opensearch.test.engine;
 import org.apache.lucene.index.IndexCommit;
 import org.apache.lucene.index.SegmentInfos;
 import org.opensearch.ExceptionsHelper;
-import org.opensearch.action.support.PlainActionFuture;
 import org.opensearch.common.collect.Tuple;
 import org.opensearch.common.concurrent.GatedCloseable;
 import org.opensearch.index.engine.EngineConfig;
 import org.opensearch.index.engine.EngineException;
 import org.opensearch.index.engine.NRTReplicationEngine;
-import org.opensearch.index.seqno.SequenceNumbers;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -32,9 +30,6 @@ import static org.opensearch.index.seqno.SequenceNumbers.NO_OPS_PERFORMED;
 
 public class MockNRTReplicationEngine extends NRTReplicationEngine {
 
-    protected volatile Long latestReceivedCheckpoint = NO_OPS_PERFORMED;
-
-    final List<Tuple<Long, Consumer<Boolean>>> listeners = new ArrayList<>();
     final List<Tuple<Long, Consumer<Boolean>>> checkpointListeners = new ArrayList<>();
     private final AtomicBoolean mergePending = new AtomicBoolean(false);
 
@@ -44,33 +39,27 @@ public class MockNRTReplicationEngine extends NRTReplicationEngine {
 
     public synchronized void updateSegments(final SegmentInfos infos) throws IOException {
         super.updateSegments(infos);
-            fireListeners(getProcessedLocalCheckpoint(), listeners);
+        if (checkpointListeners.isEmpty() == false) {
             fireListeners(getLatestSegmentInfos().getVersion(), checkpointListeners);
+        }
     }
 
     @Override
     public synchronized void awaitCurrent(Consumer<Boolean> listener) {
-            final long processedLocalCheckpoint = getProcessedLocalCheckpoint();
-            final long maxSeqNo = getLocalCheckpointTracker().getMaxSeqNo();
-            if (processedLocalCheckpoint >= maxSeqNo) {
-                listener.accept(true);
-            } else {
-                listeners.add(new Tuple<>(maxSeqNo, listener));
-            }
+        if (isCurrent()) {
+            listener.accept(true);
+        } else {
+            awaitCheckpointUpdate(listener);
+        }
     }
 
     private synchronized void awaitCheckpointUpdate(Consumer<Boolean> listener) {
-            final long localVersion = getLatestSegmentInfos().getVersion();
-            if (latestReceivedCheckpoint <= localVersion) {
-                listener.accept(true);
-            } else {
-                checkpointListeners.add(new Tuple<>(latestReceivedCheckpoint, listener));
-            }
-    }
-
-    @Override
-    public synchronized void updateLatestReceivedCheckpoint(Long cp) {
-        this.latestReceivedCheckpoint = cp;
+        final long localVersion = getLatestSegmentInfos().getVersion();
+        if (latestReceivedCheckpoint <= localVersion) {
+            listener.accept(true);
+        } else {
+            checkpointListeners.add(new Tuple<>(latestReceivedCheckpoint, listener));
+        }
     }
 
     private synchronized void fireListeners(final long localVersion, final List<Tuple<Long, Consumer<Boolean>>> checkpointListeners) {
@@ -96,10 +85,10 @@ public class MockNRTReplicationEngine extends NRTReplicationEngine {
     public GatedCloseable<IndexCommit> acquireLastIndexCommit(boolean flushFirst) throws EngineException {
         // wait until we are caught up to return this.
         if (mergePending.get()) {
-           CountDownLatch latch = new CountDownLatch(1);
-           awaitCheckpointUpdate((b) -> {
-               latch.countDown();
-           });
+            CountDownLatch latch = new CountDownLatch(1);
+            awaitCheckpointUpdate((b) -> {
+                latch.countDown();
+            });
             try {
                 latch.await(1, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
