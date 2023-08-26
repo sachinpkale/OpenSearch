@@ -4364,7 +4364,8 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
      * Returns true if this shard has some scheduled refresh that is pending because of search-idle.
      */
     public final boolean hasRefreshPending() {
-        return pendingRefreshLocation.get() != null;
+        final Boolean nrtPending = getReplicationEngine().map(NRTReplicationEngine::isCurrent).orElse(false);
+        return pendingRefreshLocation.get() != null || nrtPending;
     }
 
     private void setRefreshPending(Engine engine) {
