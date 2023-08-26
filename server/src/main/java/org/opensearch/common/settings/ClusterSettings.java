@@ -33,6 +33,7 @@ package org.opensearch.common.settings;
 
 import org.apache.logging.log4j.LogManager;
 import org.opensearch.action.admin.cluster.configuration.TransportAddVotingConfigExclusionsAction;
+import org.opensearch.action.admin.cluster.remotestore.RemoteStoreService;
 import org.opensearch.action.admin.indices.close.TransportCloseIndexAction;
 import org.opensearch.action.search.CreatePitController;
 import org.opensearch.action.search.TransportSearchAction;
@@ -660,7 +661,8 @@ public final class ClusterSettings extends AbstractScopedSettings {
 
                 // Related to monitoring of task cancellation
                 TaskCancellationMonitoringSettings.IS_ENABLED_SETTING,
-                TaskCancellationMonitoringSettings.DURATION_MILLIS_SETTING
+                TaskCancellationMonitoringSettings.DURATION_MILLIS_SETTING,
+                RemoteStoreService.REMOTE_STORE_MIGRATION_SETTING
             )
         )
     );
