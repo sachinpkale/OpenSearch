@@ -47,7 +47,6 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 import static java.util.Arrays.asList;
 import static org.opensearch.test.OpenSearchIntegTestCase.client;
@@ -129,23 +128,7 @@ public class SegmentReplicationBaseIT extends OpenSearchIntegTestCase {
             for (String node : nodes) {
                 final IndexShard indexShard = getIndexShard(node, index);
                 indexShard.getReplicationEngine().ifPresent((engine) -> {
-                    final boolean current = engine.isCurrent();
-                    logger.info("Node {} {}", node, current);
-                    assertTrue(current);
-                });
-            }
-        });
-    }
-
-    public static void waitForCurrentReplicas() throws Exception {
-        waitForCurrentReplicas(getReplicaShards(internalCluster().getNodeNames()));
-    }
-
-    public static void waitForCurrentReplicas(Collection<IndexShard> shards) throws Exception {
-        assertBusy(() -> {
-            for (IndexShard indexShard : shards) {
-                indexShard.getReplicationEngine().ifPresent((engine) -> {
-                    final boolean current = engine.isCurrent();
+                    final boolean current = engine.hasRefreshPending();
                     assertTrue(current);
                 });
             }
