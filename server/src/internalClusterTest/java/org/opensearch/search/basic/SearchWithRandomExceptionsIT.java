@@ -78,6 +78,11 @@ public class SearchWithRandomExceptionsIT extends OpenSearchIntegTestCase {
         return false;
     }
 
+    @Override
+    protected boolean addMockNRTReplicationEngine() {
+        return false;
+    }
+
     public void testRandomExceptions() throws IOException, InterruptedException, ExecutionException {
         String mapping = XContentFactory.jsonBuilder()
             .startObject()

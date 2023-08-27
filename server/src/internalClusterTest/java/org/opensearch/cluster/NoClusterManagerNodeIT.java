@@ -305,7 +305,6 @@ public class NoClusterManagerNodeIT extends OpenSearchIntegTestCase {
             .get();
         assertHitCount(countResponse, 1L);
 
-        logger.info("--> here 3");
         SearchResponse searchResponse = clientToClusterManagerlessNode.prepareSearch("test1").setAllowPartialSearchResults(true).get();
         assertHitCount(searchResponse, 1L);
 

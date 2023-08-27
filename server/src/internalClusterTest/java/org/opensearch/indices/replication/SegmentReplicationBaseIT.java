@@ -39,6 +39,7 @@ import org.opensearch.transport.TransportService;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -46,6 +47,7 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import static java.util.Arrays.asList;
 import static org.opensearch.test.OpenSearchIntegTestCase.client;
@@ -135,14 +137,18 @@ public class SegmentReplicationBaseIT extends OpenSearchIntegTestCase {
         });
     }
 
-    public static void waitForCurrentReplicas(List<IndexShard> shards) throws Exception {
+    public static void waitForCurrentReplicas() throws Exception {
+        waitForCurrentReplicas(getReplicaShards(internalCluster().getNodeNames()));
+    }
+
+    public static void waitForCurrentReplicas(Collection<IndexShard> shards) throws Exception {
         assertBusy(() -> {
-        for (IndexShard indexShard : shards) {
-            indexShard.getReplicationEngine().ifPresent((engine) -> {
-                final boolean current = engine.isCurrent();
-                assertTrue(current);
-            });
-        }
+            for (IndexShard indexShard : shards) {
+                indexShard.getReplicationEngine().ifPresent((engine) -> {
+                    final boolean current = engine.isCurrent();
+                    assertTrue(current);
+                });
+            }
         });
     }
 
@@ -218,12 +224,29 @@ public class SegmentReplicationBaseIT extends OpenSearchIntegTestCase {
     /**
      * Fetch IndexShard by shardId, multiple shards per node allowed.
      */
-    protected IndexShard getIndexShard(String node, ShardId shardId, String indexName) {
+    protected static IndexShard getIndexShard(String node, ShardId shardId, String indexName) {
         final Index index = resolveIndex(indexName);
         IndicesService indicesService = internalCluster().getInstance(IndicesService.class, node);
         IndexService indexService = indicesService.indexServiceSafe(index);
         final Optional<Integer> id = indexService.shardIds().stream().filter(sid -> sid == shardId.id()).findFirst();
         return indexService.getShard(id.get());
+    }
+
+    protected static Collection<IndexShard> getReplicaShards(String... node) {
+        final Set<IndexShard> shards = new HashSet<>();
+        for (String n : node) {
+            IndicesService indicesService = internalCluster().getInstance(IndicesService.class, n);
+            for (IndexService indexService : indicesService) {
+                if (indexService.getIndexSettings().isSegRepEnabled()) {
+                    for (IndexShard indexShard : indexService) {
+                        if (indexShard.routingEntry().primary() == false) {
+                            shards.add(indexShard);
+                        }
+                    }
+                }
+            }
+        }
+        return shards;
     }
 
     /**
@@ -232,7 +255,7 @@ public class SegmentReplicationBaseIT extends OpenSearchIntegTestCase {
     protected static IndexShard getIndexShard(String node, String indexName) {
         final Index index = resolveIndex(indexName);
         IndicesService indicesService = internalCluster().getInstance(IndicesService.class, node);
-        IndexService indexService = indicesService.indexServiceSafe(index);
+        IndexService indexService = indicesService.indexService(index);
         final Optional<Integer> shardId = indexService.shardIds().stream().findFirst();
         return indexService.getShard(shardId.get());
     }

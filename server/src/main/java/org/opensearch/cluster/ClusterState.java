@@ -61,6 +61,7 @@ import org.opensearch.core.common.io.stream.VersionedNamedWriteable;
 import org.opensearch.core.xcontent.ToXContentFragment;
 import org.opensearch.core.xcontent.XContentBuilder;
 import org.opensearch.discovery.Discovery;
+import org.opensearch.indices.replication.common.ReplicationType;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -262,6 +263,15 @@ public class ClusterState implements ToXContentFragment, Diffable<ClusterState> 
 
     public Metadata getMetadata() {
         return metadata();
+    }
+
+    public boolean isSegmentReplicationEnabled(String indexName) {
+        return Optional.ofNullable(getMetadata().index(indexName))
+            .map(
+                indexMetadata -> ReplicationType.parseString(indexMetadata.getSettings().get(IndexMetadata.SETTING_REPLICATION_TYPE))
+                    .equals(ReplicationType.SEGMENT)
+            )
+            .orElse(false);
     }
 
     public CoordinationMetadata coordinationMetadata() {
