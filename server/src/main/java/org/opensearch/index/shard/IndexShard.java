@@ -1008,7 +1008,8 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
                 UNASSIGNED_SEQ_NO,
                 0
             );
-            return getEngine().index(index);
+            return index(engine, index);
+
         }
         assert opPrimaryTerm <= getOperationPrimaryTerm() : "op term [ "
             + opPrimaryTerm
@@ -1550,11 +1551,6 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
     public Optional<NRTReplicationEngine> getReplicationEngine() {
         return Optional.ofNullable(getEngineOrNull()).filter((engine) -> engine instanceof NRTReplicationEngine)
             .map((engine) -> (NRTReplicationEngine) engine);
-//        if (engine instanceof NRTReplicationEngine) {
-//            return Optional.of((NRTReplicationEngine) getEngine());
-//        } else {
-//            return Optional.empty();
-//        }
     }
 
     public void finalizeReplication(SegmentInfos infos) throws IOException {

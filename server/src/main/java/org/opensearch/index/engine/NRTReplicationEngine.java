@@ -155,13 +155,6 @@ public class NRTReplicationEngine extends Engine {
             // Update the current infos reference on the Engine's reader.
             ensureOpen();
             final long maxSeqNo = Long.parseLong(infos.userData.get(MAX_SEQ_NO));
-            final String str = infos.userData.get("test");
-            if (str != null) {
-                final long test = Long.parseLong(str);
-                logger.info("MaxSeqNo {} TEST NUM {}", maxSeqNo, test);
-            } else {
-                logger.info("TEST MISSING");
-            }
             final String uuid = infos.userData.get(FORCE_MERGE_UUID_KEY);
             final long incomingGeneration = infos.getGeneration();
             readerManager.updateSegments(infos);
@@ -185,7 +178,6 @@ public class NRTReplicationEngine extends Engine {
      * @return
      */
     public boolean isCurrent() {
-//        logger.info("PROCESSED {} - {}", localCheckpointTracker.getProcessedCheckpoint(), localCheckpointTracker.getMaxSeqNo());
         return localCheckpointTracker.getProcessedCheckpoint() == localCheckpointTracker.getMaxSeqNo() || getLatestSegmentInfos().getVersion() == latestReceivedCheckpoint;
     }
 

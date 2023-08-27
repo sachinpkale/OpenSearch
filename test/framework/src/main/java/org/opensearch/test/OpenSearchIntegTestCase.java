@@ -142,6 +142,7 @@ import org.opensearch.index.store.Store;
 import org.opensearch.index.translog.Translog;
 import org.opensearch.indices.IndicesQueryCache;
 import org.opensearch.indices.IndicesRequestCache;
+import org.opensearch.indices.IndicesService;
 import org.opensearch.indices.replication.common.ReplicationType;
 import org.opensearch.indices.store.IndicesStore;
 import org.opensearch.monitor.os.OsInfo;
@@ -771,9 +772,6 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
                     )
                 ).getStringRep()
             );
-        }
-        if (addMockNRTReplicationEngine()) {
-            builder.put(INDEX_REPLICATION_TYPE_SETTING.getKey(), ReplicationType.SEGMENT);
         }
 
         return builder.build();
@@ -1929,10 +1927,15 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
             // when tests are run with concurrent segment search enabled
             builder.put(SearchService.CONCURRENT_SEGMENT_SEARCH_TARGET_MAX_SLICE_COUNT_KEY, 2);
         }
-        if (addMockNRTReplicationEngine()) {
+//        if (FeatureFlags.SEGMENT_REPLICATION_EXPERIMENTAL_SETTING.get(featureFlagSettings)) {
+        if (useSegmentReplication()) {
             builder.put(CLUSTER_REPLICATION_TYPE_SETTING.getKey(), ReplicationType.SEGMENT);
         }
         return builder.build();
+    }
+
+    public boolean isSegRepEnabled(String index) {
+        return client().admin().indices().prepareGetSettings().get().getSetting(index, SETTING_REPLICATION_TYPE).equals(ReplicationType.SEGMENT.name());
     }
 
     protected Path nodeConfigPath(int nodeOrdinal) {
@@ -2036,6 +2039,10 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
         );
     }
 
+    protected boolean useSegmentReplication() {
+        return true;
+    }
+
     private NodeConfigurationSource getNodeConfigSource() {
         Settings.Builder initialNodeSettings = Settings.builder();
         if (addMockTransportService()) {
@@ -2086,7 +2093,8 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
      * Returns {@code true} if this test cluster can use a mock internal engine. Defaults to true.
      */
     protected boolean addMockNRTReplicationEngine() {
-        return true;
+        // some tests wire in MockEngineFactory directly, which will support SR internally.
+        return useSegmentReplication() && nodePlugins().contains(MockEngineFactoryPlugin.class) == false;
     }
 
     /** Returns {@code true} iff this test cluster should use a dummy geo_shape field mapper */
@@ -2123,10 +2131,6 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
             }
             if (addMockInternalEngine() && randomBoolean()) {
                 mocks.add(MockEngineFactoryPlugin.class);
-            } else {
-                if (addMockNRTReplicationEngine()) {
-                    mocks.add(MockNRTEngineFactoryPlugin.class);
-                }
             }
             if (randomBoolean()) {
                 mocks.add(MockSearchService.TestPlugin.class);
@@ -2134,10 +2138,9 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
             if (randomBoolean()) {
                 mocks.add(MockFieldFilterPlugin.class);
             }
-        } else {
-            if (addMockNRTReplicationEngine()) {
-                mocks.add(MockNRTEngineFactoryPlugin.class);
-            }
+        }
+        if (addMockNRTReplicationEngine() && mocks.contains(MockEngineFactoryPlugin.class) == false) {
+            mocks.add(MockNRTEngineFactoryPlugin.class);
         }
         if (addMockTransportService()) {
             mocks.add(getTestTransportPlugin());
