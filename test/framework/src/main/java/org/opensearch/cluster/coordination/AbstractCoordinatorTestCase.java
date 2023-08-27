@@ -39,6 +39,7 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.opensearch.OpenSearchException;
 import org.opensearch.Version;
+import org.opensearch.action.admin.cluster.remotestore.RemoteStoreService;
 import org.opensearch.cluster.ClusterModule;
 import org.opensearch.cluster.ClusterState;
 import org.opensearch.cluster.ClusterStateTaskListener;
@@ -58,6 +59,7 @@ import org.opensearch.cluster.service.ClusterService;
 import org.opensearch.cluster.service.FakeThreadPoolClusterManagerService;
 import org.opensearch.common.Nullable;
 import org.opensearch.common.Randomness;
+import org.opensearch.common.SetOnce;
 import org.opensearch.common.UUIDs;
 import org.opensearch.common.collect.Tuple;
 import org.opensearch.common.io.stream.BytesStreamOutput;
@@ -84,6 +86,7 @@ import org.opensearch.gateway.MockGatewayMetaState;
 import org.opensearch.gateway.PersistedClusterStateService;
 import org.opensearch.monitor.NodeHealthService;
 import org.opensearch.monitor.StatusInfo;
+import org.opensearch.repositories.RepositoriesService;
 import org.opensearch.test.OpenSearchTestCase;
 import org.opensearch.test.disruption.DisruptableMockTransport;
 import org.opensearch.test.disruption.DisruptableMockTransport.ConnectionStatus;
@@ -1033,6 +1036,8 @@ public class AbstractCoordinatorTestCase extends OpenSearchTestCase {
             TransportService transportService;
             private DisruptableMockTransport mockTransport;
             private NodeHealthService nodeHealthService;
+            private RepositoriesService repositoriesService;
+            private RemoteStoreService remoteStoreService;
             List<BiConsumer<DiscoveryNode, ClusterState>> extraJoinValidators = new ArrayList<>();
 
             ClusterNode(int nodeIndex, boolean clusterManagerEligible, Settings nodeSettings, NodeHealthService nodeHealthService) {
@@ -1125,6 +1130,15 @@ public class AbstractCoordinatorTestCase extends OpenSearchTestCase {
                 clusterService.setNodeConnectionsService(
                     new NodeConnectionsService(clusterService.getSettings(), threadPool, transportService)
                 );
+                repositoriesService = new RepositoriesService(
+                    settings,
+                    clusterService,
+                    transportService,
+                    Collections.emptyMap(),
+                    Collections.emptyMap(),
+                    threadPool
+                );
+                remoteStoreService = new RemoteStoreService(new SetOnce<>(repositoriesService)::get, threadPool);
                 final Collection<BiConsumer<DiscoveryNode, ClusterState>> onJoinValidators = Collections.singletonList(
                     (dn, cs) -> extraJoinValidators.forEach(validator -> validator.accept(dn, cs))
                 );
@@ -1144,7 +1158,8 @@ public class AbstractCoordinatorTestCase extends OpenSearchTestCase {
                     Randomness.get(),
                     (s, p, r) -> {},
                     getElectionStrategy(),
-                    nodeHealthService
+                    nodeHealthService,
+                    remoteStoreService
                 );
                 clusterManagerService.setClusterStatePublisher(coordinator);
                 final GatewayService gatewayService = new GatewayService(
