@@ -123,7 +123,6 @@ import org.opensearch.index.engine.EngineConfig;
 import org.opensearch.index.engine.EngineConfigFactory;
 import org.opensearch.index.engine.EngineException;
 import org.opensearch.index.engine.EngineFactory;
-import org.opensearch.index.engine.InternalEngine;
 import org.opensearch.index.engine.NRTReplicationEngine;
 import org.opensearch.index.engine.ReadOnlyEngine;
 import org.opensearch.index.engine.RefreshFailedEngineException;
@@ -4360,7 +4359,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
      * Returns true if this shard has some scheduled refresh that is pending because of search-idle.
      */
     public final boolean hasRefreshPending() {
-        final Boolean nrtPending = getReplicationEngine().map(NRTReplicationEngine::isCurrent).orElse(false);
+        final Boolean nrtPending = getReplicationEngine().map(NRTReplicationEngine::hasRefreshPending).orElse(false);
         return pendingRefreshLocation.get() != null || nrtPending;
     }
 

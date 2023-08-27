@@ -174,11 +174,12 @@ public class NRTReplicationEngine extends Engine {
     }
 
     /**
-     * Returns true if this engine is current with the latest ack'd write.
+     * Returns true if this engine is behind the primary.
      * @return
      */
-    public boolean isCurrent() {
-        return localCheckpointTracker.getProcessedCheckpoint() == localCheckpointTracker.getMaxSeqNo() || getLatestSegmentInfos().getVersion() == latestReceivedCheckpoint;
+    public boolean hasRefreshPending() {
+//        logger.info("Checking refresh pending Processed CP {} - Max {} reader infos {} pending {}", localCheckpointTracker.getProcessedCheckpoint(), localCheckpointTracker.getMaxSeqNo(), getLatestSegmentInfos().getVersion(), latestReceivedCheckpoint);
+        return localCheckpointTracker.getProcessedCheckpoint() != localCheckpointTracker.getMaxSeqNo();
     }
 
     /**
