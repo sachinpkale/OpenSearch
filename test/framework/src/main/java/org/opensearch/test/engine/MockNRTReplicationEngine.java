@@ -46,7 +46,7 @@ public class MockNRTReplicationEngine extends NRTReplicationEngine {
 
     @Override
     public synchronized void awaitCurrent(Consumer<Boolean> listener) {
-        if (isCurrent()) {
+        if (hasRefreshPending() == false) {
             listener.accept(true);
         } else {
             awaitCheckpointUpdate(listener);
