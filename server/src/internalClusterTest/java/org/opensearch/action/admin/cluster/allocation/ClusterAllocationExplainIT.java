@@ -93,6 +93,7 @@ public final class ClusterAllocationExplainIT extends OpenSearchIntegTestCase {
 
         logger.info("--> stopping the node with the primary");
         internalCluster().stopRandomNode(InternalTestCluster.nameFilter(primaryNodeName()));
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(REPOSITORY_NODE));
         ensureStableCluster(1);
 
         boolean includeYesDecisions = randomBoolean();
@@ -182,6 +183,7 @@ public final class ClusterAllocationExplainIT extends OpenSearchIntegTestCase {
         prepareIndex(1, 1);
         logger.info("--> stopping the node with the replica");
         internalCluster().stopRandomNode(InternalTestCluster.nameFilter(replicaNode().getName()));
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(REPOSITORY_NODE));
         ensureStableCluster(2);
         assertBusy(() ->
         // wait till we have passed any pending shard data fetching
@@ -317,6 +319,7 @@ public final class ClusterAllocationExplainIT extends OpenSearchIntegTestCase {
         Settings node1DataPathSettings = internalCluster().dataPathSettings(nodes.get(1));
         internalCluster().stopRandomNode(InternalTestCluster.nameFilter(nodes.get(0)));
         internalCluster().stopRandomNode(InternalTestCluster.nameFilter(nodes.get(1)));
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(REPOSITORY_NODE));
         ensureStableCluster(1);
 
         logger.info("--> setting allocation filtering to only allow allocation on the currently running node");
@@ -479,6 +482,7 @@ public final class ClusterAllocationExplainIT extends OpenSearchIntegTestCase {
         assertEquals(Reason.INDEX_CREATED, unassignedInfo.getReason());
         assertEquals(AllocationStatus.DECIDERS_NO, unassignedInfo.getLastAllocationStatus());
 
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(REPOSITORY_NODE));
         // verify cluster info
         verifyClusterInfo(clusterInfo, includeDiskInfo, 2);
 
@@ -581,6 +585,7 @@ public final class ClusterAllocationExplainIT extends OpenSearchIntegTestCase {
         assertNull(unassignedInfo);
 
         // verify cluster info
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(REPOSITORY_NODE));
         verifyClusterInfo(clusterInfo, includeDiskInfo, 2);
 
         // verify decision object
@@ -662,6 +667,7 @@ public final class ClusterAllocationExplainIT extends OpenSearchIntegTestCase {
     public void testRebalancingNotAllowed() throws Exception {
         logger.info("--> starting a single node");
         internalCluster().startNode();
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(REPOSITORY_NODE));
         ensureStableCluster(1);
 
         prepareIndex(5, 0);
@@ -780,6 +786,7 @@ public final class ClusterAllocationExplainIT extends OpenSearchIntegTestCase {
     public void testWorseBalance() throws Exception {
         logger.info("--> starting a single node");
         internalCluster().startNode();
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(REPOSITORY_NODE));
         ensureStableCluster(1);
 
         prepareIndex(5, 0);
@@ -890,6 +897,7 @@ public final class ClusterAllocationExplainIT extends OpenSearchIntegTestCase {
     public void testBetterBalanceButCannotAllocate() throws Exception {
         logger.info("--> starting a single node");
         String firstNode = internalCluster().startNode();
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(REPOSITORY_NODE));
         ensureStableCluster(1);
 
         prepareIndex(5, 0);
@@ -1046,6 +1054,7 @@ public final class ClusterAllocationExplainIT extends OpenSearchIntegTestCase {
         assertNull(unassignedInfo);
 
         // verify cluster info
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(REPOSITORY_NODE));
         verifyClusterInfo(clusterInfo, includeDiskInfo, 3);
 
         // verify decision objects
@@ -1139,6 +1148,7 @@ public final class ClusterAllocationExplainIT extends OpenSearchIntegTestCase {
 
         logger.info("--> stop node with the replica shard");
         internalCluster().stopRandomNode(InternalTestCluster.nameFilter(replicaNode));
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(REPOSITORY_NODE));
 
         final IndexMetadata.State indexState = randomIndexState();
         if (indexState == IndexMetadata.State.OPEN) {
