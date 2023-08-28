@@ -3123,6 +3123,12 @@ public abstract class BlobStoreRepository extends AbstractLifecycleComponent imp
 
     @Override
     public void verify(String seed, DiscoveryNode localNode) {
+        /*
+        if(!isSystemRepository) {
+            assertSnapshotOrGenericThread();
+        }
+        Update the assertion method invocation with this once #9088 is merged.
+        */
         assertSnapshotOrGenericThread();
         if (isReadOnly()) {
             try {
