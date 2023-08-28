@@ -207,6 +207,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static org.opensearch.action.admin.cluster.remotestore.RemoteStoreNode.*;
+import static org.opensearch.action.admin.cluster.remotestore.RemoteStoreNode.REMOTE_STORE_REPOSITORY_SETTINGS_ATTRIBUTE_KEY_PREFIX;
 import static org.opensearch.cluster.metadata.IndexMetadata.*;
 import static org.opensearch.common.unit.TimeValue.timeValueMillis;
 import static org.opensearch.core.common.util.CollectionUtils.eagerPartition;
@@ -1929,6 +1931,8 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
         return annotation == null ? InternalTestCluster.DEFAULT_NUM_CLIENT_NODES : annotation.numClientNodes();
     }
 
+    Settings nodeAttributeSettings;
+
     /**
      * This method is used to obtain settings for the {@code N}th node in the cluster.
      * Nodes in this cluster are associated with an ordinal number such that nodes can
@@ -1954,8 +1958,12 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
             .put(SearchService.LOW_LEVEL_CANCELLATION_SETTING.getKey(), randomBoolean())
             .putList(DISCOVERY_SEED_HOSTS_SETTING.getKey()) // empty list disables a port scan for other nodes
             .putList(DISCOVERY_SEED_PROVIDERS_SETTING.getKey(), "file")
-            .put(featureFlagSettings())
-            .put(remoteStoreGlobalClusterSettings(REPOSITORY_NAME, REPOSITORY_2_NAME, true));
+            .put(featureFlagSettings());
+
+        if(nodeAttributeSettings == null) {
+            nodeAttributeSettings = remoteStoreGlobalNodeAttributes(REPOSITORY_NAME, REPOSITORY_2_NAME);
+        }
+        builder.put(nodeAttributeSettings);
 
         // Enable tracer only when Telemetry Setting is enabled
         if (featureFlagSettings().getAsBoolean(FeatureFlags.TELEMETRY_SETTING.getKey(), false)) {
@@ -1972,6 +1980,38 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
         }
         return builder.build();
     }
+
+
+    public Settings remoteStoreGlobalNodeAttributes(String segmentRepoName, String translogRepoName) {
+        Path absolutePath = randomRepoPath().toAbsolutePath();
+        Path absolutePath2 = randomRepoPath().toAbsolutePath();
+        if (segmentRepoName.equals(translogRepoName)) {
+            absolutePath2 = absolutePath;
+        }
+        return Settings.builder()
+            .put("node.attr." + REMOTE_STORE_SEGMENT_REPOSITORY_NAME_ATTRIBUTE_KEY, segmentRepoName)
+            .put(
+                String.format(Locale.getDefault(), "node.attr." + REMOTE_STORE_REPOSITORY_TYPE_ATTRIBUTE_KEY_FORMAT, segmentRepoName),
+                "fs"
+            )
+            .put(
+                String.format(Locale.getDefault(), "node.attr." + REMOTE_STORE_REPOSITORY_SETTINGS_ATTRIBUTE_KEY_PREFIX, segmentRepoName)
+                    + "location",
+                absolutePath.toString()
+            )
+            .put("node.attr." + REMOTE_STORE_TRANSLOG_REPOSITORY_NAME_ATTRIBUTE_KEY, translogRepoName)
+            .put(
+                String.format(Locale.getDefault(), "node.attr." + REMOTE_STORE_REPOSITORY_TYPE_ATTRIBUTE_KEY_FORMAT, translogRepoName),
+                "fs"
+            )
+            .put(
+                String.format(Locale.getDefault(), "node.attr." + REMOTE_STORE_REPOSITORY_SETTINGS_ATTRIBUTE_KEY_PREFIX, translogRepoName)
+                    + "location",
+                absolutePath2.toString()
+            )
+            .build();
+    }
+
 
 
     public static Settings remoteStoreGlobalClusterSettings(
@@ -1998,14 +2038,6 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
     protected static final String REPOSITORY_2_NAME = "test-remote-store-repo-2";
     protected static String REPOSITORY_NODE = "";
 
-
-    protected void setupRepoGlobal() {
-        REPOSITORY_NODE = internalCluster().startClusterManagerOnlyNode();
-        Path absolutePath = randomRepoPath().toAbsolutePath();
-        putRepository(absolutePath);
-        Path absolutePath2 = randomRepoPath().toAbsolutePath();
-        putRepository(absolutePath2, REPOSITORY_2_NAME);
-    }
 
     private void putRepository(Path path, String repoName) {
         assertAcked(clusterAdmin().preparePutRepository(repoName).setType("fs").setSettings(Settings.builder().put("location", path)));
@@ -2365,7 +2397,6 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
             beforeInternal();
             printTestMessage("all set up");
         }
-        setupRepoGlobal();
     }
 
     @After
