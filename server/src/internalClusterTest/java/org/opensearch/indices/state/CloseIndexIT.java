@@ -667,7 +667,12 @@ public class CloseIndexIT extends OpenSearchIntegTestCase {
 
     void assertNoFileBasedRecovery(String indexName) {
         if (isSegRepEnabled(indexName) == false) {
-            for (RecoveryState recovery : client().admin().indices().prepareRecoveries(indexName).get().shardRecoveryStates().get(indexName)) {
+            for (RecoveryState recovery : client().admin()
+                .indices()
+                .prepareRecoveries(indexName)
+                .get()
+                .shardRecoveryStates()
+                .get(indexName)) {
                 if (recovery.getPrimary() == false) {
                     assertThat(recovery.getIndex().fileDetails(), empty());
                 }

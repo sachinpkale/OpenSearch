@@ -1126,7 +1126,13 @@ public class Node implements Closeable {
                         .toInstance(new PeerRecoveryTargetService(threadPool, transportService, recoverySettings, clusterService));
                     b.bind(SegmentReplicationTargetService.class)
                         .toInstance(
-                            newSegmentReplicationTargetService(threadPool, clusterService, indicesService, transportService, recoverySettings)
+                            newSegmentReplicationTargetService(
+                                threadPool,
+                                clusterService,
+                                indicesService,
+                                transportService,
+                                recoverySettings
+                            )
                         );
                     b.bind(SegmentReplicationSourceService.class)
                         .toInstance(new SegmentReplicationSourceService(indicesService, transportService, recoverySettings));
@@ -1193,7 +1199,13 @@ public class Node implements Closeable {
         }
     }
 
-    protected SegmentReplicationTargetService newSegmentReplicationTargetService(ThreadPool threadPool, ClusterService clusterService, IndicesService indicesService, TransportService transportService, RecoverySettings recoverySettings) {
+    protected SegmentReplicationTargetService newSegmentReplicationTargetService(
+        ThreadPool threadPool,
+        ClusterService clusterService,
+        IndicesService indicesService,
+        TransportService transportService,
+        RecoverySettings recoverySettings
+    ) {
         return new SegmentReplicationTargetService(
             threadPool,
             recoverySettings,

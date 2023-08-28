@@ -137,7 +137,6 @@ public class SegmentReplicationBaseIT extends OpenSearchIntegTestCase {
 
     protected static final Logger logger = LogManager.getLogger(SegmentReplicationBaseIT.class);
 
-
     public static void waitForSearchableDocs(String indexName, long docCount, List<String> nodes) throws Exception {
         waitForCurrentReplicas(indexName, nodes);
         assertBusy(() -> {
