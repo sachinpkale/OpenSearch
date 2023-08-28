@@ -1818,9 +1818,7 @@ public class InternalEngine extends Engine {
         if (shouldPeriodicallyFlushAfterBigMerge.get()) {
             return true;
         }
-        final long localCheckpointOfLastCommit = Long.parseLong(
-            lastCommittedSegmentInfos.userData.get(LOCAL_CHECKPOINT_KEY)
-        );
+        final long localCheckpointOfLastCommit = Long.parseLong(lastCommittedSegmentInfos.userData.get(LOCAL_CHECKPOINT_KEY));
         return translogManager.shouldPeriodicallyFlush(
             localCheckpointOfLastCommit,
             config().getIndexSettings().getFlushThresholdSize().getBytes()
@@ -1858,9 +1856,7 @@ public class InternalEngine extends Engine {
                 if (hasUncommittedChanges
                     || force
                     || shouldPeriodicallyFlush
-                    || getProcessedLocalCheckpoint() > Long.parseLong(
-                        lastCommittedSegmentInfos.userData.get(LOCAL_CHECKPOINT_KEY)
-                    )) {
+                    || getProcessedLocalCheckpoint() > Long.parseLong(lastCommittedSegmentInfos.userData.get(LOCAL_CHECKPOINT_KEY))) {
                     translogManager.ensureCanFlush();
                     try {
                         translogManager.rollTranslogGeneration();

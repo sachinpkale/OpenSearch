@@ -1548,7 +1548,8 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
     }
 
     public Optional<NRTReplicationEngine> getReplicationEngine() {
-        return Optional.ofNullable(getEngineOrNull()).filter((engine) -> engine instanceof NRTReplicationEngine)
+        return Optional.ofNullable(getEngineOrNull())
+            .filter((engine) -> engine instanceof NRTReplicationEngine)
             .map((engine) -> (NRTReplicationEngine) engine);
     }
 
@@ -1615,7 +1616,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
                         segmentInfos.getGeneration(),
                         segmentInfos.getVersion(),
                         store.getSegmentMetadataMap(segmentInfos).values().stream().mapToLong(StoreFileMetadata::length).sum(),
-//                        getEngine().config().getCodec().getName()
+                        // getEngine().config().getCodec().getName()
                         "codec"
                     )
                 );
@@ -4417,9 +4418,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
                 listener.accept(true);
             });
         } else {
-            getReplicationEngine().ifPresentOrElse((engine) -> {
-                engine.awaitCurrent(listener);
-            }, () -> listener.accept(false));
+            getReplicationEngine().ifPresentOrElse((engine) -> { engine.awaitCurrent(listener); }, () -> listener.accept(false));
         }
     }
 
@@ -4447,9 +4446,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
             if (isSegmentReplicationAllowed() == false) {
                 refreshListeners.addOrNotify(location, listener);
             } else {
-                getReplicationEngine().ifPresent(engine -> {
-                    engine.awaitCurrent(listener);
-                });
+                getReplicationEngine().ifPresent(engine -> { engine.awaitCurrent(listener); });
             }
         } else {
             // we're not yet ready fo ready for reads, just ignore refresh cycles
@@ -4517,7 +4514,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
         final Tuple<GatedCloseable<SegmentInfos>, ReplicationCheckpoint> tuple = getLatestSegmentInfosAndCheckpoint();
         try (final GatedCloseable<SegmentInfos> ignored = tuple.v1()) {
             final SegmentInfos infos = ignored.get();
-//            logger.info("PRIMARY {} UPDATED CP TO {} FILES {}", routingEntry().primary(), infos.getVersion(), infos.files(true));
+            // logger.info("PRIMARY {} UPDATED CP TO {} FILES {}", routingEntry().primary(), infos.getVersion(), infos.files(true));
             replicationTracker.setLatestReplicationCheckpoint(tuple.v2());
         } catch (IOException e) {
             throw new OpenSearchException("Error Closing SegmentInfos Snapshot", e);

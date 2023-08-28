@@ -174,11 +174,12 @@ public class NRTReplicationEngine extends Engine {
     }
 
     /**
-     * Returns true if this engine is behind the primary.
-     * @return
+     * @return true if this engine is behind the primary.
      */
     public boolean hasRefreshPending() {
-//        logger.info("Checking refresh pending Processed CP {} - Max {} reader infos {} pending {}", localCheckpointTracker.getProcessedCheckpoint(), localCheckpointTracker.getMaxSeqNo(), getLatestSegmentInfos().getVersion(), latestReceivedCheckpoint);
+        // logger.info("Checking refresh pending Processed CP {} - Max {} reader infos {} pending {}",
+        // localCheckpointTracker.getProcessedCheckpoint(), localCheckpointTracker.getMaxSeqNo(), getLatestSegmentInfos().getVersion(),
+        // latestReceivedCheckpoint);
         return localCheckpointTracker.getProcessedCheckpoint() != localCheckpointTracker.getMaxSeqNo();
     }
 
@@ -239,8 +240,8 @@ public class NRTReplicationEngine extends Engine {
         indexResult.setTook(System.nanoTime() - index.startTime());
         indexResult.freeze();
         localCheckpointTracker.advanceMaxSeqNo(index.seqNo());
-//        logger.info("PROCESSED {}", index.seqNo());
-//        logger.info("ADVANCED MAX TO {}", localCheckpointTracker.getMaxSeqNo());
+        // logger.info("PROCESSED {}", index.seqNo());
+        // logger.info("ADVANCED MAX TO {}", localCheckpointTracker.getMaxSeqNo());
         return indexResult;
     }
 
@@ -265,7 +266,7 @@ public class NRTReplicationEngine extends Engine {
         noOpResult.setTook(System.nanoTime() - noOp.startTime());
         noOpResult.freeze();
         localCheckpointTracker.advanceMaxSeqNo(noOp.seqNo());
-//        logger.info("ADVANCED MAX TO {}", localCheckpointTracker.getMaxSeqNo());
+        // logger.info("ADVANCED MAX TO {}", localCheckpointTracker.getMaxSeqNo());
         return noOpResult;
     }
 
@@ -523,6 +524,7 @@ public class NRTReplicationEngine extends Engine {
     public void updateLatestReceivedCheckpoint(Long cp) {
         this.latestReceivedCheckpoint = cp;
     }
+
     public void awaitCurrent(Consumer<Boolean> listener) {
         listener.accept(false);
     }

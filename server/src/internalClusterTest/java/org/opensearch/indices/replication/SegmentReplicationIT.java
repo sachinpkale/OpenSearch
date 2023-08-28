@@ -342,7 +342,7 @@ public class SegmentReplicationIT extends SegmentReplicationBaseIT {
             assertTrue(pendingSearchResponse.stream().allMatch(ActionFuture::isDone));
         }, 1, TimeUnit.MINUTES);
         verifyStoreContent();
-        waitForSearchableDocs( 2 * searchCount, List.of(primary, replica));
+        waitForSearchableDocs(2 * searchCount, List.of(primary, replica));
     }
 
     public void testMultipleShards() throws Exception {

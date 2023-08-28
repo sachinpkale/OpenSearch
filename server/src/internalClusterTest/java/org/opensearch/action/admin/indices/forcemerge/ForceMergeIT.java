@@ -47,12 +47,10 @@ import org.opensearch.indices.IndicesService;
 import org.opensearch.test.OpenSearchIntegTestCase;
 
 import java.io.IOException;
-import java.util.List;
 
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
-import static org.opensearch.indices.replication.SegmentReplicationBaseIT.waitForCurrentReplicas;
 
 public class ForceMergeIT extends OpenSearchIntegTestCase {
 
