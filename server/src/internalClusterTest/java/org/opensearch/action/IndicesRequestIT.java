@@ -232,7 +232,7 @@ public class IndicesRequestIT extends OpenSearchIntegTestCase {
     }
 
     public void testIndex() {
-        String[] indexShardActions = new String[] { BulkAction.NAME + "[s][validate_primary_term]", BulkAction.NAME + "[s][validate_primary_term]" };
+        String[] indexShardActions = new String[] { BulkAction.NAME + "[s][p]", BulkAction.NAME + "[s][r]" };
         interceptTransportActions(indexShardActions);
 
         IndexRequest indexRequest = new IndexRequest(randomIndexOrAlias()).id("id").source(Requests.INDEX_CONTENT_TYPE, "field", "value");
@@ -754,15 +754,6 @@ public class IndicesRequestIT extends OpenSearchIntegTestCase {
         List<TransportRequest> requests = new ArrayList<>();
 
         Iterable<PluginsService> pluginsServices = internalCluster().getInstances(PluginsService.class);
-        System.out.println("#############################################################################");
-        for (PluginsService pluginsService : pluginsServices) {
-            Map<String, List<TransportRequest>> transportRequests = pluginsService.filterPlugins(InterceptingTransportService.TestPlugin.class)
-                .stream()
-                .findFirst()
-                .get().instance.requests;
-            System.out.println(transportRequests);
-        }
-        System.out.println("#############################################################################");
         for (PluginsService pluginsService : pluginsServices) {
             List<TransportRequest> transportRequests = pluginsService.filterPlugins(InterceptingTransportService.TestPlugin.class)
                 .stream()

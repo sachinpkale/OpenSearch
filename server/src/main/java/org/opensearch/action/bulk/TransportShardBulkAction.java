@@ -287,7 +287,7 @@ public class TransportShardBulkAction extends TransportWriteAction<BulkShardRequ
      *
      * @opensearch.internal
      */
-    public static final class PrimaryTermValidationRequest extends TransportRequest {
+    protected static final class PrimaryTermValidationRequest extends TransportRequest {
 
         /**
          * {@link AllocationId#getId()} of the shard this request is sent to

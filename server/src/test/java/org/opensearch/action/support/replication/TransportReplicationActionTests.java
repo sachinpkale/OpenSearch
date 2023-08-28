@@ -38,8 +38,6 @@ import org.opensearch.Version;
 import org.opensearch.action.UnavailableShardsException;
 import org.opensearch.action.admin.indices.close.CloseIndexRequest;
 import org.opensearch.action.admin.indices.create.CreateIndexRequest;
-import org.opensearch.action.bulk.TransportShardBulkAction;
-import org.opensearch.action.index.IndexRequest;
 import org.opensearch.action.support.ActionFilters;
 import org.opensearch.action.support.ActionTestUtils;
 import org.opensearch.action.support.ActiveShardCount;
@@ -160,9 +158,6 @@ public class TransportReplicationActionTests extends OpenSearchTestCase {
     public static <R extends ReplicationRequest> R resolveRequest(TransportRequest requestOrWrappedRequest) {
         if (requestOrWrappedRequest instanceof TransportReplicationAction.ConcreteShardRequest) {
             requestOrWrappedRequest = ((TransportReplicationAction.ConcreteShardRequest<?>) requestOrWrappedRequest).getRequest();
-        } else if(requestOrWrappedRequest instanceof TransportShardBulkAction.PrimaryTermValidationRequest) {
-            TransportShardBulkAction.PrimaryTermValidationRequest primaryTermValidationRequest = (TransportShardBulkAction.PrimaryTermValidationRequest) requestOrWrappedRequest;
-            return (R) new IndexRequest(primaryTermValidationRequest.getShardId().getIndexName());
         }
         // noinspection unchecked
         return (R) requestOrWrappedRequest;
