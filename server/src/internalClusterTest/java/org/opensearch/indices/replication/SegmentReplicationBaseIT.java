@@ -128,8 +128,7 @@ public class SegmentReplicationBaseIT extends OpenSearchIntegTestCase {
             for (String node : nodes) {
                 final IndexShard indexShard = getIndexShard(node, index);
                 indexShard.getReplicationEngine().ifPresent((engine) -> {
-                    final boolean current = engine.hasRefreshPending();
-                    assertTrue(current);
+                    assertFalse(engine.hasRefreshPending());
                 });
             }
         });
