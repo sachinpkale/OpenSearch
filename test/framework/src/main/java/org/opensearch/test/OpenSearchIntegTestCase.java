@@ -405,7 +405,7 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
         final Scope currentClusterScope = getCurrentClusterScope();
         Callable<Void> setup = () -> {
             cluster().beforeTest(random());
-            cluster().wipe(excludeTemplates());
+            cluster().wipe(excludeTemplates(), List.of(REPOSITORY_NAME, REPOSITORY_2_NAME));
             randomIndexTemplate();
             return null;
         };
@@ -620,7 +620,7 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
                 ensureClusterStateConsistency();
                 ensureClusterStateCanBeReadByNodeTool();
                 beforeIndexDeletion();
-                cluster().wipe(excludeTemplates()); // wipe after to make sure we fail in the test that didn't ack the delete
+                cluster().wipe(excludeTemplates(), List.of(REPOSITORY_NAME, REPOSITORY_2_NAME)); // wipe after to make sure we fail in the test that didn't ack the delete
                 if (afterClass || currentClusterScope == Scope.TEST) {
                     cluster().close();
                 }
@@ -638,6 +638,10 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
      */
     protected Set<String> excludeTemplates() {
         return Collections.emptySet();
+    }
+
+    protected Set<String> excludeRepositories() {
+        return new HashSet<>(List.of(REPOSITORY_NAME, REPOSITORY_2_NAME));
     }
 
     protected void beforeIndexDeletion() throws Exception {
@@ -1985,7 +1989,6 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
         return builder.build();
     }
 
-
     public Settings remoteStoreGlobalNodeAttributes(String segmentRepoName, String translogRepoName) {
         Path absolutePath = randomRepoPath().toAbsolutePath();
         Path absolutePath2 = randomRepoPath().toAbsolutePath();
@@ -2432,6 +2435,7 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
             afterInternal(false);
             printTestMessage("cleaned up after");
         }
+        nodeAttributeSettings = null;
     }
 
     @AfterClass
