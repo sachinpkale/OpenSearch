@@ -84,6 +84,7 @@ import org.opensearch.cluster.coordination.OpenSearchNodeCommand;
 import org.opensearch.cluster.health.ClusterHealthStatus;
 import org.opensearch.cluster.metadata.IndexMetadata;
 import org.opensearch.cluster.metadata.Metadata;
+import org.opensearch.cluster.metadata.RepositoriesMetadata;
 import org.opensearch.cluster.routing.IndexRoutingTable;
 import org.opensearch.cluster.routing.IndexShardRoutingTable;
 import org.opensearch.cluster.routing.ShardRouting;
@@ -1964,6 +1965,9 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
             nodeAttributeSettings = remoteStoreGlobalNodeAttributes(REPOSITORY_NAME, REPOSITORY_2_NAME);
         }
         builder.put(nodeAttributeSettings);
+        builder.put(CLUSTER_REMOTE_STORE_ENABLED_SETTING.getKey(), true);
+        builder.put(CLUSTER_REMOTE_SEGMENT_STORE_REPOSITORY_SETTING.getKey(), REPOSITORY_NAME);
+        builder.put(CLUSTER_REMOTE_TRANSLOG_REPOSITORY_SETTING.getKey(), REPOSITORY_2_NAME);
 
         // Enable tracer only when Telemetry Setting is enabled
         if (featureFlagSettings().getAsBoolean(FeatureFlags.TELEMETRY_SETTING.getKey(), false)) {
@@ -2397,7 +2401,22 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
             beforeInternal();
             printTestMessage("all set up");
         }
+        assertRepositoryMetadataPresentInClusterState();
     }
+
+    void assertRepositoryMetadataPresentInClusterState() throws Exception {
+        assertBusy(() -> {
+            RepositoriesMetadata repositoriesMetadata = client().admin()
+                .cluster()
+                .prepareState()
+                .get()
+                .getState()
+                .metadata()
+                .custom(RepositoriesMetadata.TYPE);
+            assertTrue(repositoriesMetadata != null && !repositoriesMetadata.repositories().isEmpty());
+        }, 30, TimeUnit.SECONDS);
+    }
+
 
     @After
     public final void cleanUpCluster() throws Exception {
