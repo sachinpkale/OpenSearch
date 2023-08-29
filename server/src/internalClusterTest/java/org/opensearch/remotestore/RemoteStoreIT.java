@@ -12,14 +12,16 @@ import org.opensearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.opensearch.action.admin.indices.recovery.RecoveryResponse;
 import org.opensearch.action.index.IndexResponse;
 import org.opensearch.cluster.metadata.IndexMetadata;
+import org.opensearch.cluster.metadata.RepositoriesMetadata;
+import org.opensearch.cluster.metadata.RepositoryMetadata;
 import org.opensearch.cluster.routing.RecoverySource;
+import org.opensearch.cluster.service.ClusterService;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.indices.recovery.RecoveryState;
 import org.opensearch.plugins.Plugin;
 import org.opensearch.test.OpenSearchIntegTestCase;
 import org.opensearch.test.transport.MockTransportService;
 import org.hamcrest.MatcherAssert;
-import org.junit.Before;
 
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -35,7 +37,7 @@ import static org.hamcrest.Matchers.comparesEqualTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.oneOf;
 
-@OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.SUITE, numDataNodes = 0)
+@OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST, numDataNodes = 0)
 public class RemoteStoreIT extends RemoteStoreBaseIntegTestCase {
 
     protected final String INDEX_NAME = "remote-store-test-idx-1";
@@ -45,18 +47,13 @@ public class RemoteStoreIT extends RemoteStoreBaseIntegTestCase {
         return Arrays.asList(MockTransportService.TestPlugin.class);
     }
 
-    @Before
-    public void setup() {
-        setupRepo();
-    }
-
     @Override
     public Settings indexSettings() {
         return remoteStoreIndexSettings(0);
     }
 
     private void testPeerRecovery(int numberOfIterations, boolean invokeFlush) throws Exception {
-        internalCluster().startDataOnlyNodes(3);
+        internalCluster().startNodes(3);
         createIndex(INDEX_NAME, remoteStoreIndexSettings(0));
         ensureYellowAndNoInitializingShards(INDEX_NAME);
         ensureGreen(INDEX_NAME);
@@ -116,8 +113,8 @@ public class RemoteStoreIT extends RemoteStoreBaseIntegTestCase {
         testPeerRecovery(randomIntBetween(2, 5), false);
     }
 
-    private void verifyRemoteStoreCleanup() throws Exception {
-        internalCluster().startDataOnlyNodes(3);
+    public void verifyRemoteStoreCleanup() throws Exception {
+        internalCluster().startNodes(3);
         createIndex(INDEX_NAME, remoteStoreIndexSettings(1));
 
         indexData(5, randomBoolean(), INDEX_NAME);
@@ -143,7 +140,7 @@ public class RemoteStoreIT extends RemoteStoreBaseIntegTestCase {
     }
 
     public void testStaleCommitDeletionWithInvokeFlush() throws Exception {
-        internalCluster().startDataOnlyNodes(1);
+        internalCluster().startNode();
         createIndex(INDEX_NAME, remoteStoreIndexSettings(1, 10000l, -1));
         int numberOfIterations = randomIntBetween(5, 15);
         indexData(numberOfIterations, true, INDEX_NAME);
@@ -170,7 +167,7 @@ public class RemoteStoreIT extends RemoteStoreBaseIntegTestCase {
     }
 
     public void testStaleCommitDeletionWithoutInvokeFlush() throws Exception {
-        internalCluster().startDataOnlyNodes(1);
+        internalCluster().startNode();
         createIndex(INDEX_NAME, remoteStoreIndexSettings(1, 10000l, -1));
         int numberOfIterations = randomIntBetween(5, 15);
         indexData(numberOfIterations, false, INDEX_NAME);
