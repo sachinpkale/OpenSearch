@@ -3146,7 +3146,9 @@ public abstract class BlobStoreRepository extends AbstractLifecycleComponent imp
 
     @Override
     public void verify(String seed, DiscoveryNode localNode) {
-        assertSnapshotOrGenericThread();
+        if (isSystemRepository == false) {
+            assertSnapshotOrGenericThread();
+        }
         if (isReadOnly()) {
             try {
                 latestIndexBlobId();

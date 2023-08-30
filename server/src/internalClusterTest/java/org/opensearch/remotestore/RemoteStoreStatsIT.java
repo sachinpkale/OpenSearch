@@ -38,17 +38,19 @@ import java.util.stream.Stream;
 import static org.opensearch.cluster.metadata.IndexMetadata.SETTING_NUMBER_OF_REPLICAS;
 import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertAcked;
 
-@OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST, numDataNodes = 3)
+@OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST, numDataNodes = 0)
 public class RemoteStoreStatsIT extends RemoteStoreBaseIntegTestCase {
 
     private static final String INDEX_NAME = "remote-store-test-idx-1";
 
     @Before
-    public void setup() {
-        setupRepo();
+    public void setup() throws Exception {
+        internalCluster().startNodes(3);
+        ensureStableCluster(3);
+        assertRepositoryMetadataPresentInClusterState();
     }
 
-    public void testStatsResponseFromAllNodes() {
+    public void testStatsResponseFromAllNodes() throws Exception {
 
         // Step 1 - We create cluster, create an index, and then index documents into. We also do multiple refreshes/flushes
         // during this time frame. This ensures that the segment upload has started.
@@ -104,7 +106,7 @@ public class RemoteStoreStatsIT extends RemoteStoreBaseIntegTestCase {
         }
     }
 
-    public void testStatsResponseAllShards() {
+    public void testStatsResponseAllShards() throws Exception {
 
         // Step 1 - We create cluster, create an index, and then index documents into. We also do multiple refreshes/flushes
         // during this time frame. This ensures that the segment upload has started.
@@ -149,7 +151,7 @@ public class RemoteStoreStatsIT extends RemoteStoreBaseIntegTestCase {
 
     }
 
-    public void testStatsResponseFromLocalNode() {
+    public void testStatsResponseFromLocalNode() throws Exception {
 
         // Step 1 - We create cluster, create an index, and then index documents into. We also do multiple refreshes/flushes
         // during this time frame. This ensures that the segment upload has started.
@@ -379,7 +381,7 @@ public class RemoteStoreStatsIT extends RemoteStoreBaseIntegTestCase {
         }
     }
 
-    public void testStatsOnShardRelocation() {
+    public void testStatsOnShardRelocation() throws Exception {
         // Scenario:
         // - Create index with single primary and single replica shard
         // - Index documents
@@ -460,7 +462,7 @@ public class RemoteStoreStatsIT extends RemoteStoreBaseIntegTestCase {
         indexSingleDoc(INDEX_NAME);
     }
 
-    public void testStatsOnRemoteStoreRestore() throws IOException {
+    public void testStatsOnRemoteStoreRestore() throws Exception {
         // Creating an index with primary shard count == total nodes in cluster and 0 replicas
         int dataNodeCount = client().admin().cluster().prepareHealth().get().getNumberOfDataNodes();
         createIndex(INDEX_NAME, remoteStoreIndexSettings(0, dataNodeCount));
@@ -475,7 +477,8 @@ public class RemoteStoreStatsIT extends RemoteStoreBaseIntegTestCase {
         ensureRed(INDEX_NAME);
 
         // Start another data node to fulfil the previously launched capacity
-        internalCluster().startDataOnlyNode();
+        String nodeId = internalCluster().startDataOnlyNode();
+        ensureStableCluster(3);
 
         // Restore index from remote store
         assertAcked(client().admin().indices().prepareClose(INDEX_NAME));
