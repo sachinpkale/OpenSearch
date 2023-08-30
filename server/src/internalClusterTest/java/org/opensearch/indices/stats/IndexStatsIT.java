@@ -77,6 +77,7 @@ import org.opensearch.indices.IndicesQueryCache;
 import org.opensearch.indices.IndicesRequestCache;
 import org.opensearch.indices.IndicesService;
 import org.opensearch.indices.replication.common.ReplicationType;
+import org.opensearch.indices.replication.SegmentReplicationBaseIT;
 import org.opensearch.plugins.Plugin;
 import org.opensearch.search.sort.SortOrder;
 import org.opensearch.test.InternalSettingsPlugin;
@@ -658,6 +659,9 @@ public class IndexStatsIT extends OpenSearchIntegTestCase {
         NumShards test2 = getNumShards("test2");
         long test2ExpectedWrites = test2.dataCopies;
         long totalExpectedWrites = test1ExpectedWrites + test2ExpectedWrites;
+
+        // with segRep shards may lag behind and these totals won't be accurate until all shards catch up.
+        SegmentReplicationBaseIT.waitForCurrentReplicas();
 
         IndicesStatsResponse stats = client().admin().indices().prepareStats().execute().actionGet();
         assertThat(stats.getPrimaries().getDocs().getCount(), equalTo(3L));

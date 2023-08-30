@@ -1015,7 +1015,8 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
                 UNASSIGNED_SEQ_NO,
                 0
             );
-            return getEngine().index(index);
+            return index(engine, index);
+
         }
         assert opPrimaryTerm <= getOperationPrimaryTerm() : "op term [ "
             + opPrimaryTerm
@@ -1566,11 +1567,9 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
     }
 
     public Optional<NRTReplicationEngine> getReplicationEngine() {
-        if (getEngine() instanceof NRTReplicationEngine) {
-            return Optional.of((NRTReplicationEngine) getEngine());
-        } else {
-            return Optional.empty();
-        }
+        return Optional.ofNullable(getEngineOrNull())
+            .filter((engine) -> engine instanceof NRTReplicationEngine)
+            .map((engine) -> (NRTReplicationEngine) engine);
     }
 
     public void finalizeReplication(SegmentInfos infos) throws IOException {
@@ -1637,7 +1636,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
                         segmentInfos.getGeneration(),
                         segmentInfos.getVersion(),
                         metadataMap.values().stream().mapToLong(StoreFileMetadata::length).sum(),
-                        getEngine().config().getCodec().getName(),
+                        "codec",
                         metadataMap
                     )
                 );
@@ -4407,7 +4406,8 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
      * Returns true if this shard has some scheduled refresh that is pending because of search-idle.
      */
     public final boolean hasRefreshPending() {
-        return pendingRefreshLocation.get() != null;
+        final Boolean nrtPending = getReplicationEngine().map(NRTReplicationEngine::hasRefreshPending).orElse(false);
+        return pendingRefreshLocation.get() != null || nrtPending;
     }
 
     private void setRefreshPending(Engine engine) {
@@ -4464,7 +4464,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
                 listener.accept(true);
             });
         } else {
-            listener.accept(false);
+            getReplicationEngine().ifPresentOrElse((engine) -> { engine.awaitCurrent(listener); }, () -> listener.accept(false));
         }
     }
 
@@ -4488,8 +4488,12 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
             }
         }
         // NRT Replicas will not accept refresh listeners.
-        if (readAllowed && isSegmentReplicationAllowed() == false) {
-            refreshListeners.addOrNotify(location, listener);
+        if (readAllowed) {
+            if (isSegmentReplicationAllowed() == false) {
+                refreshListeners.addOrNotify(location, listener);
+            } else {
+                getReplicationEngine().ifPresent(engine -> { engine.awaitCurrent(listener); });
+            }
         } else {
             // we're not yet ready fo ready for reads, just ignore refresh cycles
             listener.accept(false);
@@ -4558,6 +4562,8 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
     private void updateReplicationCheckpoint() {
         final Tuple<GatedCloseable<SegmentInfos>, ReplicationCheckpoint> tuple = getLatestSegmentInfosAndCheckpoint();
         try (final GatedCloseable<SegmentInfos> ignored = tuple.v1()) {
+            final SegmentInfos infos = ignored.get();
+            // logger.info("PRIMARY {} UPDATED CP TO {} FILES {}", routingEntry().primary(), infos.getVersion(), infos.files(true));
             replicationTracker.setLatestReplicationCheckpoint(tuple.v2());
         } catch (IOException e) {
             throw new OpenSearchException("Error Closing SegmentInfos Snapshot", e);

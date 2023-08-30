@@ -138,6 +138,9 @@ import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.opensearch.index.seqno.SequenceNumbers.LOCAL_CHECKPOINT_KEY;
+import static org.opensearch.index.seqno.SequenceNumbers.MAX_SEQ_NO;
+
 /**
  * The default internal engine (can be overridden by plugins)
  *
@@ -1906,9 +1909,7 @@ public class InternalEngine extends Engine {
         if (shouldPeriodicallyFlushAfterBigMerge.get()) {
             return true;
         }
-        final long localCheckpointOfLastCommit = Long.parseLong(
-            lastCommittedSegmentInfos.userData.get(SequenceNumbers.LOCAL_CHECKPOINT_KEY)
-        );
+        final long localCheckpointOfLastCommit = Long.parseLong(lastCommittedSegmentInfos.userData.get(LOCAL_CHECKPOINT_KEY));
         return translogManager.shouldPeriodicallyFlush(
             localCheckpointOfLastCommit,
             config().getIndexSettings().getFlushThresholdSize().getBytes()
@@ -1946,9 +1947,7 @@ public class InternalEngine extends Engine {
                 if (hasUncommittedChanges
                     || force
                     || shouldPeriodicallyFlush
-                    || getProcessedLocalCheckpoint() > Long.parseLong(
-                        lastCommittedSegmentInfos.userData.get(SequenceNumbers.LOCAL_CHECKPOINT_KEY)
-                    )) {
+                    || getProcessedLocalCheckpoint() > Long.parseLong(lastCommittedSegmentInfos.userData.get(LOCAL_CHECKPOINT_KEY))) {
                     translogManager.ensureCanFlush();
                     try {
                         translogManager.rollTranslogGeneration();
@@ -2997,7 +2996,15 @@ public class InternalEngine extends Engine {
             // This shouldn't be required ideally, but we're also invoking this method from refresh as of now.
             // This change is added as safety check to ensure that our checkpoint values are consistent at all times.
             pendingCheckpoint.updateAndGet(curr -> Math.max(curr, checkpoint));
-
+            // TODO: compute and store latest copyState separately from reader infos.
+            try {
+                final SegmentInfos segmentInfos = getLatestSegmentInfos();
+                final Map<String, String> userData = segmentInfos.getUserData();
+                userData.put(MAX_SEQ_NO, String.valueOf(pendingCheckpoint.get()));
+                userData.put(LOCAL_CHECKPOINT_KEY, String.valueOf(pendingCheckpoint.get()));
+            } catch (Exception e) {
+                logger.error("Unable to update infos", e);
+            }
         }
     }
 
