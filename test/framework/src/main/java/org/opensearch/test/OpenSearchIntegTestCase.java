@@ -420,7 +420,6 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
                 setup.call();
                 break;
         }
-
     }
 
     private void printTestMessage(String message) {
@@ -2405,6 +2404,9 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
             printTestMessage("all set up");
         }
         assertRepositoryMetadataPresentInClusterState();
+        if(getNumDataNodes() == 0) {
+            internalCluster().stopRandomDataNode();
+        }
     }
 
     void assertRepositoryMetadataPresentInClusterState() throws Exception {
