@@ -84,6 +84,7 @@ import org.opensearch.cluster.coordination.OpenSearchNodeCommand;
 import org.opensearch.cluster.health.ClusterHealthStatus;
 import org.opensearch.cluster.metadata.IndexMetadata;
 import org.opensearch.cluster.metadata.Metadata;
+import org.opensearch.cluster.metadata.RepositoriesMetadata;
 import org.opensearch.cluster.routing.IndexRoutingTable;
 import org.opensearch.cluster.routing.IndexShardRoutingTable;
 import org.opensearch.cluster.routing.ShardRouting;
@@ -207,6 +208,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static org.opensearch.action.admin.cluster.remotestore.RemoteStoreNode.*;
+import static org.opensearch.action.admin.cluster.remotestore.RemoteStoreNode.REMOTE_STORE_REPOSITORY_SETTINGS_ATTRIBUTE_KEY_PREFIX;
 import static org.opensearch.cluster.metadata.IndexMetadata.*;
 import static org.opensearch.common.unit.TimeValue.timeValueMillis;
 import static org.opensearch.core.common.util.CollectionUtils.eagerPartition;
@@ -215,6 +218,7 @@ import static org.opensearch.discovery.SettingsBasedSeedHostsProvider.DISCOVERY_
 import static org.opensearch.index.IndexSettings.INDEX_SOFT_DELETES_RETENTION_LEASE_PERIOD_SETTING;
 import static org.opensearch.index.query.QueryBuilders.matchAllQuery;
 import static org.opensearch.indices.IndicesService.CLUSTER_REPLICATION_TYPE_SETTING;
+import static org.opensearch.indices.IndicesService.*;
 import static org.opensearch.test.XContentTestUtils.convertToMap;
 import static org.opensearch.test.XContentTestUtils.differenceBetweenMapsIgnoringArrayOrder;
 import static org.hamcrest.Matchers.empty;
@@ -402,7 +406,7 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
         final Scope currentClusterScope = getCurrentClusterScope();
         Callable<Void> setup = () -> {
             cluster().beforeTest(random());
-            cluster().wipe(excludeTemplates());
+            cluster().wipe(excludeTemplates(), List.of(REPOSITORY_NAME, REPOSITORY_2_NAME));
             randomIndexTemplate();
             return null;
         };
@@ -417,7 +421,6 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
                 setup.call();
                 break;
         }
-
     }
 
     private void printTestMessage(String message) {
@@ -617,7 +620,7 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
                 ensureClusterStateConsistency();
                 ensureClusterStateCanBeReadByNodeTool();
                 beforeIndexDeletion();
-                cluster().wipe(excludeTemplates()); // wipe after to make sure we fail in the test that didn't ack the delete
+                cluster().wipe(excludeTemplates(), List.of(REPOSITORY_NAME, REPOSITORY_2_NAME)); // wipe after to make sure we fail in the test that didn't ack the delete
                 if (afterClass || currentClusterScope == Scope.TEST) {
                     cluster().close();
                 }
@@ -635,6 +638,10 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
      */
     protected Set<String> excludeTemplates() {
         return Collections.emptySet();
+    }
+
+    protected Set<String> excludeRepositories() {
+        return new HashSet<>(List.of(REPOSITORY_NAME, REPOSITORY_2_NAME));
     }
 
     protected void beforeIndexDeletion() throws Exception {
@@ -791,6 +798,8 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
         }
         // Enabling Telemetry setting by default
         featureSettings.put(FeatureFlags.TELEMETRY_SETTING.getKey(), true);
+        featureSettings.put(FeatureFlags.REMOTE_STORE, "true");
+        featureSettings.put(FeatureFlags.SEGMENT_REPLICATION_EXPERIMENTAL, "true");
         return featureSettings.build();
     }
 
@@ -1927,6 +1936,8 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
         return annotation == null ? InternalTestCluster.DEFAULT_NUM_CLIENT_NODES : annotation.numClientNodes();
     }
 
+    Settings nodeAttributeSettings;
+
     /**
      * This method is used to obtain settings for the {@code N}th node in the cluster.
      * Nodes in this cluster are associated with an ordinal number such that nodes can
@@ -1954,6 +1965,14 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
             .putList(DISCOVERY_SEED_PROVIDERS_SETTING.getKey(), "file")
             .put(featureFlagSettings());
 
+        if(nodeAttributeSettings == null) {
+            nodeAttributeSettings = remoteStoreGlobalNodeAttributes(REPOSITORY_NAME, REPOSITORY_2_NAME);
+        }
+        builder.put(nodeAttributeSettings);
+        builder.put(CLUSTER_REMOTE_STORE_ENABLED_SETTING.getKey(), true);
+        builder.put(CLUSTER_REMOTE_SEGMENT_STORE_REPOSITORY_SETTING.getKey(), REPOSITORY_NAME);
+        builder.put(CLUSTER_REMOTE_TRANSLOG_REPOSITORY_SETTING.getKey(), REPOSITORY_2_NAME);
+
         // Enable tracer only when Telemetry Setting is enabled
         if (featureFlagSettings().getAsBoolean(FeatureFlags.TELEMETRY_SETTING.getKey(), false)) {
             builder.put(TelemetrySettings.TRACER_ENABLED_SETTING.getKey(), true);
@@ -1968,6 +1987,69 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
             builder.put(CLUSTER_REPLICATION_TYPE_SETTING.getKey(), ReplicationType.SEGMENT);
         }
         return builder.build();
+    }
+
+    public Settings remoteStoreGlobalNodeAttributes(String segmentRepoName, String translogRepoName) {
+        Path absolutePath = randomRepoPath().toAbsolutePath();
+        Path absolutePath2 = randomRepoPath().toAbsolutePath();
+        if (segmentRepoName.equals(translogRepoName)) {
+            absolutePath2 = absolutePath;
+        }
+        return Settings.builder()
+            .put("node.attr." + REMOTE_STORE_SEGMENT_REPOSITORY_NAME_ATTRIBUTE_KEY, segmentRepoName)
+            .put(
+                String.format(Locale.getDefault(), "node.attr." + REMOTE_STORE_REPOSITORY_TYPE_ATTRIBUTE_KEY_FORMAT, segmentRepoName),
+                "fs"
+            )
+            .put(
+                String.format(Locale.getDefault(), "node.attr." + REMOTE_STORE_REPOSITORY_SETTINGS_ATTRIBUTE_KEY_PREFIX, segmentRepoName)
+                    + "location",
+                absolutePath.toString()
+            )
+            .put("node.attr." + REMOTE_STORE_TRANSLOG_REPOSITORY_NAME_ATTRIBUTE_KEY, translogRepoName)
+            .put(
+                String.format(Locale.getDefault(), "node.attr." + REMOTE_STORE_REPOSITORY_TYPE_ATTRIBUTE_KEY_FORMAT, translogRepoName),
+                "fs"
+            )
+            .put(
+                String.format(Locale.getDefault(), "node.attr." + REMOTE_STORE_REPOSITORY_SETTINGS_ATTRIBUTE_KEY_PREFIX, translogRepoName)
+                    + "location",
+                absolutePath2.toString()
+            )
+            .build();
+    }
+
+    public static Settings remoteStoreGlobalClusterSettings(
+        String segmentRepoName,
+        String translogRepoName,
+        boolean randomizeSameRepoForRSSAndRTS
+    ) {
+        return remoteStoreGlobalClusterSettings(
+            segmentRepoName,
+            randomizeSameRepoForRSSAndRTS ? (randomBoolean() ? translogRepoName : segmentRepoName) : translogRepoName
+        );
+    }
+
+    public static Settings remoteStoreGlobalClusterSettings(String segmentRepoName, String translogRepoName) {
+        return Settings.builder()
+            .put(CLUSTER_REPLICATION_TYPE_SETTING.getKey(), ReplicationType.SEGMENT)
+            .put(CLUSTER_REMOTE_STORE_ENABLED_SETTING.getKey(), true)
+            .put(CLUSTER_REMOTE_SEGMENT_STORE_REPOSITORY_SETTING.getKey(), segmentRepoName)
+            .put(CLUSTER_REMOTE_TRANSLOG_REPOSITORY_SETTING.getKey(), translogRepoName)
+            .build();
+    }
+
+    protected static final String REPOSITORY_NAME = "test-remote-store-repo";
+    protected static final String REPOSITORY_2_NAME = "test-remote-store-repo-2";
+    protected static String REPOSITORY_NODE = "";
+
+
+    private void putRepository(Path path, String repoName) {
+        assertAcked(clusterAdmin().preparePutRepository(repoName).setType("fs").setSettings(Settings.builder().put("location", path)));
+    }
+
+    private void putRepository(Path path) {
+        putRepository(path, REPOSITORY_NAME);
     }
 
     public boolean isSegRepEnabled(String index) {
@@ -2320,7 +2402,25 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
             beforeInternal();
             printTestMessage("all set up");
         }
+        assertRepositoryMetadataPresentInClusterState();
+        if(getNumDataNodes() == 0) {
+            internalCluster().stopRandomDataNode();
+        }
     }
+
+    void assertRepositoryMetadataPresentInClusterState() throws Exception {
+        assertBusy(() -> {
+            RepositoriesMetadata repositoriesMetadata = client().admin()
+                .cluster()
+                .prepareState()
+                .get()
+                .getState()
+                .metadata()
+                .custom(RepositoriesMetadata.TYPE);
+            assertTrue(repositoriesMetadata != null && !repositoriesMetadata.repositories().isEmpty());
+        }, 30, TimeUnit.SECONDS);
+    }
+
 
     @After
     public final void cleanUpCluster() throws Exception {
@@ -2336,6 +2436,7 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
             afterInternal(false);
             printTestMessage("cleaned up after");
         }
+        nodeAttributeSettings = null;
     }
 
     @AfterClass

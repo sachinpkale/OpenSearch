@@ -159,6 +159,8 @@ public abstract class AbstractSnapshotIntegTestCase extends OpenSearchIntegTestC
                 .repositories()
                 .stream()
                 .filter(repositoryMetadata -> !repositoryMetadata.name().endsWith(TEST_REMOTE_STORE_REPO_SUFFIX))
+                .filter(repositoryMetadata -> !repositoryMetadata.name().endsWith(REPOSITORY_NAME))
+                .filter(repositoryMetadata -> !repositoryMetadata.name().endsWith(REPOSITORY_2_NAME))
                 .forEach(repositoryMetadata -> {
                     final String name = repositoryMetadata.name();
                     if (repositoryMetadata.settings().getAsBoolean("readonly", false) == false) {
