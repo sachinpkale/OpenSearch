@@ -283,7 +283,7 @@ public class NRTReplicationEngineTests extends EngineTestCase {
         }
     }
 
-    public void testCommitSegmentInfos() throws Exception {
+    public void testFlush() throws Exception {
         // This test asserts that NRTReplication#commitSegmentInfos creates a new commit point with the latest checkpoints
         // stored in user data.
         final AtomicLong globalCheckpoint = new AtomicLong(SequenceNumbers.NO_OPS_PERFORMED);
@@ -322,6 +322,10 @@ public class NRTReplicationEngineTests extends EngineTestCase {
             userData = committedInfos.getUserData();
             assertEquals(processedCheckpoint, Long.parseLong(userData.get(LOCAL_CHECKPOINT_KEY)));
             assertEquals(maxSeqNo, Long.parseLong(userData.get(MAX_SEQ_NO)));
+
+            try (final GatedCloseable<IndexCommit> indexCommit = nrtEngine.acquireLastIndexCommit(true)) {
+                assertEquals(committedInfos.getGeneration() + 1, indexCommit.get().getGeneration());
+            }
         }
     }
 

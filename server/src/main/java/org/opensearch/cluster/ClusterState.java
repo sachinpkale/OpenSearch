@@ -265,6 +265,7 @@ public class ClusterState implements ToXContentFragment, Diffable<ClusterState> 
         return metadata();
     }
 
+    /*
     public boolean isSegmentReplicationEnabled(String indexName) {
         return Optional.ofNullable(getMetadata().index(indexName))
             .map(
@@ -273,6 +274,7 @@ public class ClusterState implements ToXContentFragment, Diffable<ClusterState> 
             )
             .orElse(false);
     }
+    */
 
     public CoordinationMetadata coordinationMetadata() {
         return metadata.coordinationMetadata();
@@ -417,6 +419,21 @@ public class ClusterState implements ToXContentFragment, Diffable<ClusterState> 
             && this.nodes().getClusterManagerNodeId().equals(other.nodes().getClusterManagerNodeId())
             && this.version() > other.version();
 
+    }
+
+    /**
+     * Utility to identify whether input index belongs to SEGMENT replication in established cluster state.
+     *
+     * @param indexName Index name
+     * @return true if index belong SEGMENT replication, false otherwise
+     */
+    public boolean isSegmentReplicationEnabled(String indexName) {
+        return Optional.ofNullable(this.getMetadata().index(indexName))
+            .map(
+                indexMetadata -> ReplicationType.parseString(indexMetadata.getSettings().get(IndexMetadata.SETTING_REPLICATION_TYPE))
+                    .equals(ReplicationType.SEGMENT)
+            )
+            .orElse(false);
     }
 
     /**
