@@ -145,7 +145,7 @@ public abstract class AbstractMultiClustersTestCase extends OpenSearchTestCase {
     @After
     public void assertAfterTest() throws Exception {
         for (InternalTestCluster cluster : clusters().values()) {
-            cluster.wipe(Collections.emptySet());
+            cluster.wipe(Collections.emptySet(), List.of());
             cluster.assertAfterTest();
         }
     }
