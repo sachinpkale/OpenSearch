@@ -34,7 +34,7 @@ package org.opensearch.discovery;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.opensearch.action.admin.cluster.remotestore.RemoteStoreService;
+import org.opensearch.action.admin.cluster.remotestore.RemoteStoreNodeService;
 import org.opensearch.cluster.ClusterState;
 import org.opensearch.cluster.coordination.Coordinator;
 import org.opensearch.cluster.coordination.ElectionStrategy;
@@ -131,7 +131,7 @@ public class DiscoveryModule {
         GatewayMetaState gatewayMetaState,
         RerouteService rerouteService,
         NodeHealthService nodeHealthService,
-        RemoteStoreService remoteStoreService
+        RemoteStoreNodeService remoteStoreService
     ) {
         final Collection<BiConsumer<DiscoveryNode, ClusterState>> joinValidators = new ArrayList<>();
         final Map<String, Supplier<SeedHostsProvider>> hostProviders = new HashMap<>();
