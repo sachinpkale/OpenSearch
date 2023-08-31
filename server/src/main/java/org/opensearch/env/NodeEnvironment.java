@@ -728,7 +728,7 @@ public final class NodeEnvironment implements Closeable {
      */
     public ShardLock shardLock(final ShardId shardId, final String details, final long lockTimeoutMS)
         throws ShardLockObtainFailedException {
-        logger.trace("acquiring node shardlock on [{}], timeout [{}], details [{}]", shardId, lockTimeoutMS, details);
+        logger.debug("acquiring node shardlock on [{}], timeout [{}], details [{}]", shardId, lockTimeoutMS, details);
         final InternalShardLock shardLock;
         final boolean acquired;
         synchronized (shardLocks) {
@@ -753,12 +753,12 @@ public final class NodeEnvironment implements Closeable {
                 }
             }
         }
-        logger.trace("successfully acquired shardlock for [{}]", shardId);
+        logger.debug("successfully acquired shardlock for [{}]", shardId);
         return new ShardLock(shardId) { // new instance prevents double closing
             @Override
             protected void closeInternal() {
                 shardLock.release();
-                logger.trace("released shard lock for [{}]", shardId);
+                logger.debug("released shard lock for [{}] [{}]", shardId, Thread.currentThread().getStackTrace());
             }
 
             @Override
