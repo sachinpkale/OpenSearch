@@ -307,7 +307,7 @@ public class GatewayIndexStateIT extends OpenSearchIntegTestCase {
 
         logger.info("--> verify 1 doc in the index");
         for (int i = 0; i < 10; i++) {
-            assertHitCount(client().prepareSearch().setQuery(matchAllQuery()).get(), 1L);
+            assertHitCount(client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).get(), 1L);
         }
 
         logger.info("--> closing test index...");
@@ -332,9 +332,9 @@ public class GatewayIndexStateIT extends OpenSearchIntegTestCase {
         assertThat(health.isTimedOut(), equalTo(false));
 
         logger.info("--> verify 1 doc in the index");
-        assertHitCount(client().prepareSearch().setQuery(matchAllQuery()).get(), 1L);
+        assertHitCount(client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).get(), 1L);
         for (int i = 0; i < 10; i++) {
-            assertHitCount(client().prepareSearch().setQuery(matchAllQuery()).get(), 1L);
+            assertHitCount(client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).get(), 1L);
         }
     }
 
@@ -588,7 +588,7 @@ public class GatewayIndexStateIT extends OpenSearchIntegTestCase {
         assertNull(
             state.metadata().persistentSettings().get("archived." + ShardLimitValidator.SETTING_CLUSTER_MAX_SHARDS_PER_NODE.getKey())
         );
-        assertHitCount(client().prepareSearch().setQuery(matchAllQuery()).get(), 1L);
+        assertHitCount(client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).get(), 1L);
     }
 
     @AwaitsFix(bugUrl = "https://github.com/elastic/elasticsearch/issues/48701")

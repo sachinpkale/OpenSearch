@@ -1152,57 +1152,6 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
      * Verifies that all nodes that have the same version of the cluster state as cluster-manager have same cluster state
      */
     protected void ensureClusterStateConsistency() throws IOException {
-        /* if (cluster() != null && cluster().size() > 0) {
-            final NamedWriteableRegistry namedWriteableRegistry = cluster().getNamedWriteableRegistry();
-            final Client clusterManagerClient = client();
-            ClusterState clusterManagerClusterState = clusterManagerClient.admin().cluster().prepareState().all().get().getState();
-            byte[] masterClusterStateBytes = ClusterState.Builder.toBytes(clusterManagerClusterState);
-            // remove local node reference
-            clusterManagerClusterState = ClusterState.Builder.fromBytes(masterClusterStateBytes, null, namedWriteableRegistry);
-            Map<String, Object> clusterManagerStateMap = convertToMap(clusterManagerClusterState);
-            int clusterManagerClusterStateSize = clusterManagerClusterState.toString().length();
-            String clusterManagerId = clusterManagerClusterState.nodes().getClusterManagerNodeId();
-            for (Client client : cluster().getClients()) {
-                ClusterState localClusterState = client.admin().cluster().prepareState().all().setLocal(true).get().getState();
-                byte[] localClusterStateBytes = ClusterState.Builder.toBytes(localClusterState);
-                // remove local node reference
-                localClusterState = ClusterState.Builder.fromBytes(localClusterStateBytes, null, namedWriteableRegistry);
-                final Map<String, Object> localStateMap = convertToMap(localClusterState);
-                final int localClusterStateSize = localClusterState.toString().length();
-                // Check that the non-cluster-manager node has the same version of the cluster state as the cluster-manager and
-                // that the cluster-manager node matches the cluster-manager (otherwise there is no requirement for the cluster state to
-                // match)
-                if (clusterManagerClusterState.version() == localClusterState.version()
-                    && clusterManagerId.equals(localClusterState.nodes().getClusterManagerNodeId())) {
-                    try {
-                        assertEquals(
-                            "cluster state UUID does not match",
-                            clusterManagerClusterState.stateUUID(),
-                            localClusterState.stateUUID()
-                        );
-                        // We cannot compare serialization bytes since serialization order of maps is not guaranteed
-                        // We also cannot compare byte array size because CompressedXContent's DeflateCompressor uses
-                        // a synced flush that can affect the size of the compressed byte array
-                        // (see: DeflateCompressedXContentTests#testDifferentCompressedRepresentation for an example)
-                        // instead we compare the string length of cluster state - they should be the same
-                        assertEquals("cluster state size does not match", clusterManagerClusterStateSize, localClusterStateSize);
-                        // Compare JSON serialization
-                        assertNull(
-                            "cluster state JSON serialization does not match",
-                            differenceBetweenMapsIgnoringArrayOrder(clusterManagerStateMap, localStateMap)
-                        );
-                    } catch (final AssertionError error) {
-                        logger.error(
-                            "Cluster state from cluster-manager:\n{}\nLocal cluster state:\n{}",
-                            clusterManagerClusterState.toString(),
-                            localClusterState.toString()
-                        );
-                        throw error;
-                    }
-                }
-            }
-        } */
-
     }
 
     protected void ensureClusterStateCanBeReadByNodeTool() throws IOException {

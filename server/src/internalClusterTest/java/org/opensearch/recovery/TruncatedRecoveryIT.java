@@ -127,7 +127,7 @@ public class TruncatedRecoveryIT extends OpenSearchIntegTestCase {
         indexRandom(true, builder);
         for (int i = 0; i < numDocs; i++) {
             String id = Integer.toString(i);
-            assertHitCount(client().prepareSearch().setQuery(QueryBuilders.termQuery("the_id", id)).get(), 1);
+            assertHitCount(client().prepareSearch().setPreference("_primary").setQuery(QueryBuilders.termQuery("the_id", id)).get(), 1);
         }
         ensureGreen();
         // ensure we have flushed segments and make them a big one via optimize
@@ -180,7 +180,7 @@ public class TruncatedRecoveryIT extends OpenSearchIntegTestCase {
         ensureGreen("test");
         for (int i = 0; i < numDocs; i++) {
             String id = Integer.toString(i);
-            assertHitCount(client().prepareSearch().setQuery(QueryBuilders.termQuery("the_id", id)).get(), 1);
+            assertHitCount(client().prepareSearch().setPreference("_primary").setQuery(QueryBuilders.termQuery("the_id", id)).get(), 1);
         }
     }
 }

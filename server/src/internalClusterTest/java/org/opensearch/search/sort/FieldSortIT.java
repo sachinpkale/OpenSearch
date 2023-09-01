@@ -169,7 +169,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         }
         refresh();
         // sort DESC
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .addSort(new FieldSortBuilder("entry").order(SortOrder.DESC).unmappedType(useMapping ? null : "long"))
             .setSize(10)
             .get();
@@ -183,7 +183,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         }
 
         // sort ASC
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .addSort(new FieldSortBuilder("entry").order(SortOrder.ASC).unmappedType(useMapping ? null : "long"))
             .setSize(10)
             .get();
@@ -227,7 +227,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
             docs += builders.size();
             builders.clear();
         }
-        SearchResponse allDocsResponse = client().prepareSearch()
+        SearchResponse allDocsResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(
                 QueryBuilders.boolQuery()
                     .must(QueryBuilders.termQuery("foo", "bar"))
@@ -240,7 +240,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
 
         final int numiters = randomIntBetween(1, 20);
         for (int i = 0; i < numiters; i++) {
-            SearchResponse searchResponse = client().prepareSearch()
+            SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
                 .setQuery(
                     QueryBuilders.boolQuery()
                         .must(QueryBuilders.termQuery("foo", "bar"))
@@ -279,7 +279,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         );
         refresh();
 
-        SearchResponse searchResponse = client().prepareSearch().setQuery(matchAllQuery()).addSort("svalue", SortOrder.ASC).get();
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).addSort("svalue", SortOrder.ASC).get();
 
         assertThat(searchResponse.getHits().getMaxScore(), equalTo(Float.NaN));
         for (SearchHit hit : searchResponse.getHits()) {
@@ -287,7 +287,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         }
 
         // now check with score tracking
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).addSort("svalue", SortOrder.ASC).setTrackScores(true).get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).addSort("svalue", SortOrder.ASC).setTrackScores(true).get();
 
         assertThat(searchResponse.getHits().getMaxScore(), not(equalTo(Float.NaN)));
         for (SearchHit hit : searchResponse.getHits()) {
@@ -355,7 +355,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         }
         if (!sparseBytes.isEmpty()) {
             int size = between(1, sparseBytes.size());
-            SearchResponse searchResponse = client().prepareSearch()
+            SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
                 .setQuery(matchAllQuery())
                 .setPostFilter(QueryBuilders.existsQuery("sparse_bytes"))
                 .setSize(size)
@@ -649,7 +649,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
 
         // STRING
         int size = 1 + random.nextInt(10);
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .setSize(size)
             .addSort("str_value", SortOrder.ASC)
@@ -664,7 +664,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
             );
         }
         size = 1 + random.nextInt(10);
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setSize(size).addSort("str_value", SortOrder.DESC).get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setSize(size).addSort("str_value", SortOrder.DESC).get();
 
         assertHitCount(searchResponse, 10);
         assertThat(searchResponse.getHits().getHits().length, equalTo(size));
@@ -680,7 +680,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
 
         // BYTE
         size = 1 + random.nextInt(10);
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setSize(size).addSort("byte_value", SortOrder.ASC).get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setSize(size).addSort("byte_value", SortOrder.ASC).get();
 
         assertHitCount(searchResponse, 10);
         assertThat(searchResponse.getHits().getHits().length, equalTo(size));
@@ -689,7 +689,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
             assertThat(((Number) searchResponse.getHits().getAt(i).getSortValues()[0]).byteValue(), equalTo((byte) i));
         }
         size = 1 + random.nextInt(10);
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setSize(size).addSort("byte_value", SortOrder.DESC).get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setSize(size).addSort("byte_value", SortOrder.DESC).get();
 
         assertHitCount(searchResponse, 10);
         assertThat(searchResponse.getHits().getHits().length, equalTo(size));
@@ -702,7 +702,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
 
         // SHORT
         size = 1 + random.nextInt(10);
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setSize(size).addSort("short_value", SortOrder.ASC).get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setSize(size).addSort("short_value", SortOrder.ASC).get();
 
         assertHitCount(searchResponse, 10);
         assertThat(searchResponse.getHits().getHits().length, equalTo(size));
@@ -711,7 +711,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
             assertThat(((Number) searchResponse.getHits().getAt(i).getSortValues()[0]).shortValue(), equalTo((short) i));
         }
         size = 1 + random.nextInt(10);
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setSize(size).addSort("short_value", SortOrder.DESC).get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setSize(size).addSort("short_value", SortOrder.DESC).get();
 
         assertHitCount(searchResponse, 10);
         assertThat(searchResponse.getHits().getHits().length, equalTo(size));
@@ -724,7 +724,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
 
         // INTEGER
         size = 1 + random.nextInt(10);
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setSize(size).addSort("integer_value", SortOrder.ASC).get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setSize(size).addSort("integer_value", SortOrder.ASC).get();
 
         assertHitCount(searchResponse, 10);
         assertThat(searchResponse.getHits().getHits().length, equalTo(size));
@@ -735,7 +735,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
 
         assertThat(searchResponse.toString(), not(containsString("error")));
         size = 1 + random.nextInt(10);
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setSize(size).addSort("integer_value", SortOrder.DESC).get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setSize(size).addSort("integer_value", SortOrder.DESC).get();
 
         assertHitCount(searchResponse, 10);
         assertThat(searchResponse.getHits().getHits().length, equalTo(size));
@@ -748,7 +748,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
 
         // LONG
         size = 1 + random.nextInt(10);
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setSize(size).addSort("long_value", SortOrder.ASC).get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setSize(size).addSort("long_value", SortOrder.ASC).get();
 
         assertHitCount(searchResponse, 10);
         assertThat(searchResponse.getHits().getHits().length, equalTo(size));
@@ -759,7 +759,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
 
         assertThat(searchResponse.toString(), not(containsString("error")));
         size = 1 + random.nextInt(10);
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setSize(size).addSort("long_value", SortOrder.DESC).get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setSize(size).addSort("long_value", SortOrder.DESC).get();
         assertHitCount(searchResponse, 10L);
         assertHitCount(searchResponse, 10);
         assertThat(searchResponse.getHits().getHits().length, equalTo(size));
@@ -772,7 +772,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
 
         // FLOAT
         size = 1 + random.nextInt(10);
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setSize(size).addSort("float_value", SortOrder.ASC).get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setSize(size).addSort("float_value", SortOrder.ASC).get();
 
         assertHitCount(searchResponse, 10L);
         assertThat(searchResponse.getHits().getHits().length, equalTo(size));
@@ -783,7 +783,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
 
         assertThat(searchResponse.toString(), not(containsString("error")));
         size = 1 + random.nextInt(10);
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setSize(size).addSort("float_value", SortOrder.DESC).get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setSize(size).addSort("float_value", SortOrder.DESC).get();
 
         assertHitCount(searchResponse, 10);
         assertThat(searchResponse.getHits().getHits().length, equalTo(size));
@@ -796,7 +796,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
 
         // DOUBLE
         size = 1 + random.nextInt(10);
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setSize(size).addSort("double_value", SortOrder.ASC).get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setSize(size).addSort("double_value", SortOrder.ASC).get();
 
         assertHitCount(searchResponse, 10L);
         assertThat(searchResponse.getHits().getHits().length, equalTo(size));
@@ -807,7 +807,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
 
         assertThat(searchResponse.toString(), not(containsString("error")));
         size = 1 + random.nextInt(10);
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setSize(size).addSort("double_value", SortOrder.DESC).get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setSize(size).addSort("double_value", SortOrder.DESC).get();
 
         assertHitCount(searchResponse, 10L);
         assertThat(searchResponse.getHits().getHits().length, equalTo(size));
@@ -820,7 +820,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
 
         // UNSIGNED_LONG
         size = 1 + random.nextInt(10);
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .setSize(size)
             .addSort("unsigned_long_value", SortOrder.ASC)
@@ -838,7 +838,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
 
         assertThat(searchResponse.toString(), not(containsString("error")));
         size = 1 + random.nextInt(10);
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .setSize(size)
             .addSort("unsigned_long_value", SortOrder.DESC)
@@ -899,7 +899,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
 
         // DOUBLE
         logger.info("--> sort with no missing (same as missing _last)");
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(SortBuilders.fieldSort("i_value").order(SortOrder.ASC))
             .get();
@@ -911,7 +911,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(2).getId(), equalTo("2"));
 
         logger.info("--> sort with missing _last");
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(SortBuilders.fieldSort("i_value").order(SortOrder.ASC).missing("_last"))
             .get();
@@ -923,7 +923,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(2).getId(), equalTo("2"));
 
         logger.info("--> sort with missing _first");
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(SortBuilders.fieldSort("i_value").order(SortOrder.ASC).missing("_first"))
             .get();
@@ -936,7 +936,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
 
         // FLOAT
         logger.info("--> sort with no missing (same as missing _last)");
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(SortBuilders.fieldSort("d_value").order(SortOrder.ASC))
             .get();
@@ -948,7 +948,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(2).getId(), equalTo("2"));
 
         logger.info("--> sort with missing _last");
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(SortBuilders.fieldSort("d_value").order(SortOrder.ASC).missing("_last"))
             .get();
@@ -960,7 +960,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(2).getId(), equalTo("2"));
 
         logger.info("--> sort with missing _first");
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(SortBuilders.fieldSort("d_value").order(SortOrder.ASC).missing("_first"))
             .get();
@@ -973,7 +973,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
 
         // UNSIGNED_LONG
         logger.info("--> sort with no missing (same as missing _last)");
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(SortBuilders.fieldSort("u_value").order(SortOrder.ASC))
             .get();
@@ -985,7 +985,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(2).getId(), equalTo("2"));
 
         logger.info("--> sort with missing _last");
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(SortBuilders.fieldSort("u_value").order(SortOrder.ASC).missing("_last"))
             .get();
@@ -997,7 +997,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(2).getId(), equalTo("2"));
 
         logger.info("--> sort with missing _first");
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(SortBuilders.fieldSort("u_value").order(SortOrder.ASC).missing("_first"))
             .get();
@@ -1060,7 +1060,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
 
         // LONG
         logger.info("--> sort with no missing (same as missing _last)");
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(SortBuilders.fieldSort("l_value").order(SortOrder.ASC))
             .get();
@@ -1073,7 +1073,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(2).getId(), is(oneOf("2", "3")));
 
         logger.info("--> sort with missing _last");
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(SortBuilders.fieldSort("l_value").order(SortOrder.ASC).missing("_last"))
             .get();
@@ -1086,7 +1086,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(2).getId(), is(oneOf("2", "3")));
 
         logger.info("--> sort with missing _first");
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(SortBuilders.fieldSort("l_value").order(SortOrder.ASC).missing("_first"))
             .get();
@@ -1100,7 +1100,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
 
         // FLOAT
         logger.info("--> sort with no missing (same as missing _last)");
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(SortBuilders.fieldSort("d_value").order(SortOrder.ASC))
             .get();
@@ -1112,7 +1112,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(2).getId(), equalTo("2"));
 
         logger.info("--> sort with missing _last");
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(SortBuilders.fieldSort("d_value").order(SortOrder.ASC).missing("_last"))
             .get();
@@ -1124,7 +1124,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(2).getId(), equalTo("2"));
 
         logger.info("--> sort with missing _first");
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(SortBuilders.fieldSort("d_value").order(SortOrder.ASC).missing("_first"))
             .get();
@@ -1137,7 +1137,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
 
         // UNSIGNED_LONG
         logger.info("--> sort with no missing (same as missing _last)");
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(SortBuilders.fieldSort("u_value").order(SortOrder.ASC))
             .get();
@@ -1150,7 +1150,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(2).getId(), is(oneOf("2", "3")));
 
         logger.info("--> sort with missing _last");
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(SortBuilders.fieldSort("u_value").order(SortOrder.ASC).missing("_last"))
             .get();
@@ -1163,7 +1163,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(2).getId(), is(oneOf("2", "3")));
 
         logger.info("--> sort with missing _first");
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(SortBuilders.fieldSort("u_value").order(SortOrder.ASC).missing("_first"))
             .get();
@@ -1213,7 +1213,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         }
 
         logger.info("--> sort with no missing (same as missing _last)");
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(SortBuilders.fieldSort("value").order(SortOrder.ASC))
             .get();
@@ -1225,7 +1225,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(2).getId(), equalTo("2"));
 
         logger.info("--> sort with missing _last");
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(SortBuilders.fieldSort("value").order(SortOrder.ASC).missing("_last"))
             .get();
@@ -1237,7 +1237,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(2).getId(), equalTo("2"));
 
         logger.info("--> sort with missing _first");
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(SortBuilders.fieldSort("value").order(SortOrder.ASC).missing("_first"))
             .get();
@@ -1249,7 +1249,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(2).getId(), equalTo("3"));
 
         logger.info("--> sort with missing b");
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(SortBuilders.fieldSort("value").order(SortOrder.ASC).missing("b"))
             .get();
@@ -1271,7 +1271,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
 
         logger.info("--> sort with an unmapped field, verify it fails");
         try {
-            SearchResponse result = client().prepareSearch().setQuery(matchAllQuery()).addSort(SortBuilders.fieldSort("kkk")).get();
+            SearchResponse result = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).addSort(SortBuilders.fieldSort("kkk")).get();
             assertThat("Expected exception but returned with", result, nullValue());
         } catch (SearchPhaseExecutionException e) {
             // we check that it's a parse failure rather than a different shard failure
@@ -1280,14 +1280,14 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
             }
         }
 
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(SortBuilders.fieldSort("kkk").unmappedType("keyword"))
             .get();
         assertNoFailures(searchResponse);
 
         // nested field
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(
                 SortBuilders.fieldSort("nested.foo")
@@ -1298,7 +1298,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertNoFailures(searchResponse);
 
         // nestedQuery
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(
                 SortBuilders.fieldSort("nested.foo")
@@ -1387,7 +1387,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
 
         refresh();
 
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .setSize(10)
             .addSort("long_values", SortOrder.ASC)
@@ -1405,7 +1405,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(2).getId(), equalTo(Integer.toString(2)));
         assertThat(((Number) searchResponse.getHits().getAt(2).getSortValues()[0]).longValue(), equalTo(7L));
 
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setSize(10).addSort("long_values", SortOrder.DESC).get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setSize(10).addSort("long_values", SortOrder.DESC).get();
 
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(3L));
         assertThat(searchResponse.getHits().getHits().length, equalTo(3));
@@ -1419,7 +1419,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(2).getId(), equalTo(Integer.toString(3)));
         assertThat(((Number) searchResponse.getHits().getAt(2).getSortValues()[0]).longValue(), equalTo(3L));
 
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .setSize(10)
             .addSort(SortBuilders.fieldSort("long_values").order(SortOrder.DESC).sortMode(SortMode.SUM))
@@ -1437,7 +1437,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(2).getId(), equalTo(Integer.toString(3)));
         assertThat(((Number) searchResponse.getHits().getAt(2).getSortValues()[0]).longValue(), equalTo(2L));
 
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .setSize(10)
             .addSort(SortBuilders.fieldSort("long_values").order(SortOrder.DESC).sortMode(SortMode.AVG))
@@ -1455,7 +1455,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(2).getId(), equalTo(Integer.toString(3)));
         assertThat(((Number) searchResponse.getHits().getAt(2).getSortValues()[0]).longValue(), equalTo(1L));
 
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .setSize(10)
             .addSort(SortBuilders.fieldSort("long_values").order(SortOrder.DESC).sortMode(SortMode.MEDIAN))
@@ -1473,7 +1473,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(2).getId(), equalTo(Integer.toString(3)));
         assertThat(((Number) searchResponse.getHits().getAt(2).getSortValues()[0]).longValue(), equalTo(2L));
 
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setSize(10).addSort("int_values", SortOrder.ASC).get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setSize(10).addSort("int_values", SortOrder.ASC).get();
 
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(3L));
         assertThat(searchResponse.getHits().getHits().length, equalTo(3));
@@ -1487,7 +1487,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(2).getId(), equalTo(Integer.toString(2)));
         assertThat(((Number) searchResponse.getHits().getAt(2).getSortValues()[0]).intValue(), equalTo(7));
 
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setSize(10).addSort("int_values", SortOrder.DESC).get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setSize(10).addSort("int_values", SortOrder.DESC).get();
 
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(3L));
         assertThat(searchResponse.getHits().getHits().length, equalTo(3));
@@ -1501,7 +1501,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(2).getId(), equalTo(Integer.toString(3)));
         assertThat(((Number) searchResponse.getHits().getAt(2).getSortValues()[0]).intValue(), equalTo(3));
 
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setSize(10).addSort("short_values", SortOrder.ASC).get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setSize(10).addSort("short_values", SortOrder.ASC).get();
 
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(3L));
         assertThat(searchResponse.getHits().getHits().length, equalTo(3));
@@ -1515,7 +1515,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(2).getId(), equalTo(Integer.toString(2)));
         assertThat(((Number) searchResponse.getHits().getAt(2).getSortValues()[0]).intValue(), equalTo(7));
 
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setSize(10).addSort("short_values", SortOrder.DESC).get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setSize(10).addSort("short_values", SortOrder.DESC).get();
 
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(3L));
         assertThat(searchResponse.getHits().getHits().length, equalTo(3));
@@ -1529,7 +1529,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(2).getId(), equalTo(Integer.toString(3)));
         assertThat(((Number) searchResponse.getHits().getAt(2).getSortValues()[0]).intValue(), equalTo(3));
 
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setSize(10).addSort("byte_values", SortOrder.ASC).get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setSize(10).addSort("byte_values", SortOrder.ASC).get();
 
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(3L));
         assertThat(searchResponse.getHits().getHits().length, equalTo(3));
@@ -1543,7 +1543,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(2).getId(), equalTo(Integer.toString(2)));
         assertThat(((Number) searchResponse.getHits().getAt(2).getSortValues()[0]).intValue(), equalTo(7));
 
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setSize(10).addSort("byte_values", SortOrder.DESC).get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setSize(10).addSort("byte_values", SortOrder.DESC).get();
 
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(3L));
         assertThat(searchResponse.getHits().getHits().length, equalTo(3));
@@ -1557,7 +1557,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(2).getId(), equalTo(Integer.toString(3)));
         assertThat(((Number) searchResponse.getHits().getAt(2).getSortValues()[0]).intValue(), equalTo(3));
 
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setSize(10).addSort("float_values", SortOrder.ASC).get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setSize(10).addSort("float_values", SortOrder.ASC).get();
 
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(3L));
         assertThat(searchResponse.getHits().getHits().length, equalTo(3));
@@ -1571,7 +1571,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(2).getId(), equalTo(Integer.toString(2)));
         assertThat(((Number) searchResponse.getHits().getAt(2).getSortValues()[0]).floatValue(), equalTo(7f));
 
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setSize(10).addSort("float_values", SortOrder.DESC).get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setSize(10).addSort("float_values", SortOrder.DESC).get();
 
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(3L));
         assertThat(searchResponse.getHits().getHits().length, equalTo(3));
@@ -1585,7 +1585,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(2).getId(), equalTo(Integer.toString(3)));
         assertThat(((Number) searchResponse.getHits().getAt(2).getSortValues()[0]).floatValue(), equalTo(3f));
 
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setSize(10).addSort("double_values", SortOrder.ASC).get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setSize(10).addSort("double_values", SortOrder.ASC).get();
 
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(3L));
         assertThat(searchResponse.getHits().getHits().length, equalTo(3));
@@ -1599,7 +1599,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(2).getId(), equalTo(Integer.toString(2)));
         assertThat(((Number) searchResponse.getHits().getAt(2).getSortValues()[0]).doubleValue(), equalTo(7d));
 
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setSize(10).addSort("double_values", SortOrder.DESC).get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setSize(10).addSort("double_values", SortOrder.DESC).get();
 
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(3L));
         assertThat(searchResponse.getHits().getHits().length, equalTo(3));
@@ -1613,7 +1613,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(2).getId(), equalTo(Integer.toString(3)));
         assertThat(((Number) searchResponse.getHits().getAt(2).getSortValues()[0]).doubleValue(), equalTo(3d));
 
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setSize(10).addSort("string_values", SortOrder.ASC).get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setSize(10).addSort("string_values", SortOrder.ASC).get();
 
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(3L));
         assertThat(searchResponse.getHits().getHits().length, equalTo(3));
@@ -1627,7 +1627,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(2).getId(), equalTo(Integer.toString(2)));
         assertThat(searchResponse.getHits().getAt(2).getSortValues()[0], equalTo("07"));
 
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setSize(10).addSort("string_values", SortOrder.DESC).get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setSize(10).addSort("string_values", SortOrder.DESC).get();
 
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(3L));
         assertThat(searchResponse.getHits().getHits().length, equalTo(3));
@@ -1662,7 +1662,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
             .get();
 
         refresh();
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .setSize(3)
             .addSort("string_values", SortOrder.DESC)
@@ -1685,7 +1685,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         }
         refresh();
 
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setSize(2).addSort("string_values", SortOrder.DESC).get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setSize(2).addSort("string_values", SortOrder.DESC).get();
 
         assertThat(searchResponse.getHits().getHits().length, equalTo(2));
 
@@ -1707,7 +1707,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         }
         refresh();
 
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setSize(3).addSort("string_values", SortOrder.DESC).get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setSize(3).addSort("string_values", SortOrder.DESC).get();
 
         assertThat(searchResponse.getHits().getHits().length, equalTo(3));
 
@@ -1728,7 +1728,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
             refresh();
         }
 
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setSize(3).addSort("string_values", SortOrder.DESC).get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setSize(3).addSort("string_values", SortOrder.DESC).get();
 
         assertThat(searchResponse.getHits().getHits().length, equalTo(3));
 
@@ -1759,7 +1759,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
             indexRandom(true, indexReqs);
 
             SortOrder order = randomFrom(SortOrder.values());
-            SearchResponse searchResponse = client().prepareSearch()
+            SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
                 .setQuery(matchAllQuery())
                 .setSize(randomIntBetween(1, numDocs + 5))
                 .addSort("_id", order)
@@ -1861,7 +1861,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         refresh();
 
         // We sort on nested field
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(SortBuilders.fieldSort("nested.foo").setNestedPath("nested").order(SortOrder.DESC))
             .get();
@@ -1874,7 +1874,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertThat(hits[1].getSortValues()[0], is("bar"));
 
         // We sort on nested fields with max_children limit
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(
                 SortBuilders.fieldSort("nested.foo").setNestedSort(new NestedSortBuilder("nested").setMaxChildren(1)).order(SortOrder.DESC)
@@ -1891,7 +1891,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         {
             SearchPhaseExecutionException exc = expectThrows(
                 SearchPhaseExecutionException.class,
-                () -> client().prepareSearch()
+                () -> client().prepareSearch().setPreference("_primary")
                     .setQuery(matchAllQuery())
                     .addSort(
                         SortBuilders.fieldSort("nested.bar.foo")
@@ -1906,7 +1906,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         }
 
         // We sort on nested sub field
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(SortBuilders.fieldSort("nested.foo.sub").setNestedPath("nested").order(SortOrder.DESC))
             .get();
@@ -1999,7 +1999,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
 
         {
             Script script = new Script(ScriptType.INLINE, NAME, "doc['number'].value", Collections.emptyMap());
-            SearchResponse searchResponse = client().prepareSearch()
+            SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
                 .setQuery(matchAllQuery())
                 .setSize(randomIntBetween(1, numDocs + 5))
                 .addSort(SortBuilders.scriptSort(script, ScriptSortBuilder.ScriptSortType.NUMBER))
@@ -2016,7 +2016,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
 
         {
             Script script = new Script(ScriptType.INLINE, NAME, "doc['keyword'].value", Collections.emptyMap());
-            SearchResponse searchResponse = client().prepareSearch()
+            SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
                 .setQuery(matchAllQuery())
                 .setSize(randomIntBetween(1, numDocs + 5))
                 .addSort(SortBuilders.scriptSort(script, ScriptSortBuilder.ScriptSortType.STRING))
@@ -2045,7 +2045,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         builders.add(client().prepareIndex("new_index").setSource("route_length_miles", 100.2));
         indexRandom(true, true, builders);
 
-        SearchResponse response = client().prepareSearch()
+        SearchResponse response = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .setSize(builders.size())
             .addSort(SortBuilders.fieldSort("route_length_miles"))
@@ -2071,7 +2071,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         builders.add(client().prepareIndex("new_index").setSource("route_length_miles", 100.2));
         indexRandom(true, true, builders);
 
-        SearchResponse response = client().prepareSearch()
+        SearchResponse response = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .setSize(builders.size())
             .addSort(SortBuilders.fieldSort("route_length_miles").missing(120.3))
@@ -2097,7 +2097,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         indexRandom(true, true, builders);
 
         {
-            SearchResponse response = client().prepareSearch()
+            SearchResponse response = client().prepareSearch().setPreference("_primary")
                 .setQuery(matchAllQuery())
                 .setSize(builders.size())
                 .addSort(SortBuilders.fieldSort("field").setNumericType("long"))
@@ -2114,7 +2114,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         }
 
         {
-            SearchResponse response = client().prepareSearch()
+            SearchResponse response = client().prepareSearch().setPreference("_primary")
                 .setQuery(matchAllQuery())
                 .setSize(builders.size())
                 .addSort(SortBuilders.fieldSort("field").setNumericType("double"))
@@ -2141,7 +2141,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         indexRandom(true, true, builders);
 
         {
-            SearchResponse response = client().prepareSearch()
+            SearchResponse response = client().prepareSearch().setPreference("_primary")
                 .setQuery(matchAllQuery())
                 .setSize(2)
                 .addSort(SortBuilders.fieldSort("field").setNumericType("date"))
@@ -2155,7 +2155,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
             assertEquals(1712879236854L, hits.getAt(0).getSortValues()[0]);
             assertEquals(1712879237000L, hits.getAt(1).getSortValues()[0]);
 
-            response = client().prepareSearch()
+            response = client().prepareSearch().setPreference("_primary")
                 .setMaxConcurrentShardRequests(1)
                 .setQuery(matchAllQuery())
                 .setSize(1)
@@ -2167,7 +2167,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
             assertThat(hits.getAt(0).getSortValues()[0].getClass(), equalTo(Long.class));
             assertEquals(1712879236854L, hits.getAt(0).getSortValues()[0]);
 
-            response = client().prepareSearch()
+            response = client().prepareSearch().setPreference("_primary")
                 .setMaxConcurrentShardRequests(1)
                 .setQuery(matchAllQuery())
                 .setSize(1)
@@ -2181,7 +2181,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         }
 
         {
-            SearchResponse response = client().prepareSearch()
+            SearchResponse response = client().prepareSearch().setPreference("_primary")
                 .setQuery(matchAllQuery())
                 .setSize(2)
                 .addSort(SortBuilders.fieldSort("field").setNumericType("date_nanos"))
@@ -2194,7 +2194,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
             assertEquals(1712879236854775807L, hits.getAt(0).getSortValues()[0]);
             assertEquals(1712879237000000000L, hits.getAt(1).getSortValues()[0]);
 
-            response = client().prepareSearch()
+            response = client().prepareSearch().setPreference("_primary")
                 .setMaxConcurrentShardRequests(1)
                 .setQuery(matchAllQuery())
                 .setSize(1)
@@ -2205,7 +2205,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
             assertThat(hits.getAt(0).getSortValues()[0].getClass(), equalTo(Long.class));
             assertEquals(1712879236854775807L, hits.getAt(0).getSortValues()[0]);
 
-            response = client().prepareSearch()
+            response = client().prepareSearch().setPreference("_primary")
                 .setMaxConcurrentShardRequests(1)
                 .setQuery(matchAllQuery())
                 .setSize(1)
@@ -2221,7 +2221,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
             builders.clear();
             builders.add(client().prepareIndex("index_date").setSource("field", "1905-04-11T23:47:17"));
             indexRandom(true, true, builders);
-            SearchResponse response = client().prepareSearch()
+            SearchResponse response = client().prepareSearch().setPreference("_primary")
                 .setQuery(matchAllQuery())
                 .setSize(1)
                 .addSort(SortBuilders.fieldSort("field").setNumericType("date_nanos"))
@@ -2235,7 +2235,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
             builders.clear();
             builders.add(client().prepareIndex("index_date").setSource("field", "2346-04-11T23:47:17"));
             indexRandom(true, true, builders);
-            SearchResponse response = client().prepareSearch()
+            SearchResponse response = client().prepareSearch().setPreference("_primary")
                 .setQuery(QueryBuilders.rangeQuery("field").gt("1970-01-01"))
                 .setSize(10)
                 .addSort(SortBuilders.fieldSort("field").setNumericType("date_nanos"))
@@ -2253,7 +2253,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
             for (String numericType : new String[] { "long", "double", "date", "date_nanos" }) {
                 OpenSearchException exc = expectThrows(
                     OpenSearchException.class,
-                    () -> client().prepareSearch()
+                    () -> client().prepareSearch().setPreference("_primary")
                         .setQuery(matchAllQuery())
                         .addSort(SortBuilders.fieldSort(invalidField).setNumericType(numericType))
                         .get()
@@ -2283,7 +2283,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         refresh();
 
         // *** 1. sort DESC on long_field
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .addSort(new FieldSortBuilder("long_field").order(SortOrder.DESC))
             .setSize(10)
             .get();
@@ -2298,7 +2298,7 @@ public class FieldSortIT extends ParameterizedOpenSearchIntegTestCase {
         }
 
         // *** 2. sort ASC on long_field
-        searchResponse = client().prepareSearch().addSort(new FieldSortBuilder("long_field").order(SortOrder.ASC)).setSize(10).get();
+        searchResponse = client().prepareSearch().setPreference("_primary").addSort(new FieldSortBuilder("long_field").order(SortOrder.ASC)).setSize(10).get();
         assertSearchResponse(searchResponse);
         previousLong = Long.MIN_VALUE;
         for (int i = 0; i < searchResponse.getHits().getHits().length; i++) {

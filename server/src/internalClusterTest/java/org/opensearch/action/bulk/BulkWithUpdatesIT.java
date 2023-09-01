@@ -540,7 +540,7 @@ public class BulkWithUpdatesIT extends OpenSearchIntegTestCase {
 
         refresh();
 
-        SearchResponse countResponse = client().prepareSearch().setSize(0).get();
+        SearchResponse countResponse = client().prepareSearch().setPreference("_primary").setSize(0).get();
         assertHitCount(countResponse, numDocs);
     }
 

@@ -101,7 +101,7 @@ public class SuggestStatsIT extends OpenSearchIntegTestCase {
 
         long startTime = System.currentTimeMillis();
         for (int i = 0; i < suggestAllIdx; i++) {
-            SearchResponse suggestResponse = addSuggestions(internalCluster().coordOnlyNodeClient().prepareSearch(), i).get();
+            SearchResponse suggestResponse = addSuggestions(internalCluster().coordOnlyNodeClient().prepareSearch().setPreference("_primary"), i).get();
             assertAllSuccessful(suggestResponse);
         }
         for (int i = 0; i < suggestIdx1; i++) {

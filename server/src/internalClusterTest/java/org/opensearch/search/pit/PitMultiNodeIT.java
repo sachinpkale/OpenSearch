@@ -139,7 +139,7 @@ public class PitMultiNodeIT extends OpenSearchIntegTestCase {
         internalCluster().restartRandomDataNode(new InternalTestCluster.RestartCallback() {
             @Override
             public Settings onNodeStopped(String nodeName) throws Exception {
-                SearchResponse searchResponse = client().prepareSearch()
+                SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
                     .setSize(2)
                     .setPointInTime(new PointInTimeBuilder(pitResponse.getId()).setKeepAlive(TimeValue.timeValueDays(1)))
                     .get();
@@ -162,7 +162,7 @@ public class PitMultiNodeIT extends OpenSearchIntegTestCase {
         internalCluster().restartRandomDataNode(new InternalTestCluster.RestartCallback() {
             @Override
             public Settings onNodeStopped(String nodeName) throws Exception {
-                ActionFuture<SearchResponse> execute = client().prepareSearch()
+                ActionFuture<SearchResponse> execute = client().prepareSearch().setPreference("_primary")
                     .setSize(2)
                     .setPointInTime(new PointInTimeBuilder(pitResponse.getId()).setKeepAlive(TimeValue.timeValueDays(1)))
                     .setAllowPartialSearchResults(false)

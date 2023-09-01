@@ -181,8 +181,8 @@ public class IndexStatsIT extends OpenSearchIntegTestCase {
         assertThat(indicesStats.getTotal().getFieldData().getMemorySizeInBytes(), equalTo(0L));
 
         // sort to load it to field data...
-        client().prepareSearch().addSort("field", SortOrder.ASC).execute().actionGet();
-        client().prepareSearch().addSort("field", SortOrder.ASC).execute().actionGet();
+        client().prepareSearch().setPreference("_primary").addSort("field", SortOrder.ASC).execute().actionGet();
+        client().prepareSearch().setPreference("_primary").addSort("field", SortOrder.ASC).execute().actionGet();
 
         nodesStats = client().admin().cluster().prepareNodesStats("data:true").setIndices(true).execute().actionGet();
         assertThat(
@@ -197,8 +197,8 @@ public class IndexStatsIT extends OpenSearchIntegTestCase {
         assertThat(indicesStats.getTotal().getFieldData().getMemorySizeInBytes(), greaterThan(0L));
 
         // sort to load it to field data...
-        client().prepareSearch().addSort("field2", SortOrder.ASC).execute().actionGet();
-        client().prepareSearch().addSort("field2", SortOrder.ASC).execute().actionGet();
+        client().prepareSearch().setPreference("_primary").addSort("field2", SortOrder.ASC).execute().actionGet();
+        client().prepareSearch().setPreference("_primary").addSort("field2", SortOrder.ASC).execute().actionGet();
 
         // now check the per field stats
         nodesStats = client().admin()
@@ -315,12 +315,12 @@ public class IndexStatsIT extends OpenSearchIntegTestCase {
         assertThat(indicesStats.getTotal().getQueryCache().getMemorySizeInBytes(), equalTo(0L));
 
         // sort to load it to field data and filter to load filter cache
-        client().prepareSearch()
+        client().prepareSearch().setPreference("_primary")
             .setPostFilter(QueryBuilders.termQuery("field", "value1"))
             .addSort("field", SortOrder.ASC)
             .execute()
             .actionGet();
-        client().prepareSearch()
+        client().prepareSearch().setPreference("_primary")
             .setPostFilter(QueryBuilders.termQuery("field", "value2"))
             .addSort("field", SortOrder.ASC)
             .execute()

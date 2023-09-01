@@ -76,7 +76,7 @@ public class FilteringAllocationIT extends OpenSearchIntegTestCase {
         }
         client().admin().indices().prepareRefresh().execute().actionGet();
         assertThat(
-            client().prepareSearch()
+            client().prepareSearch().setPreference("_primary")
                 .setSize(0)
                 .setQuery(QueryBuilders.matchAllQuery())
                 .execute()
@@ -117,7 +117,7 @@ public class FilteringAllocationIT extends OpenSearchIntegTestCase {
 
         client().admin().indices().prepareRefresh().execute().actionGet();
         assertThat(
-            client().prepareSearch()
+            client().prepareSearch().setPreference("_primary")
                 .setSize(0)
                 .setQuery(QueryBuilders.matchAllQuery())
                 .execute()
@@ -191,7 +191,7 @@ public class FilteringAllocationIT extends OpenSearchIntegTestCase {
         }
         client().admin().indices().prepareRefresh().execute().actionGet();
         assertThat(
-            client().prepareSearch()
+            client().prepareSearch().setPreference("_primary")
                 .setSize(0)
                 .setQuery(QueryBuilders.matchAllQuery())
                 .execute()

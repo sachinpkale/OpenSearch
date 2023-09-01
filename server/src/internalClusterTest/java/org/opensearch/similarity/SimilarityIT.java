@@ -85,14 +85,14 @@ public class SimilarityIT extends OpenSearchIntegTestCase {
             .execute()
             .actionGet();
 
-        SearchResponse bm25SearchResponse = client().prepareSearch()
+        SearchResponse bm25SearchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchQuery("field1", "quick brown fox"))
             .execute()
             .actionGet();
         assertThat(bm25SearchResponse.getHits().getTotalHits().value, equalTo(1L));
         float bm25Score = bm25SearchResponse.getHits().getHits()[0].getScore();
 
-        SearchResponse booleanSearchResponse = client().prepareSearch()
+        SearchResponse booleanSearchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchQuery("field2", "quick brown fox"))
             .execute()
             .actionGet();
