@@ -406,7 +406,7 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
         final Scope currentClusterScope = getCurrentClusterScope();
         Callable<Void> setup = () -> {
             cluster().beforeTest(random());
-            cluster().wipe(excludeTemplates());
+            //cluster().wipe(excludeTemplates());
             randomIndexTemplate();
             return null;
         };
@@ -2538,7 +2538,7 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
     protected void setupSuiteScopeCluster() throws Exception {}
 
     private static boolean isSuiteScopedTest(Class<?> clazz) {
-        return clazz.getAnnotation(SuiteScopeTestCase.class) != null;
+        return false;
     }
 
     /**
