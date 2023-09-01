@@ -2402,25 +2402,10 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
             beforeInternal();
             printTestMessage("all set up");
         }
-        assertRepositoryMetadataPresentInClusterState();
         if(getNumDataNodes() == 0) {
             internalCluster().stopRandomDataNode();
         }
     }
-
-    void assertRepositoryMetadataPresentInClusterState() throws Exception {
-        assertBusy(() -> {
-            RepositoriesMetadata repositoriesMetadata = client().admin()
-                .cluster()
-                .prepareState()
-                .get()
-                .getState()
-                .metadata()
-                .custom(RepositoriesMetadata.TYPE);
-            assertTrue(repositoriesMetadata != null && !repositoriesMetadata.repositories().isEmpty());
-        }, 30, TimeUnit.SECONDS);
-    }
-
 
     @After
     public final void cleanUpCluster() throws Exception {
