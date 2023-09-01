@@ -586,7 +586,7 @@ public class RelocationIT extends OpenSearchIntegTestCase {
         final int numIters = randomIntBetween(10, 20);
         for (int i = 0; i < numIters; i++) {
             logger.info(" --> checking iteration {}", i);
-            SearchResponse afterRelocation = client().prepareSearch().setSize(ids.size()).get();
+            SearchResponse afterRelocation = client().prepareSearch().setPreference("_primary").setSize(ids.size()).get();
             assertNoFailures(afterRelocation);
             assertSearchHits(afterRelocation, ids.toArray(new String[0]));
         }

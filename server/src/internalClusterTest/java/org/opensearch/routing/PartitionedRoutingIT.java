@@ -171,7 +171,7 @@ public class PartitionedRoutingIT extends OpenSearchIntegTestCase {
             String routing = routingEntry.getKey();
             int expectedDocuments = routingEntry.getValue().size();
 
-            SearchResponse response = client().prepareSearch()
+            SearchResponse response = client().prepareSearch().setPreference("_primary")
                 .setQuery(QueryBuilders.termQuery("_routing", routing))
                 .setRouting(routing)
                 .setIndices(index)
@@ -209,7 +209,7 @@ public class PartitionedRoutingIT extends OpenSearchIntegTestCase {
             String routing = routingEntry.getKey();
             int expectedDocuments = routingEntry.getValue().size();
 
-            SearchResponse response = client().prepareSearch()
+            SearchResponse response = client().prepareSearch().setPreference("_primary")
                 .setQuery(QueryBuilders.termQuery("_routing", routing))
                 .setIndices(index)
                 .setSize(100)

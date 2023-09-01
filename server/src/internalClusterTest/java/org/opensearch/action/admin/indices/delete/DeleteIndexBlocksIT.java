@@ -63,7 +63,7 @@ public class DeleteIndexBlocksIT extends OpenSearchIntegTestCase {
         try {
             Settings settings = Settings.builder().put(IndexMetadata.SETTING_READ_ONLY_ALLOW_DELETE, true).build();
             assertAcked(client().admin().indices().prepareUpdateSettings("test").setSettings(settings).get());
-            assertSearchHits(client().prepareSearch().get(), "1");
+            assertSearchHits(client().prepareSearch().setPreference("_primary").get(), "1");
             assertBlocked(
                 client().prepareIndex().setIndex("test").setId("2").setSource("foo", "bar"),
                 IndexMetadata.INDEX_READ_ONLY_ALLOW_DELETE_BLOCK
@@ -72,7 +72,7 @@ public class DeleteIndexBlocksIT extends OpenSearchIntegTestCase {
                 client().admin().indices().prepareUpdateSettings("test").setSettings(Settings.builder().put("index.number_of_replicas", 2)),
                 IndexMetadata.INDEX_READ_ONLY_ALLOW_DELETE_BLOCK
             );
-            assertSearchHits(client().prepareSearch().get(), "1");
+            assertSearchHits(client().prepareSearch().setPreference("_primary").get(), "1");
             assertAcked(client().admin().indices().prepareDelete("test"));
         } finally {
             Settings settings = Settings.builder().putNull(IndexMetadata.SETTING_READ_ONLY_ALLOW_DELETE).build();
@@ -121,7 +121,7 @@ public class DeleteIndexBlocksIT extends OpenSearchIntegTestCase {
         try {
             Settings settings = Settings.builder().put(Metadata.SETTING_READ_ONLY_ALLOW_DELETE_SETTING.getKey(), true).build();
             assertAcked(client().admin().cluster().prepareUpdateSettings().setTransientSettings(settings).get());
-            assertSearchHits(client().prepareSearch().get(), "1");
+            assertSearchHits(client().prepareSearch().setPreference("_primary").get(), "1");
             assertBlocked(
                 client().prepareIndex().setIndex("test").setId("2").setSource("foo", "bar"),
                 Metadata.CLUSTER_READ_ONLY_ALLOW_DELETE_BLOCK
@@ -130,7 +130,7 @@ public class DeleteIndexBlocksIT extends OpenSearchIntegTestCase {
                 client().admin().indices().prepareUpdateSettings("test").setSettings(Settings.builder().put("index.number_of_replicas", 2)),
                 Metadata.CLUSTER_READ_ONLY_ALLOW_DELETE_BLOCK
             );
-            assertSearchHits(client().prepareSearch().get(), "1");
+            assertSearchHits(client().prepareSearch().setPreference("_primary").get(), "1");
             assertAcked(client().admin().indices().prepareDelete("test"));
         } finally {
             Settings settings = Settings.builder().putNull(Metadata.SETTING_READ_ONLY_ALLOW_DELETE_SETTING.getKey()).build();

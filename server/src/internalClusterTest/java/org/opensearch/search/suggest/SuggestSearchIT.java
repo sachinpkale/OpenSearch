@@ -268,7 +268,7 @@ public class SuggestSearchIT extends OpenSearchIntegTestCase {
         }
         refresh();
 
-        SearchResponse search = client().prepareSearch().setQuery(matchQuery("text", "spellchecker")).get();
+        SearchResponse search = client().prepareSearch().setPreference("_primary").setQuery(matchQuery("text", "spellchecker")).get();
         assertThat("didn't ask for suggestions but got some", search.getSuggest(), nullValue());
 
         TermSuggestionBuilder termSuggestion = termSuggestion("text").suggestMode(SuggestMode.ALWAYS) // Always, otherwise the results can
@@ -329,12 +329,12 @@ public class SuggestSearchIT extends OpenSearchIntegTestCase {
             candidateGenerator("name").prefixLength(0).minWordLength(0).suggestMode("always").maxEdits(2)
         ).gramSize(3);
         {
-            SearchRequestBuilder searchBuilder = client().prepareSearch().setSize(0);
+            SearchRequestBuilder searchBuilder = client().prepareSearch().setPreference("_primary").setSize(0);
             searchBuilder.suggest(new SuggestBuilder().setGlobalText("tetsting sugestion").addSuggestion("did_you_mean", phraseSuggestion));
             assertRequestBuilderThrows(searchBuilder, SearchPhaseExecutionException.class);
         }
         {
-            SearchRequestBuilder searchBuilder = client().prepareSearch().setSize(0);
+            SearchRequestBuilder searchBuilder = client().prepareSearch().setPreference("_primary").setSize(0);
             searchBuilder.suggest(new SuggestBuilder().setGlobalText("tetsting sugestion").addSuggestion("did_you_mean", phraseSuggestion));
             assertRequestBuilderThrows(searchBuilder, SearchPhaseExecutionException.class);
         }
@@ -350,7 +350,7 @@ public class SuggestSearchIT extends OpenSearchIntegTestCase {
         index("test", "type1", "4", "text", "abcc");
         refresh();
 
-        SearchResponse search = client().prepareSearch().setQuery(matchQuery("text", "spellcecker")).get();
+        SearchResponse search = client().prepareSearch().setPreference("_primary").setQuery(matchQuery("text", "spellcecker")).get();
         assertThat("didn't ask for suggestions but got some", search.getSuggest(), nullValue());
 
         TermSuggestionBuilder termSuggest = termSuggestion("text").suggestMode(SuggestMode.ALWAYS) // Always, otherwise the results can vary
@@ -841,7 +841,7 @@ public class SuggestSearchIT extends OpenSearchIntegTestCase {
         refresh();
 
         // When searching on a shard with a non existing mapping, we should fail
-        SearchRequestBuilder request = client().prepareSearch()
+        SearchRequestBuilder request = client().prepareSearch().setPreference("_primary")
             .setSize(0)
             .suggest(
                 new SuggestBuilder().setGlobalText("tetsting sugestion")
@@ -850,7 +850,7 @@ public class SuggestSearchIT extends OpenSearchIntegTestCase {
         assertRequestBuilderThrows(request, SearchPhaseExecutionException.class);
 
         // When searching on a shard which does not hold yet any document of an existing type, we should not fail
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setSize(0)
             .suggest(
                 new SuggestBuilder().setGlobalText("tetsting sugestion")
@@ -889,7 +889,7 @@ public class SuggestSearchIT extends OpenSearchIntegTestCase {
         ensureGreen();
 
         // test phrase suggestion on completely empty index
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setSize(0)
             .suggest(
                 new SuggestBuilder().setGlobalText("tetsting sugestion")
@@ -908,7 +908,7 @@ public class SuggestSearchIT extends OpenSearchIntegTestCase {
         refresh();
 
         // test phrase suggestion but nothing matches
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setSize(0)
             .suggest(
                 new SuggestBuilder().setGlobalText("tetsting sugestion")
@@ -925,7 +925,7 @@ public class SuggestSearchIT extends OpenSearchIntegTestCase {
         index("test", "type1", "1", "name", "Just testing the suggestions api");
         refresh();
 
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setSize(0)
             .suggest(
                 new SuggestBuilder().setGlobalText("tetsting sugestion")
@@ -1427,7 +1427,7 @@ public class SuggestSearchIT extends OpenSearchIntegTestCase {
     }
 
     protected Suggest searchSuggest(String suggestText, int expectShardsFailed, Map<String, SuggestionBuilder<?>> suggestions) {
-        SearchRequestBuilder builder = client().prepareSearch().setSize(0);
+        SearchRequestBuilder builder = client().prepareSearch().setPreference("_primary").setSize(0);
         SuggestBuilder suggestBuilder = new SuggestBuilder();
         if (suggestText != null) {
             suggestBuilder.setGlobalText(suggestText);

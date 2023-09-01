@@ -124,7 +124,7 @@ public class RandomScoreFunctionIT extends OpenSearchIntegTestCase {
             int innerIters = scaledRandomIntBetween(2, 5);
             SearchHit[] hits = null;
             for (int i = 0; i < innerIters; i++) {
-                SearchResponse searchResponse = client().prepareSearch()
+                SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
                     .setSize(docCount) // get all docs otherwise we are prone to tie-breaking
                     .setPreference(preference)
                     .setQuery(functionScoreQuery(matchAllQuery(), randomFunction().seed(seed).setField("foo")))
@@ -348,7 +348,7 @@ public class RandomScoreFunctionIT extends OpenSearchIntegTestCase {
         refresh();
         int iters = scaledRandomIntBetween(10, 20);
         for (int i = 0; i < iters; ++i) {
-            SearchResponse searchResponse = client().prepareSearch()
+            SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
                 .setQuery(functionScoreQuery(matchAllQuery(), randomFunction()))
                 .setSize(docCount)
                 .get();
@@ -370,21 +370,21 @@ public class RandomScoreFunctionIT extends OpenSearchIntegTestCase {
         flushAndRefresh();
 
         assertNoFailures(
-            client().prepareSearch()
+            client().prepareSearch().setPreference("_primary")
                 .setSize(docCount) // get all docs otherwise we are prone to tie-breaking
                 .setQuery(functionScoreQuery(matchAllQuery(), randomFunction().seed(randomInt()).setField(SeqNoFieldMapper.NAME)))
                 .get()
         );
 
         assertNoFailures(
-            client().prepareSearch()
+            client().prepareSearch().setPreference("_primary")
                 .setSize(docCount) // get all docs otherwise we are prone to tie-breaking
                 .setQuery(functionScoreQuery(matchAllQuery(), randomFunction().seed(randomLong()).setField(SeqNoFieldMapper.NAME)))
                 .get()
         );
 
         assertNoFailures(
-            client().prepareSearch()
+            client().prepareSearch().setPreference("_primary")
                 .setSize(docCount) // get all docs otherwise we are prone to tie-breaking
                 .setQuery(
                     functionScoreQuery(
@@ -413,7 +413,7 @@ public class RandomScoreFunctionIT extends OpenSearchIntegTestCase {
 
         for (int i = 0; i < count; i++) {
 
-            SearchResponse searchResponse = client().prepareSearch()
+            SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
                 .setQuery(functionScoreQuery(matchAllQuery(), new RandomScoreFunctionBuilder()))
                 .get();
 

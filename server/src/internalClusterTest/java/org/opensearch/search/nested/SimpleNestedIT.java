@@ -840,7 +840,7 @@ public class SimpleNestedIT extends OpenSearchIntegTestCase {
         refresh();
 
         // access id = 1, read, max value, asc, should use grault and quxx
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(
                 SortBuilders.fieldSort("acl.operation.user.username")
@@ -864,7 +864,7 @@ public class SimpleNestedIT extends OpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getHits()[1].getSortValues()[0].toString(), equalTo("quxx"));
 
         // access id = 1, read, min value, asc, should now use bar and foo
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(
                 SortBuilders.fieldSort("acl.operation.user.username")
@@ -888,7 +888,7 @@ public class SimpleNestedIT extends OpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getHits()[1].getSortValues()[0].toString(), equalTo("foo"));
 
         // execute, by grault or foo, by user id, sort missing first
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(
                 SortBuilders.fieldSort("acl.operation.user.id")
@@ -915,7 +915,7 @@ public class SimpleNestedIT extends OpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getHits()[1].getSortValues()[0].toString(), equalTo("1"));
 
         // execute, by grault or foo, by username, sort missing last (default)
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(
                 SortBuilders.fieldSort("acl.operation.user.username")
@@ -1011,7 +1011,7 @@ public class SimpleNestedIT extends OpenSearchIntegTestCase {
 
         refresh();
 
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(termQuery("_id", 2))
             .addSort(
                 SortBuilders.fieldSort("nested1.nested2.sortVal")
@@ -1192,7 +1192,7 @@ public class SimpleNestedIT extends OpenSearchIntegTestCase {
         refresh();
 
         // Without nested filter
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(SortBuilders.fieldSort("parent.child.child_values").setNestedPath("parent.child").order(SortOrder.ASC))
             .get();
@@ -1206,7 +1206,7 @@ public class SimpleNestedIT extends OpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getHits()[2].getSortValues()[0].toString(), equalTo("-1"));
 
         // With nested filter
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(
                 SortBuilders.fieldSort("parent.child.child_values")
@@ -1225,7 +1225,7 @@ public class SimpleNestedIT extends OpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getHits()[2].getSortValues()[0].toString(), equalTo("3"));
 
         // Nested path should be automatically detected, expect same results as above search request
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(
                 SortBuilders.fieldSort("parent.child.child_values")
@@ -1244,7 +1244,7 @@ public class SimpleNestedIT extends OpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getHits()[2].getId(), equalTo("3"));
         assertThat(searchResponse.getHits().getHits()[2].getSortValues()[0].toString(), equalTo("3"));
 
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(
                 SortBuilders.fieldSort("parent.parent_values")
@@ -1263,7 +1263,7 @@ public class SimpleNestedIT extends OpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getHits()[2].getId(), equalTo("3"));
         assertThat(searchResponse.getHits().getHits()[2].getSortValues()[0].toString(), equalTo("3"));
 
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(
                 SortBuilders.fieldSort("parent.child.child_values")
@@ -1286,7 +1286,7 @@ public class SimpleNestedIT extends OpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getHits()[2].getSortValues()[0].toString(), equalTo("6"));
 
         // Check if closest nested type is resolved
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(
                 SortBuilders.fieldSort("parent.child.child_obj.value")
@@ -1306,7 +1306,7 @@ public class SimpleNestedIT extends OpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getHits()[2].getSortValues()[0].toString(), equalTo("3"));
 
         // Sort mode: sum
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(
                 SortBuilders.fieldSort("parent.child.child_values")
@@ -1325,7 +1325,7 @@ public class SimpleNestedIT extends OpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getHits()[2].getId(), equalTo("1"));
         assertThat(searchResponse.getHits().getHits()[2].getSortValues()[0].toString(), equalTo("11"));
 
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(
                 SortBuilders.fieldSort("parent.child.child_values")
@@ -1345,7 +1345,7 @@ public class SimpleNestedIT extends OpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getHits()[2].getSortValues()[0].toString(), equalTo("2"));
 
         // Sort mode: sum with filter
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(
                 SortBuilders.fieldSort("parent.child.child_values")
@@ -1366,7 +1366,7 @@ public class SimpleNestedIT extends OpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getHits()[2].getSortValues()[0].toString(), equalTo("3"));
 
         // Sort mode: avg
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(
                 SortBuilders.fieldSort("parent.child.child_values")
@@ -1385,7 +1385,7 @@ public class SimpleNestedIT extends OpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getHits()[2].getId(), equalTo("1"));
         assertThat(searchResponse.getHits().getHits()[2].getSortValues()[0].toString(), equalTo("3"));
 
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(
                 SortBuilders.fieldSort("parent.child.child_values")
@@ -1405,7 +1405,7 @@ public class SimpleNestedIT extends OpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getHits()[2].getSortValues()[0].toString(), equalTo("1"));
 
         // Sort mode: avg with filter
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(
                 SortBuilders.fieldSort("parent.child.child_values")

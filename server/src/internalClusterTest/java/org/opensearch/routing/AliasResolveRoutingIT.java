@@ -67,7 +67,7 @@ public class AliasResolveRoutingIT extends OpenSearchIntegTestCase {
         );
         refresh("test-*");
         assertHitCount(
-            client().prepareSearch()
+            client().prepareSearch().setPreference("_primary")
                 .setIndices("alias-*")
                 .setIndicesOptions(IndicesOptions.lenientExpandOpen())
                 .setQuery(queryStringQuery("quick"))

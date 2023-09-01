@@ -60,6 +60,7 @@ abstract class AbstractTasksIT extends OpenSearchIntegTestCase {
         return Settings.builder()
             .put(super.nodeSettings(nodeOrdinal))
             .put(MockTaskManager.USE_MOCK_TASK_MANAGER_SETTING.getKey(), true)
+            .put(remoteStoreGlobalClusterSettings(REPOSITORY_NAME, REPOSITORY_2_NAME))
             .build();
     }
 

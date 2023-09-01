@@ -122,7 +122,7 @@ public class SearchWeightedRoutingIT extends OpenSearchIntegTestCase {
         // making search requests
         for (int i = 0; i < 50; i++) {
             SearchResponse searchResponse = internalCluster().client(randomFrom(A_0, A_1, B_0, B_1))
-                .prepareSearch()
+                .prepareSearch().setPreference("_primary")
                 .setQuery(QueryBuilders.matchAllQuery())
                 .get();
             assertEquals(searchResponse.getFailedShards(), 0);
@@ -166,7 +166,7 @@ public class SearchWeightedRoutingIT extends OpenSearchIntegTestCase {
         // making search requests
         for (int i = 0; i < 100; i++) {
             SearchResponse searchResponse = internalCluster().client(randomFrom(A_0, A_1, B_0, B_1))
-                .prepareSearch()
+                .prepareSearch().setPreference("_primary")
                 .setQuery(QueryBuilders.matchAllQuery())
                 .get();
             assertEquals(searchResponse.getFailedShards(), 0);
@@ -1112,7 +1112,7 @@ public class SearchWeightedRoutingIT extends OpenSearchIntegTestCase {
         String customPreference = randomAlphaOfLength(10);
 
         SearchResponse searchResponse = internalCluster().client(nodeMap.get("b").get(0))
-            .prepareSearch()
+            .prepareSearch().setPreference("_primary")
             .setSize(20)
             .setPreference(customPreference)
             .get();
@@ -1130,7 +1130,7 @@ public class SearchWeightedRoutingIT extends OpenSearchIntegTestCase {
 
         // make search requests with custom string
         internalCluster().client(nodeMap.get("a").get(0))
-            .prepareSearch()
+            .prepareSearch().setPreference("_primary")
             .setSize(20)
             .setPreference(customPreference)
             .setQuery(QueryBuilders.matchAllQuery())
@@ -1178,13 +1178,13 @@ public class SearchWeightedRoutingIT extends OpenSearchIntegTestCase {
         }
 
         SearchResponse searchResponse = internalCluster().client(nodeMap.get("b").get(0))
-            .prepareSearch()
+            .prepareSearch().setPreference("_primary")
             .setPreference(randomFrom("_local", "_prefer_nodes:" + "zone:a", customPreference))
             .get();
         assertEquals(RestStatus.OK.getStatus(), searchResponse.status().getStatus());
 
         searchResponse = internalCluster().client(nodeMap.get("a").get(0))
-            .prepareSearch()
+            .prepareSearch().setPreference("_primary")
             .setPreference(
                 "_only_nodes:" + nodeIDMap.get(nodeInZoneA) + "," + nodeIDMap.get(nodeInZoneB) + "," + nodeIDMap.get(nodeInZoneC)
             )
@@ -1224,13 +1224,13 @@ public class SearchWeightedRoutingIT extends OpenSearchIntegTestCase {
         }
 
         SearchResponse searchResponse = internalCluster().client(nodeMap.get("b").get(0))
-            .prepareSearch()
+            .prepareSearch().setPreference("_primary")
             .setPreference(randomFrom("_local", "_prefer_nodes:" + "zone:a", customPreference))
             .get();
         assertEquals(RestStatus.OK.getStatus(), searchResponse.status().getStatus());
 
         searchResponse = internalCluster().client(nodeMap.get("a").get(0))
-            .prepareSearch()
+            .prepareSearch().setPreference("_primary")
             .setPreference(
                 "_only_nodes:" + nodeIDMap.get(nodeInZoneA) + "," + nodeIDMap.get(nodeInZoneB) + "," + nodeIDMap.get(nodeInZoneC)
             )
@@ -1264,7 +1264,7 @@ public class SearchWeightedRoutingIT extends OpenSearchIntegTestCase {
         assertThrows(
             PreferenceBasedSearchNotAllowedException.class,
             () -> internalCluster().client(nodeMap.get("b").get(0))
-                .prepareSearch()
+                .prepareSearch().setPreference("_primary")
                 .setSize(0)
                 .setPreference("_only_nodes:" + nodeInZoneA)
                 .get()
@@ -1273,7 +1273,7 @@ public class SearchWeightedRoutingIT extends OpenSearchIntegTestCase {
         assertThrows(
             PreferenceBasedSearchNotAllowedException.class,
             () -> internalCluster().client(nodeMap.get("b").get(0))
-                .prepareSearch()
+                .prepareSearch().setPreference("_primary")
                 .setSize(0)
                 .setPreference("_prefer_nodes:" + nodeInZoneA)
                 .get()
@@ -1302,23 +1302,23 @@ public class SearchWeightedRoutingIT extends OpenSearchIntegTestCase {
         String customPreference = randomAlphaOfLength(10);
 
         SearchResponse searchResponse = internalCluster().client(nodeMap.get("b").get(0))
-            .prepareSearch()
+            .prepareSearch().setPreference("_primary")
             .setSize(0)
             .setPreference("_only_local:" + nodeInZoneA)
             .get();
         assertEquals(RestStatus.OK.getStatus(), searchResponse.status().getStatus());
 
         searchResponse = internalCluster().client(nodeMap.get("b").get(0))
-            .prepareSearch()
+            .prepareSearch().setPreference("_primary")
             .setSize(0)
             .setPreference("_local:" + nodeInZoneA)
             .get();
         assertEquals(RestStatus.OK.getStatus(), searchResponse.status().getStatus());
 
-        searchResponse = internalCluster().client(nodeMap.get("b").get(0)).prepareSearch().setSize(0).setPreference("_shards:1").get();
+        searchResponse = internalCluster().client(nodeMap.get("b").get(0)).prepareSearch().setPreference("_primary").setSize(0).setPreference("_shards:1").get();
         assertEquals(RestStatus.OK.getStatus(), searchResponse.status().getStatus());
 
-        searchResponse = internalCluster().client(nodeMap.get("b").get(0)).prepareSearch().setSize(0).setPreference(customPreference).get();
+        searchResponse = internalCluster().client(nodeMap.get("b").get(0)).prepareSearch().setPreference("_primary").setSize(0).setPreference(customPreference).get();
         assertEquals(RestStatus.OK.getStatus(), searchResponse.status().getStatus());
     }
 
