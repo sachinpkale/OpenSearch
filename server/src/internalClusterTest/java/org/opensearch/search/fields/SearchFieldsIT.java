@@ -231,32 +231,32 @@ public class SearchFieldsIT extends OpenSearchIntegTestCase {
 
         client().admin().indices().prepareRefresh().get();
 
-        SearchResponse searchResponse = client().prepareSearch().setQuery(matchAllQuery()).addStoredField("field1").get();
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).addStoredField("field1").get();
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(1L));
         assertThat(searchResponse.getHits().getHits().length, equalTo(1));
         assertThat(searchResponse.getHits().getAt(0).getFields().size(), equalTo(1));
         assertThat(searchResponse.getHits().getAt(0).getFields().get("field1").getValue().toString(), equalTo("value1"));
 
         // field2 is not stored, check that it is not extracted from source.
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).addStoredField("field2").get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).addStoredField("field2").get();
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(1L));
         assertThat(searchResponse.getHits().getHits().length, equalTo(1));
         assertThat(searchResponse.getHits().getAt(0).getFields().size(), equalTo(0));
         assertThat(searchResponse.getHits().getAt(0).getFields().get("field2"), nullValue());
 
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).addStoredField("field3").get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).addStoredField("field3").get();
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(1L));
         assertThat(searchResponse.getHits().getHits().length, equalTo(1));
         assertThat(searchResponse.getHits().getAt(0).getFields().size(), equalTo(1));
         assertThat(searchResponse.getHits().getAt(0).getFields().get("field3").getValue().toString(), equalTo("value3"));
 
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).addStoredField("*3").get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).addStoredField("*3").get();
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(1L));
         assertThat(searchResponse.getHits().getHits().length, equalTo(1));
         assertThat(searchResponse.getHits().getAt(0).getFields().size(), equalTo(1));
         assertThat(searchResponse.getHits().getAt(0).getFields().get("field3").getValue().toString(), equalTo("value3"));
 
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addStoredField("*3")
             .addStoredField("field1")
@@ -268,20 +268,20 @@ public class SearchFieldsIT extends OpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(0).getFields().get("field3").getValue().toString(), equalTo("value3"));
         assertThat(searchResponse.getHits().getAt(0).getFields().get("field1").getValue().toString(), equalTo("value1"));
 
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).addStoredField("field*").get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).addStoredField("field*").get();
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(1L));
         assertThat(searchResponse.getHits().getHits().length, equalTo(1));
         assertThat(searchResponse.getHits().getAt(0).getFields().size(), equalTo(2));
         assertThat(searchResponse.getHits().getAt(0).getFields().get("field3").getValue().toString(), equalTo("value3"));
         assertThat(searchResponse.getHits().getAt(0).getFields().get("field1").getValue().toString(), equalTo("value1"));
 
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).addStoredField("f*3").get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).addStoredField("f*3").get();
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(1L));
         assertThat(searchResponse.getHits().getHits().length, equalTo(1));
         assertThat(searchResponse.getHits().getAt(0).getFields().size(), equalTo(1));
         assertThat(searchResponse.getHits().getAt(0).getFields().get("field3").getValue().toString(), equalTo("value3"));
 
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).addStoredField("*").get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).addStoredField("*").get();
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(1L));
         assertThat(searchResponse.getHits().getHits().length, equalTo(1));
         assertThat(searchResponse.getHits().getAt(0).getSourceAsMap(), nullValue());
@@ -289,7 +289,7 @@ public class SearchFieldsIT extends OpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(0).getFields().get("field1").getValue().toString(), equalTo("value1"));
         assertThat(searchResponse.getHits().getAt(0).getFields().get("field3").getValue().toString(), equalTo("value3"));
 
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).addStoredField("*").addStoredField("_source").get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).addStoredField("*").addStoredField("_source").get();
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(1L));
         assertThat(searchResponse.getHits().getHits().length, equalTo(1));
         assertThat(searchResponse.getHits().getAt(0).getSourceAsMap(), notNullValue());
@@ -339,7 +339,7 @@ public class SearchFieldsIT extends OpenSearchIntegTestCase {
         client().admin().indices().refresh(refreshRequest()).actionGet();
 
         logger.info("running doc['num1'].value");
-        SearchResponse response = client().prepareSearch()
+        SearchResponse response = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort("num1", SortOrder.ASC)
             .addScriptField("sNum1", new Script(ScriptType.INLINE, CustomScriptPlugin.NAME, "doc['num1'].value", Collections.emptyMap()))
@@ -378,7 +378,7 @@ public class SearchFieldsIT extends OpenSearchIntegTestCase {
 
         logger.info("running doc['num1'].value * factor");
         Map<String, Object> params = MapBuilder.<String, Object>newMapBuilder().put("factor", 2.0).map();
-        response = client().prepareSearch()
+        response = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort("num1", SortOrder.ASC)
             .addScriptField("sNum1", new Script(ScriptType.INLINE, CustomScriptPlugin.NAME, "doc['num1'].value * factor", params))
@@ -438,7 +438,7 @@ public class SearchFieldsIT extends OpenSearchIntegTestCase {
             .get();
         client().admin().indices().refresh(refreshRequest()).actionGet();
 
-        SearchResponse response = client().prepareSearch()
+        SearchResponse response = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort("unsigned_num1", SortOrder.ASC)
             .addScriptField(
@@ -477,7 +477,7 @@ public class SearchFieldsIT extends OpenSearchIntegTestCase {
 
         logger.info("running doc['unsigned_num1'].value * factor");
         Map<String, Object> params = MapBuilder.<String, Object>newMapBuilder().put("factor", 2.0).map();
-        response = client().prepareSearch()
+        response = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort("unsigned_num1", SortOrder.ASC)
             .addScriptField("sNum1", new Script(ScriptType.INLINE, CustomScriptPlugin.NAME, "doc['unsigned_num1'].value * factor", params))
@@ -527,7 +527,7 @@ public class SearchFieldsIT extends OpenSearchIntegTestCase {
             client().prepareIndex("test").setId("2").setSource(jsonBuilder().startObject().field("date", date).endObject())
         );
 
-        SearchResponse response = client().prepareSearch()
+        SearchResponse response = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort("date", SortOrder.ASC)
             .addScriptField(
@@ -568,7 +568,7 @@ public class SearchFieldsIT extends OpenSearchIntegTestCase {
         }
         indexRandom(true, indexRequestBuilders);
 
-        SearchResponse response = client().prepareSearch()
+        SearchResponse response = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort("num1", SortOrder.ASC)
             .setSize(numDocs)
@@ -612,7 +612,7 @@ public class SearchFieldsIT extends OpenSearchIntegTestCase {
             .get();
         client().admin().indices().refresh(refreshRequest()).actionGet();
 
-        SearchResponse response = client().prepareSearch()
+        SearchResponse response = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addScriptField("s_obj1", new Script(ScriptType.INLINE, CustomScriptPlugin.NAME, "_source.obj1", Collections.emptyMap()))
             .addScriptField(
@@ -653,7 +653,7 @@ public class SearchFieldsIT extends OpenSearchIntegTestCase {
     public void testScriptFieldsForNullReturn() throws Exception {
         client().prepareIndex("test").setId("1").setSource("foo", "bar").setRefreshPolicy("true").get();
 
-        SearchResponse response = client().prepareSearch()
+        SearchResponse response = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addScriptField("test_script_1", new Script(ScriptType.INLINE, CustomScriptPlugin.NAME, "return null", Collections.emptyMap()))
             .get();
@@ -775,7 +775,7 @@ public class SearchFieldsIT extends OpenSearchIntegTestCase {
 
         client().admin().indices().prepareRefresh().get();
 
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addStoredField("byte_field")
             .addStoredField("short_field")
@@ -1019,7 +1019,7 @@ public class SearchFieldsIT extends OpenSearchIntegTestCase {
 
         client().admin().indices().prepareRefresh().get();
 
-        SearchRequestBuilder builder = client().prepareSearch()
+        SearchRequestBuilder builder = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addDocValueField("text_field")
             .addDocValueField("keyword_field")
@@ -1076,7 +1076,7 @@ public class SearchFieldsIT extends OpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(0).getFields().get("ip_field").getValue(), equalTo("::1"));
         assertThat(searchResponse.getHits().getAt(0).getFields().get("flat_object_field").getValue(), equalTo("flat_object_field.foo"));
 
-        builder = client().prepareSearch().setQuery(matchAllQuery()).addDocValueField("*field");
+        builder = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).addDocValueField("*field");
         searchResponse = builder.get();
 
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(1L));
@@ -1120,7 +1120,7 @@ public class SearchFieldsIT extends OpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(0).getFields().get("ip_field").getValue(), equalTo("::1"));
         assertThat(searchResponse.getHits().getAt(0).getFields().get("flat_object_field").getValue(), equalTo("flat_object_field.foo"));
 
-        builder = client().prepareSearch()
+        builder = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addDocValueField("text_field", "use_field_mapping")
             .addDocValueField("keyword_field", "use_field_mapping")
@@ -1179,7 +1179,7 @@ public class SearchFieldsIT extends OpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(0).getFields().get("ip_field").getValue(), equalTo("::1"));
         assertThat(searchResponse.getHits().getAt(0).getFields().get("flat_object_field").getValue(), equalTo("flat_object_field.foo"));
 
-        builder = client().prepareSearch()
+        builder = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addDocValueField("byte_field", "#.0")
             .addDocValueField("short_field", "#.0")
@@ -1306,7 +1306,7 @@ public class SearchFieldsIT extends OpenSearchIntegTestCase {
         index("test", MapperService.SINGLE_MAPPING_NAME, "1", "text_field", "foo", "date_field", formatter.print(date));
         refresh("test");
 
-        SearchRequestBuilder builder = client().prepareSearch()
+        SearchRequestBuilder builder = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addDocValueField("text_field_alias")
             .addDocValueField("date_field_alias", "use_field_mapping")
@@ -1367,7 +1367,7 @@ public class SearchFieldsIT extends OpenSearchIntegTestCase {
         index("test", MapperService.SINGLE_MAPPING_NAME, "1", "text_field", "foo", "date_field", formatter.print(date));
         refresh("test");
 
-        SearchRequestBuilder builder = client().prepareSearch()
+        SearchRequestBuilder builder = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addDocValueField("*alias", "use_field_mapping")
             .addDocValueField("date_field");
@@ -1420,7 +1420,7 @@ public class SearchFieldsIT extends OpenSearchIntegTestCase {
         index("test", MapperService.SINGLE_MAPPING_NAME, "1", "field1", "value1", "field2", "value2");
         refresh("test");
 
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addStoredField("field1-alias")
             .addStoredField("field2-alias")
@@ -1462,7 +1462,7 @@ public class SearchFieldsIT extends OpenSearchIntegTestCase {
         index("test", MapperService.SINGLE_MAPPING_NAME, "1", "field1", "value1", "field2", "value2");
         refresh("test");
 
-        SearchResponse searchResponse = client().prepareSearch().setQuery(matchAllQuery()).addStoredField("field*").get();
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).addStoredField("field*").get();
         assertHitCount(searchResponse, 1L);
 
         SearchHit hit = searchResponse.getHits().getAt(0);

@@ -97,19 +97,19 @@ public class SearchPreferenceIT extends OpenSearchIntegTestCase {
             "_prefer_nodes:somenode,server2" };
         for (String pref : preferences) {
             logger.info("--> Testing out preference={}", pref);
-            SearchResponse searchResponse = client().prepareSearch().setSize(0).setPreference(pref).get();
+            SearchResponse searchResponse = client().prepareSearch().setPreference("_primary").setSize(0).setPreference(pref).get();
             assertThat(RestStatus.OK, equalTo(searchResponse.status()));
             assertThat(pref, searchResponse.getFailedShards(), greaterThanOrEqualTo(0));
-            searchResponse = client().prepareSearch().setPreference(pref).get();
+            searchResponse = client().prepareSearch().setPreference("_primary").setPreference(pref).get();
             assertThat(RestStatus.OK, equalTo(searchResponse.status()));
             assertThat(pref, searchResponse.getFailedShards(), greaterThanOrEqualTo(0));
         }
 
         // _only_local is a stricter preference, we need to send the request to a data node
-        SearchResponse searchResponse = dataNodeClient().prepareSearch().setSize(0).setPreference("_only_local").get();
+        SearchResponse searchResponse = dataNodeClient().prepareSearch().setPreference("_primary").setSize(0).setPreference("_only_local").get();
         assertThat(RestStatus.OK, equalTo(searchResponse.status()));
         assertThat("_only_local", searchResponse.getFailedShards(), greaterThanOrEqualTo(0));
-        searchResponse = dataNodeClient().prepareSearch().setPreference("_only_local").get();
+        searchResponse = dataNodeClient().prepareSearch().setPreference("_primary").setPreference("_only_local").get();
         assertThat(RestStatus.OK, equalTo(searchResponse.status()));
         assertThat("_only_local", searchResponse.getFailedShards(), greaterThanOrEqualTo(0));
     }
@@ -142,25 +142,25 @@ public class SearchPreferenceIT extends OpenSearchIntegTestCase {
         client().prepareIndex("test").setSource("field1", "value1").get();
         refresh();
 
-        SearchResponse searchResponse = client().prepareSearch().setQuery(matchAllQuery()).get();
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).get();
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(1L));
 
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setPreference("_local").execute().actionGet();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setPreference("_local").execute().actionGet();
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(1L));
 
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setPreference("_primary").execute().actionGet();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setPreference("_primary").execute().actionGet();
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(1L));
 
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setPreference("_primary_first").execute().actionGet();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setPreference("_primary_first").execute().actionGet();
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(1L));
 
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setPreference("_replica").execute().actionGet();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setPreference("_replica").execute().actionGet();
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(1L));
 
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setPreference("_replica_first").execute().actionGet();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setPreference("_replica_first").execute().actionGet();
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(1L));
 
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setPreference("1234").execute().actionGet();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setPreference("1234").execute().actionGet();
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(1L));
 
     }
@@ -170,7 +170,7 @@ public class SearchPreferenceIT extends OpenSearchIntegTestCase {
         ensureGreen();
 
         try {
-            client().prepareSearch().setQuery(matchAllQuery()).setPreference("_only_nodes:DOES-NOT-EXIST").get();
+            client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setPreference("_only_nodes:DOES-NOT-EXIST").get();
             fail("Expected IllegalArgumentException");
         } catch (IllegalArgumentException e) {
             assertThat(e, hasToString(containsString("no data nodes with criteria [DOES-NOT-EXIST] found for shard: [test][")));

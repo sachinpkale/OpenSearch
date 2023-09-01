@@ -89,7 +89,7 @@ public class QueryProfilerIT extends OpenSearchIntegTestCase {
             QueryBuilder q = randomQueryBuilder(stringFields, numericFields, numDocs, 3);
             logger.info("Query: {}", q);
 
-            SearchResponse resp = client().prepareSearch()
+            SearchResponse resp = client().prepareSearch().setPreference("_primary")
                 .setQuery(q)
                 .setTrackTotalHits(true)
                 .setProfile(true)
@@ -216,7 +216,7 @@ public class QueryProfilerIT extends OpenSearchIntegTestCase {
 
         QueryBuilder q = QueryBuilders.matchQuery("field1", "one");
 
-        SearchResponse resp = client().prepareSearch().setQuery(q).setProfile(true).setSearchType(SearchType.QUERY_THEN_FETCH).get();
+        SearchResponse resp = client().prepareSearch().setPreference("_primary").setQuery(q).setProfile(true).setSearchType(SearchType.QUERY_THEN_FETCH).get();
 
         Map<String, ProfileShardResult> p = resp.getProfileResults();
         assertNotNull(p);
@@ -257,7 +257,7 @@ public class QueryProfilerIT extends OpenSearchIntegTestCase {
             .must(QueryBuilders.matchQuery("field1", "one"))
             .must(QueryBuilders.matchQuery("field1", "two"));
 
-        SearchResponse resp = client().prepareSearch().setQuery(q).setProfile(true).setSearchType(SearchType.QUERY_THEN_FETCH).get();
+        SearchResponse resp = client().prepareSearch().setPreference("_primary").setQuery(q).setProfile(true).setSearchType(SearchType.QUERY_THEN_FETCH).get();
 
         Map<String, ProfileShardResult> p = resp.getProfileResults();
         assertNotNull(p);
@@ -318,7 +318,7 @@ public class QueryProfilerIT extends OpenSearchIntegTestCase {
         QueryBuilder q = QueryBuilders.boolQuery();
         logger.info("Query: {}", q);
 
-        SearchResponse resp = client().prepareSearch().setQuery(q).setProfile(true).setSearchType(SearchType.QUERY_THEN_FETCH).get();
+        SearchResponse resp = client().prepareSearch().setPreference("_primary").setQuery(q).setProfile(true).setSearchType(SearchType.QUERY_THEN_FETCH).get();
 
         assertNotNull("Profile response element should not be null", resp.getProfileResults());
         assertThat("Profile response should not be an empty array", resp.getProfileResults().size(), not(0));
@@ -363,7 +363,7 @@ public class QueryProfilerIT extends OpenSearchIntegTestCase {
 
         logger.info("Query: {}", q);
 
-        SearchResponse resp = client().prepareSearch().setQuery(q).setProfile(true).setSearchType(SearchType.QUERY_THEN_FETCH).get();
+        SearchResponse resp = client().prepareSearch().setPreference("_primary").setQuery(q).setProfile(true).setSearchType(SearchType.QUERY_THEN_FETCH).get();
 
         assertNotNull("Profile response element should not be null", resp.getProfileResults());
         assertThat("Profile response should not be an empty array", resp.getProfileResults().size(), not(0));
@@ -403,7 +403,7 @@ public class QueryProfilerIT extends OpenSearchIntegTestCase {
             .negativeBoost(randomFloat());
         logger.info("Query: {}", q);
 
-        SearchResponse resp = client().prepareSearch().setQuery(q).setProfile(true).setSearchType(SearchType.QUERY_THEN_FETCH).get();
+        SearchResponse resp = client().prepareSearch().setPreference("_primary").setQuery(q).setProfile(true).setSearchType(SearchType.QUERY_THEN_FETCH).get();
 
         assertNotNull("Profile response element should not be null", resp.getProfileResults());
         assertThat("Profile response should not be an empty array", resp.getProfileResults().size(), not(0));
@@ -443,7 +443,7 @@ public class QueryProfilerIT extends OpenSearchIntegTestCase {
             .add(QueryBuilders.rangeQuery("field2").from(null).to(73).includeLower(true).includeUpper(true));
         logger.info("Query: {}", q);
 
-        SearchResponse resp = client().prepareSearch().setQuery(q).setProfile(true).setSearchType(SearchType.QUERY_THEN_FETCH).get();
+        SearchResponse resp = client().prepareSearch().setPreference("_primary").setQuery(q).setProfile(true).setSearchType(SearchType.QUERY_THEN_FETCH).get();
 
         assertNotNull("Profile response element should not be null", resp.getProfileResults());
         assertThat("Profile response should not be an empty array", resp.getProfileResults().size(), not(0));
@@ -482,7 +482,7 @@ public class QueryProfilerIT extends OpenSearchIntegTestCase {
 
         logger.info("Query: {}", q.toString());
 
-        SearchResponse resp = client().prepareSearch().setQuery(q).setProfile(true).setSearchType(SearchType.QUERY_THEN_FETCH).get();
+        SearchResponse resp = client().prepareSearch().setPreference("_primary").setQuery(q).setProfile(true).setSearchType(SearchType.QUERY_THEN_FETCH).get();
 
         assertNotNull("Profile response element should not be null", resp.getProfileResults());
         assertThat("Profile response should not be an empty array", resp.getProfileResults().size(), not(0));
@@ -523,7 +523,7 @@ public class QueryProfilerIT extends OpenSearchIntegTestCase {
 
         logger.info("Query: {}", q);
 
-        SearchResponse resp = client().prepareSearch()
+        SearchResponse resp = client().prepareSearch().setPreference("_primary")
             .setQuery(q)
             .setIndices("test")
             .setProfile(true)
@@ -575,7 +575,7 @@ public class QueryProfilerIT extends OpenSearchIntegTestCase {
 
         logger.info("Query: {}", q);
 
-        SearchResponse resp = client().prepareSearch().setQuery(q).setProfile(false).get();
+        SearchResponse resp = client().prepareSearch().setPreference("_primary").setQuery(q).setProfile(false).get();
         assertThat("Profile response element should be an empty map", resp.getProfileResults().size(), equalTo(0));
     }
 

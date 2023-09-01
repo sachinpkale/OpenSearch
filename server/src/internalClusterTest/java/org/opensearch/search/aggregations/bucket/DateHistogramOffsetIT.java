@@ -96,7 +96,7 @@ public class DateHistogramOffsetIT extends OpenSearchIntegTestCase {
     public void testSingleValueWithPositiveOffset() throws Exception {
         prepareIndex(date("2014-03-11T00:00:00+00:00"), 5, 1, 0);
 
-        SearchResponse response = client().prepareSearch("idx2")
+        SearchResponse response = client().prepareSearch("idx2").setPreference("_primary")
             .setQuery(matchAllQuery())
             .addAggregation(
                 dateHistogram("date_histo").field("date").offset("2h").format(DATE_FORMAT).dateHistogramInterval(DateHistogramInterval.DAY)
@@ -116,7 +116,7 @@ public class DateHistogramOffsetIT extends OpenSearchIntegTestCase {
     public void testSingleValueWithNegativeOffset() throws Exception {
         prepareIndex(date("2014-03-11T00:00:00+00:00"), 5, -1, 0);
 
-        SearchResponse response = client().prepareSearch("idx2")
+        SearchResponse response = client().prepareSearch("idx2").setPreference("_primary")
             .setQuery(matchAllQuery())
             .addAggregation(
                 dateHistogram("date_histo").field("date").offset("-2h").format(DATE_FORMAT).dateHistogramInterval(DateHistogramInterval.DAY)
@@ -140,7 +140,7 @@ public class DateHistogramOffsetIT extends OpenSearchIntegTestCase {
         prepareIndex(date("2014-03-11T00:00:00+00:00"), 12, 1, 0);
         prepareIndex(date("2014-03-14T00:00:00+00:00"), 12, 1, 13);
 
-        SearchResponse response = client().prepareSearch("idx2")
+        SearchResponse response = client().prepareSearch("idx2").setPreference("_primary")
             .setQuery(matchAllQuery())
             .addAggregation(
                 dateHistogram("date_histo").field("date")

@@ -104,7 +104,7 @@ public class SimpleSearchIT extends OpenSearchIntegTestCase {
                 randomPreference = randomUnicodeOfLengthBetween(0, 4);
             }
             // id is not indexed, but lets see that we automatically convert to
-            SearchResponse searchResponse = client().prepareSearch()
+            SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
                 .setQuery(QueryBuilders.matchAllQuery())
                 .setPreference(randomPreference)
                 .get();
@@ -138,7 +138,7 @@ public class SimpleSearchIT extends OpenSearchIntegTestCase {
 
         client().prepareIndex("test").setId("1").setSource("from", "192.168.0.5", "to", "192.168.0.10").setRefreshPolicy(IMMEDIATE).get();
 
-        SearchResponse search = client().prepareSearch()
+        SearchResponse search = client().prepareSearch().setPreference("_primary")
             .setQuery(boolQuery().must(rangeQuery("from").lte("192.168.0.7")).must(rangeQuery("to").gte("192.168.0.7")))
             .get();
 
@@ -173,38 +173,38 @@ public class SimpleSearchIT extends OpenSearchIntegTestCase {
         client().prepareIndex("test").setId("5").setSource("ip", "2001:db8::ff00:42:8329").get();
         refresh();
 
-        SearchResponse search = client().prepareSearch().setQuery(boolQuery().must(QueryBuilders.termQuery("ip", "192.168.0.1"))).get();
+        SearchResponse search = client().prepareSearch().setPreference("_primary").setQuery(boolQuery().must(QueryBuilders.termQuery("ip", "192.168.0.1"))).get();
         assertHitCount(search, 1L);
 
-        search = client().prepareSearch().setQuery(queryStringQuery("ip: 192.168.0.1")).get();
+        search = client().prepareSearch().setPreference("_primary").setQuery(queryStringQuery("ip: 192.168.0.1")).get();
         assertHitCount(search, 1L);
 
-        search = client().prepareSearch().setQuery(boolQuery().must(QueryBuilders.termQuery("ip", "192.168.0.1/32"))).get();
+        search = client().prepareSearch().setPreference("_primary").setQuery(boolQuery().must(QueryBuilders.termQuery("ip", "192.168.0.1/32"))).get();
         assertHitCount(search, 1L);
 
-        search = client().prepareSearch().setQuery(boolQuery().must(QueryBuilders.termQuery("ip", "192.168.0.0/24"))).get();
+        search = client().prepareSearch().setPreference("_primary").setQuery(boolQuery().must(QueryBuilders.termQuery("ip", "192.168.0.0/24"))).get();
         assertHitCount(search, 3L);
 
-        search = client().prepareSearch().setQuery(boolQuery().must(QueryBuilders.termQuery("ip", "192.0.0.0/8"))).get();
+        search = client().prepareSearch().setPreference("_primary").setQuery(boolQuery().must(QueryBuilders.termQuery("ip", "192.0.0.0/8"))).get();
         assertHitCount(search, 4L);
 
-        search = client().prepareSearch().setQuery(boolQuery().must(QueryBuilders.termQuery("ip", "0.0.0.0/0"))).get();
+        search = client().prepareSearch().setPreference("_primary").setQuery(boolQuery().must(QueryBuilders.termQuery("ip", "0.0.0.0/0"))).get();
         assertHitCount(search, 4L);
 
-        search = client().prepareSearch().setQuery(boolQuery().must(QueryBuilders.termQuery("ip", "2001:db8::ff00:42:8329/128"))).get();
+        search = client().prepareSearch().setPreference("_primary").setQuery(boolQuery().must(QueryBuilders.termQuery("ip", "2001:db8::ff00:42:8329/128"))).get();
         assertHitCount(search, 1L);
 
-        search = client().prepareSearch().setQuery(boolQuery().must(QueryBuilders.termQuery("ip", "2001:db8::/64"))).get();
+        search = client().prepareSearch().setPreference("_primary").setQuery(boolQuery().must(QueryBuilders.termQuery("ip", "2001:db8::/64"))).get();
         assertHitCount(search, 1L);
 
-        search = client().prepareSearch().setQuery(boolQuery().must(QueryBuilders.termQuery("ip", "::/0"))).get();
+        search = client().prepareSearch().setPreference("_primary").setQuery(boolQuery().must(QueryBuilders.termQuery("ip", "::/0"))).get();
         assertHitCount(search, 5L);
 
-        search = client().prepareSearch().setQuery(boolQuery().must(QueryBuilders.termQuery("ip", "192.168.1.5/32"))).get();
+        search = client().prepareSearch().setPreference("_primary").setQuery(boolQuery().must(QueryBuilders.termQuery("ip", "192.168.1.5/32"))).get();
         assertHitCount(search, 0L);
 
         assertFailures(
-            client().prepareSearch().setQuery(boolQuery().must(QueryBuilders.termQuery("ip", "0/0/0/0/0"))),
+            client().prepareSearch().setPreference("_primary").setQuery(boolQuery().must(QueryBuilders.termQuery("ip", "0/0/0/0/0"))),
             RestStatus.BAD_REQUEST,
             containsString("Expected [ip/prefix] but was [0/0/0/0/0]")
         );
@@ -215,10 +215,10 @@ public class SimpleSearchIT extends OpenSearchIntegTestCase {
 
         client().prepareIndex("test").setId("XXX1").setSource("field", "value").setRefreshPolicy(IMMEDIATE).get();
         // id is not indexed, but lets see that we automatically convert to
-        SearchResponse searchResponse = client().prepareSearch().setQuery(QueryBuilders.termQuery("_id", "XXX1")).get();
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary").setQuery(QueryBuilders.termQuery("_id", "XXX1")).get();
         assertHitCount(searchResponse, 1L);
 
-        searchResponse = client().prepareSearch().setQuery(QueryBuilders.queryStringQuery("_id:XXX1")).get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(QueryBuilders.queryStringQuery("_id:XXX1")).get();
         assertHitCount(searchResponse, 1L);
     }
 

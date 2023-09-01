@@ -1487,7 +1487,7 @@ public class IndexRecoveryIT extends OpenSearchIntegTestCase {
         client().admin().indices().prepareUpdateSettings("test").setSettings(Settings.builder().put("index.number_of_replicas", 1)).get();
         ensureGreen("test");
         client().admin().indices().prepareRefresh("test").get();
-        assertHitCount(client().prepareSearch().get(), numDocs);
+        assertHitCount(client().prepareSearch().setPreference("_primary").get(), numDocs);
     }
 
     /** Makes sure the new cluster-manager does not repeatedly fetch index metadata from recovering replicas */

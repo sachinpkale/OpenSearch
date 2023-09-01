@@ -188,7 +188,7 @@ abstract class AbstractGeoDistanceIT extends OpenSearchIntegTestCase {
     }
 
     public void testSimpleDistanceQuery() {
-        SearchResponse searchResponse = client().prepareSearch() // from NY
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary") // from NY
             .setQuery(QueryBuilders.geoDistanceQuery("location").point(40.5, -73.9).distance(25, DistanceUnit.KILOMETERS))
             .get();
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(2L));
@@ -212,7 +212,7 @@ abstract class AbstractGeoDistanceIT extends OpenSearchIntegTestCase {
         refresh();
 
         // Test doc['location'].arcDistance(lat, lon)
-        SearchResponse searchResponse1 = client().prepareSearch()
+        SearchResponse searchResponse1 = client().prepareSearch().setPreference("_primary")
             .setQuery(new IdsQueryBuilder().addIds("8"))
             .addStoredField("_source")
             .addScriptField("distance", new Script(ScriptType.INLINE, CustomScriptPlugin.NAME, "arcDistance", Collections.emptyMap()))
@@ -221,7 +221,7 @@ abstract class AbstractGeoDistanceIT extends OpenSearchIntegTestCase {
         assertThat(resultDistance1, closeTo(GeoUtils.arcDistance(src_lat, src_lon, tgt_lat, tgt_lon), 0.01d));
 
         // Test doc['location'].planeDistance(lat, lon)
-        SearchResponse searchResponse2 = client().prepareSearch()
+        SearchResponse searchResponse2 = client().prepareSearch().setPreference("_primary")
             .setQuery(new IdsQueryBuilder().addIds("8"))
             .addStoredField("_source")
             .addScriptField("distance", new Script(ScriptType.INLINE, CustomScriptPlugin.NAME, "planeDistance", Collections.emptyMap()))
@@ -230,7 +230,7 @@ abstract class AbstractGeoDistanceIT extends OpenSearchIntegTestCase {
         assertThat(resultDistance2, closeTo(GeoUtils.planeDistance(src_lat, src_lon, tgt_lat, tgt_lon), 0.01d));
 
         // Test doc['location'].geohashDistance(lat, lon)
-        SearchResponse searchResponse4 = client().prepareSearch()
+        SearchResponse searchResponse4 = client().prepareSearch().setPreference("_primary")
             .setQuery(new IdsQueryBuilder().addIds("8"))
             .addStoredField("_source")
             .addScriptField("distance", new Script(ScriptType.INLINE, CustomScriptPlugin.NAME, "geohashDistance", Collections.emptyMap()))
@@ -245,7 +245,7 @@ abstract class AbstractGeoDistanceIT extends OpenSearchIntegTestCase {
         );
 
         // Test doc['location'].arcDistance(lat, lon + 360)/1000d
-        SearchResponse searchResponse5 = client().prepareSearch()
+        SearchResponse searchResponse5 = client().prepareSearch().setPreference("_primary")
             .setQuery(new IdsQueryBuilder().addIds("8"))
             .addStoredField("_source")
             .addScriptField(
@@ -257,7 +257,7 @@ abstract class AbstractGeoDistanceIT extends OpenSearchIntegTestCase {
         assertThat(resultArcDistance5, closeTo(GeoUtils.arcDistance(src_lat, src_lon, tgt_lat, tgt_lon) / 1000d, 0.01d));
 
         // Test doc['location'].arcDistance(lat + 360, lon)/1000d
-        SearchResponse searchResponse6 = client().prepareSearch()
+        SearchResponse searchResponse6 = client().prepareSearch().setPreference("_primary")
             .setQuery(new IdsQueryBuilder().addIds("8"))
             .addStoredField("_source")
             .addScriptField(

@@ -561,7 +561,7 @@ public class SimpleIndexTemplateIT extends OpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(0).getSourceAsMap().get("type"), equalTo("type2"));
 
         // Search the complex filter alias
-        searchResponse = client().prepareSearch("complex_filtered_alias").get();
+        searchResponse = client().prepareSearch("complex_filtered_alias").setPreference("_primary").get();
         assertHitCount(searchResponse, 3L);
 
         Set<String> types = new HashSet<>();

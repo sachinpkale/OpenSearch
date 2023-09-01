@@ -186,7 +186,7 @@ public class CorruptedFileIT extends OpenSearchIntegTestCase {
         assertAllSuccessful(client().admin().indices().prepareFlush().setForce(true).get());
         assertAllSuccessful(client().admin().indices().prepareFlush().setForce(true).get());
         // we have to flush at least once here since we don't corrupt the translog
-        SearchResponse countResponse = client().prepareSearch().setSize(0).get();
+        SearchResponse countResponse = client().prepareSearch().setPreference("_primary").setSize(0).get();
         assertHitCount(countResponse, numDocs);
 
         final int numShards = numShards("test");
@@ -218,7 +218,7 @@ public class CorruptedFileIT extends OpenSearchIntegTestCase {
         assertThat(health.getStatus(), equalTo(ClusterHealthStatus.GREEN));
         final int numIterations = scaledRandomIntBetween(5, 20);
         for (int i = 0; i < numIterations; i++) {
-            SearchResponse response = client().prepareSearch().setSize(numDocs).get();
+            SearchResponse response = client().prepareSearch().setPreference("_primary").setSize(numDocs).get();
             assertHitCount(response, numDocs);
         }
 
@@ -304,7 +304,7 @@ public class CorruptedFileIT extends OpenSearchIntegTestCase {
         assertAllSuccessful(client().admin().indices().prepareFlush().setForce(true).get());
         assertAllSuccessful(client().admin().indices().prepareFlush().setForce(true).get());
         // we have to flush at least once here since we don't corrupt the translog
-        SearchResponse countResponse = client().prepareSearch().setSize(0).get();
+        SearchResponse countResponse = client().prepareSearch().setPreference("_primary").setSize(0).get();
         assertHitCount(countResponse, numDocs);
 
         ShardRouting shardRouting = corruptRandomPrimaryFile();
@@ -463,7 +463,7 @@ public class CorruptedFileIT extends OpenSearchIntegTestCase {
         ensureGreen();
         assertAllSuccessful(client().admin().indices().prepareFlush().setForce(true).execute().actionGet());
         // we have to flush at least once here since we don't corrupt the translog
-        SearchResponse countResponse = client().prepareSearch().setSize(0).get();
+        SearchResponse countResponse = client().prepareSearch().setPreference("_primary").setSize(0).get();
         assertHitCount(countResponse, numDocs);
         final boolean truncate = randomBoolean();
         for (NodeStats dataNode : dataNodeStats) {
@@ -533,7 +533,7 @@ public class CorruptedFileIT extends OpenSearchIntegTestCase {
         }
         final int numIterations = scaledRandomIntBetween(5, 20);
         for (int i = 0; i < numIterations; i++) {
-            SearchResponse response = client().prepareSearch().setSize(numDocs).get();
+            SearchResponse response = client().prepareSearch().setPreference("_primary").setSize(numDocs).get();
             assertHitCount(response, numDocs);
         }
 
@@ -568,7 +568,7 @@ public class CorruptedFileIT extends OpenSearchIntegTestCase {
         ensureGreen();
         assertAllSuccessful(client().admin().indices().prepareFlush().setForce(true).execute().actionGet());
         // we have to flush at least once here since we don't corrupt the translog
-        SearchResponse countResponse = client().prepareSearch().setSize(0).get();
+        SearchResponse countResponse = client().prepareSearch().setPreference("_primary").setSize(0).get();
         assertHitCount(countResponse, numDocs);
 
         ShardRouting shardRouting = corruptRandomPrimaryFile(false);
@@ -650,7 +650,7 @@ public class CorruptedFileIT extends OpenSearchIntegTestCase {
         ensureGreen();
         assertAllSuccessful(client().admin().indices().prepareFlush().setForce(true).execute().actionGet());
         // we have to flush at least once here since we don't corrupt the translog
-        SearchResponse countResponse = client().prepareSearch().setSize(0).get();
+        SearchResponse countResponse = client().prepareSearch().setPreference("_primary").setSize(0).get();
         assertHitCount(countResponse, numDocs);
 
         // disable allocations of replicas post restart (the restart will change replicas to primaries, so we have

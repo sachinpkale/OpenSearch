@@ -91,7 +91,7 @@ public class UpdateNumberOfReplicasIT extends OpenSearchIntegTestCase {
         refresh();
 
         for (int i = 0; i < 10; i++) {
-            SearchResponse countResponse = client().prepareSearch().setSize(0).setQuery(matchAllQuery()).get();
+            SearchResponse countResponse = client().prepareSearch().setPreference("_primary").setSize(0).setQuery(matchAllQuery()).get();
             assertHitCount(countResponse, 10L);
         }
 
@@ -170,7 +170,7 @@ public class UpdateNumberOfReplicasIT extends OpenSearchIntegTestCase {
         assertThat(clusterHealth.getIndices().get("test").getActiveShards(), equalTo(numShards.numPrimaries * 3));
 
         for (int i = 0; i < 10; i++) {
-            SearchResponse countResponse = client().prepareSearch().setSize(0).setQuery(matchAllQuery()).get();
+            SearchResponse countResponse = client().prepareSearch().setPreference("_primary").setSize(0).setQuery(matchAllQuery()).get();
             assertHitCount(countResponse, 10L);
         }
 
@@ -202,7 +202,7 @@ public class UpdateNumberOfReplicasIT extends OpenSearchIntegTestCase {
         assertThat(clusterHealth.getIndices().get("test").getActiveShards(), equalTo(numShards.numPrimaries));
 
         for (int i = 0; i < 10; i++) {
-            assertHitCount(client().prepareSearch().setQuery(matchAllQuery()).get(), 10);
+            assertHitCount(client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).get(), 10);
         }
 
         final long afterReplicaDecreaseSettingsVersion = client().admin()

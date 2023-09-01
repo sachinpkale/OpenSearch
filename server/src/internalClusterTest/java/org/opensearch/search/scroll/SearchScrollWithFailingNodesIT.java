@@ -82,7 +82,7 @@ public class SearchScrollWithFailingNodesIT extends OpenSearchIntegTestCase {
         indexRandom(false, writes);
         refresh();
 
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .setSize(10)
             .setScroll(TimeValue.timeValueMinutes(1))
@@ -99,7 +99,7 @@ public class SearchScrollWithFailingNodesIT extends OpenSearchIntegTestCase {
 
         internalCluster().stopRandomNonClusterManagerNode();
 
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setSize(10).setScroll(TimeValue.timeValueMinutes(1)).get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setSize(10).setScroll(TimeValue.timeValueMinutes(1)).get();
         assertThat(searchResponse.getSuccessfulShards(), lessThan(searchResponse.getTotalShards()));
         numHits = 0;
         int numberOfSuccessfulShards = searchResponse.getSuccessfulShards();

@@ -293,7 +293,7 @@ public class SearchSliceIT extends OpenSearchIntegTestCase {
         setupIndex(0, 1);
         SearchPhaseExecutionException exc = expectThrows(
             SearchPhaseExecutionException.class,
-            () -> client().prepareSearch().setQuery(matchAllQuery()).slice(new SliceBuilder("invalid_random_int", 0, 10)).get()
+            () -> client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).slice(new SliceBuilder("invalid_random_int", 0, 10)).get()
         );
         Throwable rootCause = findRootCause(exc);
         assertThat(rootCause.getClass(), equalTo(SearchException.class));

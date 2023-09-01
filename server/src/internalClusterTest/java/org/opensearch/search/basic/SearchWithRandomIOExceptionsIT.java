@@ -186,7 +186,7 @@ public class SearchWithRandomIOExceptionsIT extends OpenSearchIntegTestCase {
                 int docToQuery = between(0, numDocs - 1);
                 int expectedResults = added[docToQuery] ? 1 : 0;
                 logger.info("Searching for [test:{}]", English.intToEnglish(docToQuery));
-                SearchResponse searchResponse = client().prepareSearch()
+                SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
                     .setQuery(QueryBuilders.matchQuery("test", English.intToEnglish(docToQuery)))
                     .setSize(expectedResults)
                     .get();
@@ -195,7 +195,7 @@ public class SearchWithRandomIOExceptionsIT extends OpenSearchIntegTestCase {
                     assertResultsAndLogOnFailure(expectedResults, searchResponse);
                 }
                 // check match all
-                searchResponse = client().prepareSearch()
+                searchResponse = client().prepareSearch().setPreference("_primary")
                     .setQuery(QueryBuilders.matchAllQuery())
                     .setSize(numCreated + numInitialDocs)
                     .addSort("_uid", SortOrder.ASC)
@@ -232,7 +232,7 @@ public class SearchWithRandomIOExceptionsIT extends OpenSearchIntegTestCase {
                 );
             client().admin().indices().prepareOpen("test").execute().get();
             ensureGreen();
-            SearchResponse searchResponse = client().prepareSearch().setQuery(QueryBuilders.matchQuery("test", "init")).get();
+            SearchResponse searchResponse = client().prepareSearch().setPreference("_primary").setQuery(QueryBuilders.matchQuery("test", "init")).get();
             assertNoFailures(searchResponse);
             assertHitCount(searchResponse, numInitialDocs);
         }

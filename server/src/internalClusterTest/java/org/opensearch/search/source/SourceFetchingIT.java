@@ -47,6 +47,7 @@ public class SourceFetchingIT extends OpenSearchIntegTestCase {
         index("test", "type1", "1", "field", "value");
         refresh();
 
+
         SearchResponse response = client().prepareSearch("test").get();
         assertThat(response.getHits().getAt(0).getSourceAsString(), notNullValue());
 

@@ -316,7 +316,7 @@ public class SegmentReplicationIT extends SegmentReplicationBaseIT {
             forceMerge();
         }
 
-        final SearchResponse searchResponse = client().prepareSearch()
+        final SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .setIndices(INDEX_NAME)
             .setRequestCache(false)
@@ -1008,7 +1008,7 @@ public class SegmentReplicationIT extends SegmentReplicationBaseIT {
         }
         // opens a scrolled query before a flush is called.
         // this is for testing scroll segment consistency between refresh and flush
-        SearchResponse searchResponse = client(replica).prepareSearch()
+        SearchResponse searchResponse = client(replica).prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .setIndices(INDEX_NAME)
             .setRequestCache(false)
@@ -1106,7 +1106,7 @@ public class SegmentReplicationIT extends SegmentReplicationBaseIT {
         );
         logger.info("--> Create scroll query");
         // opens a scrolled query before a flush is called.
-        SearchResponse searchResponse = client(replica).prepareSearch()
+        SearchResponse searchResponse = client(replica).prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .setIndices(INDEX_NAME)
             .setRequestCache(false)
