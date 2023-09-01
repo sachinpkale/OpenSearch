@@ -88,13 +88,13 @@ public abstract class TestCluster implements Closeable {
     /**
      * Wipes any data that a test can leave behind: indices, templates (except exclude templates) and repositories
      */
-    public void wipe(Set<String> excludeTemplates, List<String> excludeRepositories) {
+    public void wipe(Set<String> excludeTemplates) {
         wipeAllDataStreams();
         wipeIndices("_all");
         wipeAllTemplates(excludeTemplates);
         GetRepositoriesResponse response = client().admin().cluster().prepareGetRepositories("*").execute().actionGet();
         List<String> allRepositories = response.repositories().stream().map(RepositoryMetadata::name).collect(Collectors.toList());
-        wipeRepositories(allRepositories, excludeRepositories);
+        wipeRepositories(allRepositories);
     }
 
     /**
@@ -250,12 +250,9 @@ public abstract class TestCluster implements Closeable {
     /**
      * Deletes repositories, supports wildcard notation.
      */
-    public void wipeRepositories(List<String> allRepositories, List<String> excludeRepositories) {
+    public void wipeRepositories(List<String> allRepositories) {
         if (size() > 0) {
             for (String repository : allRepositories) {
-                if(excludeRepositories.contains(repository)) {
-                    continue;
-                }
                 try {
                     client().admin().cluster().prepareDeleteRepository(repository).execute().actionGet();
                 } catch (RepositoryMissingException ex) {

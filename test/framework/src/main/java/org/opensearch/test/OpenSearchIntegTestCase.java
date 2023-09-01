@@ -406,7 +406,7 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
         final Scope currentClusterScope = getCurrentClusterScope();
         Callable<Void> setup = () -> {
             cluster().beforeTest(random());
-            cluster().wipe(excludeTemplates(), List.of(REPOSITORY_NAME, REPOSITORY_2_NAME));
+            cluster().wipe(excludeTemplates());
             randomIndexTemplate();
             return null;
         };
@@ -620,7 +620,7 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
                 ensureClusterStateConsistency();
                 ensureClusterStateCanBeReadByNodeTool();
                 beforeIndexDeletion();
-                cluster().wipe(excludeTemplates(), List.of(REPOSITORY_NAME, REPOSITORY_2_NAME)); // wipe after to make sure we fail in the test that didn't ack the delete
+                cluster().wipe(excludeTemplates()); // wipe after to make sure we fail in the test that didn't ack the delete
                 if (afterClass || currentClusterScope == Scope.TEST) {
                     cluster().close();
                 }
@@ -1893,7 +1893,7 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
     }
 
     private Scope getCurrentClusterScope() {
-        return getCurrentClusterScope(this.getClass());
+        return Scope.TEST;//getCurrentClusterScope(this.getClass());
     }
 
     private static Scope getCurrentClusterScope(Class<?> clazz) {
