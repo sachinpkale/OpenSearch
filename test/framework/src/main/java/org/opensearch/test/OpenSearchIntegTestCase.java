@@ -1969,9 +1969,6 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
             nodeAttributeSettings = remoteStoreGlobalNodeAttributes(REPOSITORY_NAME, REPOSITORY_2_NAME);
         }
         builder.put(nodeAttributeSettings);
-        builder.put(CLUSTER_REMOTE_STORE_ENABLED_SETTING.getKey(), true);
-        builder.put(CLUSTER_REMOTE_SEGMENT_STORE_REPOSITORY_SETTING.getKey(), REPOSITORY_NAME);
-        builder.put(CLUSTER_REMOTE_TRANSLOG_REPOSITORY_SETTING.getKey(), REPOSITORY_2_NAME);
 
         // Enable tracer only when Telemetry Setting is enabled
         if (featureFlagSettings().getAsBoolean(FeatureFlags.TELEMETRY_SETTING.getKey(), false)) {
@@ -2033,9 +2030,6 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
     public static Settings remoteStoreGlobalClusterSettings(String segmentRepoName, String translogRepoName) {
         return Settings.builder()
             .put(CLUSTER_REPLICATION_TYPE_SETTING.getKey(), ReplicationType.SEGMENT)
-            .put(CLUSTER_REMOTE_STORE_ENABLED_SETTING.getKey(), true)
-            .put(CLUSTER_REMOTE_SEGMENT_STORE_REPOSITORY_SETTING.getKey(), segmentRepoName)
-            .put(CLUSTER_REMOTE_TRANSLOG_REPOSITORY_SETTING.getKey(), translogRepoName)
             .build();
     }
 

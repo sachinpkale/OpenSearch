@@ -779,7 +779,7 @@ public class SearchWeightedRoutingIT extends OpenSearchIntegTestCase {
         logger.info("--> making search requests");
         for (int i = 0; i < 50; i++) {
             responses[i] = internalCluster().client(nodeMap.get("b").get(0))
-                .prepareSearch("test")
+                .prepareSearch("test").setPreference("_primary")
                 .setPreference(String.format(Locale.ROOT, "_shards:%s", shardId.getId()))
                 .setSize(100)
                 .setQuery(QueryBuilders.matchAllQuery())
@@ -907,7 +907,7 @@ public class SearchWeightedRoutingIT extends OpenSearchIntegTestCase {
         logger.info("--> making search requests");
         for (int i = 0; i < 50; i++) {
             responses[i] = internalCluster().client(nodeMap.get("b").get(0))
-                .prepareSearch("index")
+                .prepareSearch("index").setPreference("_primary")
                 .setSize(20)
                 .addAggregation(terms("f").field("f"))
                 .execute();
@@ -986,7 +986,7 @@ public class SearchWeightedRoutingIT extends OpenSearchIntegTestCase {
         for (int i = 0; i < 50; i++) {
             index1 = randomIntBetween(0, 9);
             index2 = randomIntBetween(0, 9);
-            responses[i] = client().prepareMultiGet()
+            responses[i] = client().prepareMultiGet().setPreference("_primary")
                 .add(new MultiGetRequest.Item("test", "" + index1))
                 .add(new MultiGetRequest.Item("test", "" + index2))
                 .execute();
