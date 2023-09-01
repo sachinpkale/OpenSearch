@@ -86,7 +86,7 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.sameInstance;
 
 @ClusterScope(scope = Scope.SUITE)
-@OpenSearchIntegTestCase.SuiteScopeTestCase
+
 public class ScriptedMetricIT extends OpenSearchIntegTestCase {
 
     private static long numDocs;
@@ -284,8 +284,8 @@ public class ScriptedMetricIT extends OpenSearchIntegTestCase {
         }
     }
 
-    @Override
-    public void setupSuiteScopeCluster() throws Exception {
+    @Before
+    public void setupTest() throws Exception {
         createIndex("idx");
 
         List<IndexRequestBuilder> builders = new ArrayList<>();

@@ -31,6 +31,7 @@
 
 package org.opensearch.search.aggregations.metrics;
 
+import org.junit.Before;
 import org.opensearch.action.search.SearchResponse;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.plugins.Plugin;
@@ -66,10 +67,10 @@ import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertSearchResp
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 
-@OpenSearchIntegTestCase.SuiteScopeTestCase
+
 public class ValueCountIT extends OpenSearchIntegTestCase {
-    @Override
-    public void setupSuiteScopeCluster() throws Exception {
+    @Before
+    public void setupTest() throws Exception {
         createIndex("idx");
         createIndex("idx_unmapped");
         for (int i = 0; i < 10; i++) {

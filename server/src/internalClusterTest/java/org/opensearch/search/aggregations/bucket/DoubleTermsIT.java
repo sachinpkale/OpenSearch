@@ -31,6 +31,7 @@
 
 package org.opensearch.search.aggregations.bucket;
 
+import org.junit.Before;
 import org.opensearch.OpenSearchException;
 import org.opensearch.action.index.IndexRequestBuilder;
 import org.opensearch.action.search.SearchResponse;
@@ -85,7 +86,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.core.IsNull.notNullValue;
 
-@OpenSearchIntegTestCase.SuiteScopeTestCase
+
 public class DoubleTermsIT extends AbstractTermsTestCase {
 
     @Override
@@ -141,8 +142,8 @@ public class DoubleTermsIT extends AbstractTermsTestCase {
     private static final String MULTI_VALUED_FIELD_NAME = "d_values";
     private static HashMap<Double, Map<String, Object>> expectedMultiSortBuckets;
 
-    @Override
-    public void setupSuiteScopeCluster() throws Exception {
+    @Before
+    public void setupTest() throws Exception {
         createIndex("idx");
         List<IndexRequestBuilder> builders = new ArrayList<>();
         for (int i = 0; i < NUM_DOCS; i++) {

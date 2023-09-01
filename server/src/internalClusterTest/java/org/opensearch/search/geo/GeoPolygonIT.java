@@ -52,7 +52,7 @@ import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertHitCount;
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.equalTo;
 
-@OpenSearchIntegTestCase.SuiteScopeTestCase
+
 public class GeoPolygonIT extends OpenSearchIntegTestCase {
 
     @Override

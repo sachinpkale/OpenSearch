@@ -34,6 +34,7 @@ package org.opensearch.search.aggregations.metrics;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.join.ScoreMode;
 import org.apache.lucene.util.ArrayUtil;
+import org.junit.Before;
 import org.opensearch.action.index.IndexRequestBuilder;
 import org.opensearch.action.search.SearchPhaseExecutionException;
 import org.opensearch.action.search.SearchResponse;
@@ -104,7 +105,6 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.sameInstance;
 
-@OpenSearchIntegTestCase.SuiteScopeTestCase()
 public class TopHitsIT extends OpenSearchIntegTestCase {
 
     private static final String TERMS_AGGS_FIELD = "terms";
@@ -133,8 +133,8 @@ public class TopHitsIT extends OpenSearchIntegTestCase {
 
     static int numArticles;
 
-    @Override
-    public void setupSuiteScopeCluster() throws Exception {
+    @Before
+    public void setupTest() throws Exception {
         assertAcked(prepareCreate("idx").setMapping(TERMS_AGGS_FIELD, "type=keyword"));
         assertAcked(prepareCreate("field-collapsing").setMapping("group", "type=keyword"));
         createIndex("empty");

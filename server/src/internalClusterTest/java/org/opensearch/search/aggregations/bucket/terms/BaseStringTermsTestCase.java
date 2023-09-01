@@ -30,7 +30,7 @@ import java.util.function.Function;
 import static org.opensearch.common.xcontent.XContentFactory.jsonBuilder;
 import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertAcked;
 
-@OpenSearchIntegTestCase.SuiteScopeTestCase
+
 public class BaseStringTermsTestCase extends AbstractTermsTestCase {
 
     protected static final String SINGLE_VALUED_FIELD_NAME = "s_value";
@@ -89,8 +89,8 @@ public class BaseStringTermsTestCase extends AbstractTermsTestCase {
         }
     }
 
-    @Override
-    public void setupSuiteScopeCluster() throws Exception {
+    @Before
+    public void setupTest() throws Exception {
         assertAcked(
             client().admin()
                 .indices()

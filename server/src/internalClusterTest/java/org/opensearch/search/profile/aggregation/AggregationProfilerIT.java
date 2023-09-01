@@ -74,7 +74,7 @@ import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.sameInstance;
 
-@OpenSearchIntegTestCase.SuiteScopeTestCase
+
 public class AggregationProfilerIT extends OpenSearchIntegTestCase {
     private static final String BUILD_LEAF_COLLECTOR = AggregationTimingType.BUILD_LEAF_COLLECTOR.toString();
     private static final String COLLECT = AggregationTimingType.COLLECT.toString();

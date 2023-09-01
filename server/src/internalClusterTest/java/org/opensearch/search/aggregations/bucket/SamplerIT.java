@@ -32,6 +32,7 @@
 
 package org.opensearch.search.aggregations.bucket;
 
+import org.junit.Before;
 import org.opensearch.action.admin.indices.refresh.RefreshRequest;
 import org.opensearch.action.search.SearchResponse;
 import org.opensearch.action.search.SearchType;
@@ -63,7 +64,7 @@ import static org.hamcrest.Matchers.lessThanOrEqualTo;
 /**
  * Tests the Sampler aggregation
  */
-@OpenSearchIntegTestCase.SuiteScopeTestCase
+
 public class SamplerIT extends OpenSearchIntegTestCase {
 
     public static final int NUM_SHARDS = 2;
@@ -72,8 +73,8 @@ public class SamplerIT extends OpenSearchIntegTestCase {
         return randomBoolean() ? null : randomFrom(SamplerAggregator.ExecutionMode.values()).toString();
     }
 
-    @Override
-    public void setupSuiteScopeCluster() throws Exception {
+    @Before
+    public void setupTest() throws Exception {
         assertAcked(
             prepareCreate("test").setSettings(
                 Settings.builder().put(SETTING_NUMBER_OF_SHARDS, NUM_SHARDS).put(SETTING_NUMBER_OF_REPLICAS, 0)
