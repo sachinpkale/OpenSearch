@@ -95,7 +95,7 @@ public class RepositoriesIT extends AbstractSnapshotIntegTestCase {
         metadata = clusterStateResponse.getState().getMetadata();
         repositoriesMetadata = metadata.custom(RepositoriesMetadata.TYPE);
         assertThat(repositoriesMetadata, notNullValue());
-        assertThat(repositoriesMetadata.repositories().size(), equalTo(2));
+        assertThat(repositoriesMetadata.repositories().size(), equalTo(4));
         assertThat(repositoriesMetadata.repository("test-repo-1"), notNullValue());
         assertThat(repositoriesMetadata.repository("test-repo-1").type(), equalTo("fs"));
         assertThat(repositoriesMetadata.repository("test-repo-2"), notNullValue());
@@ -106,7 +106,7 @@ public class RepositoriesIT extends AbstractSnapshotIntegTestCase {
             .cluster()
             .prepareGetRepositories(randomFrom("_all", "*", "test-repo-*"))
             .get();
-        assertThat(repositoriesResponse.repositories().size(), equalTo(2));
+        assertThat(repositoriesResponse.repositories().size(), equalTo(4));
         assertThat(findRepository(repositoriesResponse.repositories(), "test-repo-1"), notNullValue());
         assertThat(findRepository(repositoriesResponse.repositories(), "test-repo-2"), notNullValue());
 
@@ -127,13 +127,13 @@ public class RepositoriesIT extends AbstractSnapshotIntegTestCase {
         logger.info("--> delete repository test-repo-1");
         client.admin().cluster().prepareDeleteRepository("test-repo-1").get();
         repositoriesResponse = client.admin().cluster().prepareGetRepositories().get();
-        assertThat(repositoriesResponse.repositories().size(), equalTo(1));
+        assertThat(repositoriesResponse.repositories().size(), equalTo(3));
         assertThat(findRepository(repositoriesResponse.repositories(), "test-repo-2"), notNullValue());
 
         logger.info("--> delete repository test-repo-2");
         client.admin().cluster().prepareDeleteRepository("test-repo-2").get();
         repositoriesResponse = client.admin().cluster().prepareGetRepositories().get();
-        assertThat(repositoriesResponse.repositories().size(), equalTo(0));
+        assertThat(repositoriesResponse.repositories().size(), equalTo(2));
     }
 
     public void testResidualStaleIndicesAreDeletedByConsecutiveDelete() throws Exception {
