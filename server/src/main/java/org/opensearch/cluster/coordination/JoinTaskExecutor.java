@@ -197,7 +197,7 @@ public class JoinTaskExecutor implements ClusterStateTaskExecutor<JoinTaskExecut
                      *  join. See
                      * {@link org.opensearch.gateway.GatewayMetaState#prepareInitialClusterState(TransportService, ClusterService, ClusterState)} **/
                     newState = ClusterState.builder(
-                        remoteStoreService.updateClusterStateRepositoriesMetadata(new RemoteStoreNode(node), currentState)
+                        remoteStoreService.updateClusterStateRepositoriesMetadata(new RemoteStoreNode(node), newState.build())
                     );
                 }
             } else {
@@ -224,7 +224,7 @@ public class JoinTaskExecutor implements ClusterStateTaskExecutor<JoinTaskExecut
                     if (node.isRemoteStoreNode()) {
                         // Try updating repositories metadata in cluster state once its compatible with the cluster.
                         newState = ClusterState.builder(
-                            remoteStoreService.updateClusterStateRepositoriesMetadata(new RemoteStoreNode(node), currentState)
+                            remoteStoreService.updateClusterStateRepositoriesMetadata(new RemoteStoreNode(node), newState.build())
                         );
                     }
                 } catch (IllegalArgumentException | IllegalStateException | NodeDecommissionedException e) {
