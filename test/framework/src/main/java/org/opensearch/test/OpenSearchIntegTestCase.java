@@ -1789,7 +1789,7 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
         /**
          * Returns the scope. {@link OpenSearchIntegTestCase.Scope#SUITE} is default.
          */
-        Scope scope() default Scope.SUITE;
+        Scope scope() default Scope.TEST;
 
         /**
          * Returns the number of nodes in the cluster. Default is {@code -1} which means
@@ -1899,7 +1899,7 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
     private static Scope getCurrentClusterScope(Class<?> clazz) {
         ClusterScope annotation = getAnnotation(clazz, ClusterScope.class);
         // if we are not annotated assume suite!
-        return annotation == null ? Scope.SUITE : annotation.scope();
+        return annotation == null ? Scope.TEST : annotation.scope();
     }
 
     private boolean getSupportsDedicatedClusterManagers() {
