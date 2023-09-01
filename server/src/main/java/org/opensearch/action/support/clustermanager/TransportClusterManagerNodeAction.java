@@ -157,7 +157,7 @@ public abstract class TransportClusterManagerNodeAction<Request extends ClusterM
         return false;
     }
 
-    protected abstract ClusterBlockException checkBlock(Request request, ClusterState state);
+    protected abstract ClusterBlockException checkBlock(Request request, ClusterState state) throws InterruptedException;
 
     @Override
     protected void doExecute(Task task, final Request request, ActionListener<Response> listener) {
