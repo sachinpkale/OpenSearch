@@ -29,7 +29,6 @@ import static org.hamcrest.Matchers.closeTo;
 /**
  * Tests to validate if user specified a missingValue in the input while doing the aggregation
  */
-@OpenSearchIntegTestCase.SuiteScopeTestCase
 public class MissingValueIT extends GeoModulePluginIntegTestCase {
 
     private static final String INDEX_NAME = "idx";
@@ -43,8 +42,8 @@ public class MissingValueIT extends GeoModulePluginIntegTestCase {
     private GeoPoint bottomRight;
     private GeoPoint topLeft;
 
-    @Override
-    protected void setupSuiteScopeCluster() throws Exception {
+    @Before
+    protected void setupTest() throws Exception {
         assertAcked(
             prepareCreate(INDEX_NAME).setMapping(
                 "date",

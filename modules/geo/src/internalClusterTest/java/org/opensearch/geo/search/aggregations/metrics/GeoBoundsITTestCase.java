@@ -57,7 +57,6 @@ import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.sameInstance;
 
-@OpenSearchIntegTestCase.SuiteScopeTestCase
 public class GeoBoundsITTestCase extends AbstractGeoAggregatorModulePluginTestCase {
     private static final String aggName = "geoBounds";
 

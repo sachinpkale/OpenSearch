@@ -8,6 +8,7 @@
 
 package org.opensearch.geo.search.aggregations.bucket;
 
+import org.junit.Before;
 import org.opensearch.action.index.IndexRequestBuilder;
 import org.opensearch.action.search.SearchResponse;
 import org.opensearch.geo.GeoModulePluginIntegTestCase;
@@ -31,7 +32,6 @@ import static org.hamcrest.Matchers.equalTo;
  * compute empty buckets, its {@code reduce()} method must be called. So by adding the date histogram under other buckets,
  * we can make sure that the reduce is properly propagated by checking that empty buckets were created.
  */
-@OpenSearchIntegTestCase.SuiteScopeTestCase
 public class ShardReduceIT extends GeoModulePluginIntegTestCase {
 
     private IndexRequestBuilder indexDoc(String date, int value) throws Exception {
@@ -52,8 +52,8 @@ public class ShardReduceIT extends GeoModulePluginIntegTestCase {
             );
     }
 
-    @Override
-    public void setupSuiteScopeCluster() throws Exception {
+    @Before
+    public void setupTest() throws Exception {
         assertAcked(
             prepareCreate("idx").setMapping(
                 "nested",

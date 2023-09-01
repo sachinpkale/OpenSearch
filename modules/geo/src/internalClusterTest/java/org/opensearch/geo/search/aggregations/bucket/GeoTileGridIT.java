@@ -8,6 +8,7 @@
 
 package org.opensearch.geo.search.aggregations.bucket;
 
+import org.junit.Before;
 import org.opensearch.action.search.SearchResponse;
 import org.opensearch.common.geo.GeoBoundingBox;
 import org.opensearch.common.geo.GeoPoint;
@@ -31,15 +32,14 @@ import java.util.stream.Collectors;
 import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertSearchResponse;
 import static org.hamcrest.Matchers.equalTo;
 
-@OpenSearchIntegTestCase.SuiteScopeTestCase
 public class GeoTileGridIT extends AbstractGeoBucketAggregationIntegTest {
 
     private static final int GEOPOINT_MAX_PRECISION = 17;
 
     private static final String AGG_NAME = "geotilegrid";
 
-    @Override
-    public void setupSuiteScopeCluster() throws Exception {
+    @Before
+    public void setupTest() throws Exception {
         final Random random = random();
         // Creating a BB for limiting the number buckets generated during aggregation
         boundingRectangleForGeoShapesAgg = getGridAggregationBoundingBox(random);
