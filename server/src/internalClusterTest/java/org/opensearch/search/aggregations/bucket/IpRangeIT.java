@@ -31,6 +31,7 @@
 
 package org.opensearch.search.aggregations.bucket;
 
+import org.junit.Before;
 import org.opensearch.action.search.SearchPhaseExecutionException;
 import org.opensearch.action.search.SearchResponse;
 import org.opensearch.cluster.health.ClusterHealthStatus;
@@ -53,7 +54,7 @@ import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertSearchResp
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.instanceOf;
 
-@OpenSearchIntegTestCase.SuiteScopeTestCase
+
 public class IpRangeIT extends OpenSearchIntegTestCase {
 
     public static class DummyScriptPlugin extends MockScriptPlugin {
@@ -68,8 +69,8 @@ public class IpRangeIT extends OpenSearchIntegTestCase {
         return Arrays.asList(DummyScriptPlugin.class);
     }
 
-    @Override
-    public void setupSuiteScopeCluster() throws Exception {
+    @Before
+    public void setupTest() throws Exception {
         assertAcked(prepareCreate("idx").setMapping("ip", "type=ip", "ips", "type=ip"));
         waitForRelocation(ClusterHealthStatus.GREEN);
 

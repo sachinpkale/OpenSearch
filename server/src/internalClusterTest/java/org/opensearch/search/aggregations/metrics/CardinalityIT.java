@@ -32,6 +32,7 @@
 
 package org.opensearch.search.aggregations.metrics;
 
+import org.junit.Before;
 import org.opensearch.action.index.IndexRequestBuilder;
 import org.opensearch.action.search.SearchResponse;
 import org.opensearch.common.settings.Settings;
@@ -64,7 +65,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.notNullValue;
 
-@OpenSearchIntegTestCase.SuiteScopeTestCase
+
 public class CardinalityIT extends OpenSearchIntegTestCase {
 
     @Override
@@ -125,8 +126,8 @@ public class CardinalityIT extends OpenSearchIntegTestCase {
     static long numDocs;
     static long precisionThreshold;
 
-    @Override
-    public void setupSuiteScopeCluster() throws Exception {
+    @Before
+    public void setupTest() throws Exception {
 
         prepareCreate("idx").setMapping(
             jsonBuilder().startObject()

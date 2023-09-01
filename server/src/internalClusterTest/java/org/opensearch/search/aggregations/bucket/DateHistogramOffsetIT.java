@@ -59,8 +59,7 @@ import static org.hamcrest.core.IsNull.notNullValue;
  * DateHistogramTests so the AssertingLocalTransport for these tests can be set to only use versions 1.4 onwards while keeping the other
  * tests using all versions
  */
-@OpenSearchIntegTestCase.SuiteScopeTestCase
-@OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.SUITE)
+
 public class DateHistogramOffsetIT extends OpenSearchIntegTestCase {
 
     private static final String DATE_FORMAT = "yyyy-MM-dd:hh-mm-ss";

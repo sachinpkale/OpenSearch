@@ -32,6 +32,7 @@
 
 package org.opensearch.search.aggregations.bucket;
 
+import org.junit.Before;
 import org.opensearch.action.search.SearchResponse;
 import org.opensearch.common.util.Comparators;
 import org.opensearch.core.xcontent.XContentBuilder;
@@ -57,7 +58,7 @@ import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertAcked;
 import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertSearchResponse;
 import static org.hamcrest.core.IsNull.notNullValue;
 
-@OpenSearchIntegTestCase.SuiteScopeTestCase
+
 public class NaNSortingIT extends OpenSearchIntegTestCase {
 
     private enum SubAggregation {
@@ -130,8 +131,8 @@ public class NaNSortingIT extends OpenSearchIntegTestCase {
         public abstract double getValue(Aggregation aggregation);
     }
 
-    @Override
-    public void setupSuiteScopeCluster() throws Exception {
+    @Before
+    public void setupTest() throws Exception {
         assertAcked(client().admin().indices().prepareCreate("idx").setMapping("string_value", "type=keyword").get());
         final int numDocs = randomIntBetween(2, 10);
         for (int i = 0; i < numDocs; ++i) {

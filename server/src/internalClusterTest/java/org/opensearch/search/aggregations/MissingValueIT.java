@@ -32,6 +32,7 @@
 
 package org.opensearch.search.aggregations;
 
+import org.junit.Before;
 import org.opensearch.action.search.SearchResponse;
 import org.opensearch.common.geo.GeoPoint;
 import org.opensearch.search.aggregations.bucket.histogram.DateHistogramInterval;
@@ -55,7 +56,7 @@ import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertAcked;
 import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertSearchResponse;
 import static org.hamcrest.Matchers.closeTo;
 
-@OpenSearchIntegTestCase.SuiteScopeTestCase
+
 public class MissingValueIT extends OpenSearchIntegTestCase {
 
     @Override
@@ -63,8 +64,8 @@ public class MissingValueIT extends OpenSearchIntegTestCase {
         return 2;
     }
 
-    @Override
-    protected void setupSuiteScopeCluster() throws Exception {
+    @Before
+    protected void setupTest() throws Exception {
         assertAcked(prepareCreate("idx").setMapping("date", "type=date", "location", "type=geo_point", "str", "type=keyword").get());
         indexRandom(
             true,
