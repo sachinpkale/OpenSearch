@@ -130,8 +130,8 @@ public class DiskThresholdDeciderIT extends OpenSearchIntegTestCase {
         defaultFileSystem = null;
     }
 
-    private static final long WATERMARK_BYTES = new ByteSizeValue(10, ByteSizeUnit.KB).getBytes();
-    private static final long TOTAL_SPACE_BYTES = new ByteSizeValue(100, ByteSizeUnit.KB).getBytes();
+    private static final long WATERMARK_BYTES = new ByteSizeValue(1, ByteSizeUnit.KB).getBytes();
+    private static final long TOTAL_SPACE_BYTES = new ByteSizeValue(10, ByteSizeUnit.KB).getBytes();
     private static final String INDEX_ROUTING_ALLOCATION_NODE_SETTING = "index.routing.allocation.include._name";
 
     @Override
@@ -532,7 +532,7 @@ public class DiskThresholdDeciderIT extends OpenSearchIntegTestCase {
      */
     private long createReasonableSizedShards(final String indexName) throws InterruptedException {
         while (true) {
-            final IndexRequestBuilder[] indexRequestBuilders = new IndexRequestBuilder[scaledRandomIntBetween(100, 10000)];
+            final IndexRequestBuilder[] indexRequestBuilders = new IndexRequestBuilder[scaledRandomIntBetween(100, 100)];
             for (int i = 0; i < indexRequestBuilders.length; i++) {
                 indexRequestBuilders[i] = client().prepareIndex(indexName).setSource("field", randomAlphaOfLength(10));
             }
