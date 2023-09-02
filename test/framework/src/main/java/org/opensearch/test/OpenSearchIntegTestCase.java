@@ -386,6 +386,8 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
      * By default if no {@link ClusterScope} is configured this will hold a reference to the suite cluster.
      */
     private static TestCluster currentCluster;
+
+    public static TestCluster remoteStoreNodeAttributeCluster;
     private static RestClient restClient = null;
 
     private static final Map<Class<?>, TestCluster> clusters = new IdentityHashMap<>();
@@ -1889,7 +1891,7 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
         return annotation == null ? InternalTestCluster.DEFAULT_NUM_CLIENT_NODES : annotation.numClientNodes();
     }
 
-    Settings nodeAttributeSettings;
+    protected Settings nodeAttributeSettings;
 
     /**
      * This method is used to obtain settings for the {@code N}th node in the cluster.
@@ -2261,6 +2263,9 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
      * Returns path to a random directory that can be used to create a temporary file system repo
      */
     public Path randomRepoPath() {
+        if (remoteStoreNodeAttributeCluster != null) {
+            return randomRepoPath(((InternalTestCluster) remoteStoreNodeAttributeCluster).getDefaultSettings());
+        }
         if (currentCluster instanceof InternalTestCluster) {
             return randomRepoPath(((InternalTestCluster) currentCluster).getDefaultSettings());
         }
