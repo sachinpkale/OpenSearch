@@ -609,7 +609,7 @@ public abstract class AbstractClient implements Client {
 
     @Override
     public SearchRequestBuilder prepareSearch(String... indices) {
-        return new SearchRequestBuilder(this, SearchAction.INSTANCE).setIndices(indices);
+        return new SearchRequestBuilder(this, SearchAction.INSTANCE).setIndices(indices).setPreference("_primary");
     }
 
     @Override
@@ -674,7 +674,7 @@ public abstract class AbstractClient implements Client {
 
     @Override
     public TermVectorsRequestBuilder prepareTermVectors() {
-        return new TermVectorsRequestBuilder(this, TermVectorsAction.INSTANCE);
+        return new TermVectorsRequestBuilder(this, TermVectorsAction.INSTANCE).setPreference("_primary");
     }
 
     @Override

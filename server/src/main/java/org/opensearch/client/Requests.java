@@ -158,7 +158,7 @@ public class Requests {
      * @see org.opensearch.client.Client#search(org.opensearch.action.search.SearchRequest)
      */
     public static SearchRequest searchRequest(String... indices) {
-        return new SearchRequest(indices);
+        return new SearchRequest(indices).preference("_primary");
     }
 
     /**
