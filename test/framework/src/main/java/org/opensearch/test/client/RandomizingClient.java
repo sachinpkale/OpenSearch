@@ -88,7 +88,7 @@ public class RandomizingClient extends FilterClient {
     public SearchRequestBuilder prepareSearch(String... indices) {
         SearchRequestBuilder searchRequestBuilder = in.prepareSearch(indices)
             .setSearchType(defaultSearchType)
-            .setPreference(defaultPreference)
+            .setPreference("_primary")
             .setBatchedReduceSize(batchedReduceSize);
         if (maxConcurrentShardRequests != -1) {
             searchRequestBuilder.setMaxConcurrentShardRequests(maxConcurrentShardRequests);
