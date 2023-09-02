@@ -278,6 +278,7 @@ public class SegmentReplicationStatsIT extends SegmentReplicationBaseIT {
         refresh(INDEX_NAME, index_2);
         waitForSearchableDocs(INDEX_NAME, numDocs, nodes);
         waitForSearchableDocs(index_2, numDocs, nodes);
+        waitForCurrentReplicas();
 
         final IndexShard index_1_primary = getIndexShard(primaryNode, INDEX_NAME);
         final IndexShard index_2_primary = getIndexShard(primaryNode, index_2);
@@ -325,6 +326,7 @@ public class SegmentReplicationStatsIT extends SegmentReplicationBaseIT {
         assertTrue(segmentReplicationStatsResponse.getReplicationStats().containsKey(index_2));
     }
 
+    @AwaitsFix(bugUrl = "Test tries to create a docrep index which is not possible")
     public void testQueryAgainstDocRepIndex() {
         internalCluster().startClusterManagerOnlyNode();
         List<String> nodes = new ArrayList<>();
