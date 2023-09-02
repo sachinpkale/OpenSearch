@@ -262,11 +262,11 @@ public class GlobalCheckpointSyncIT extends OpenSearchIntegTestCase {
                 for (IndexService indexService : indicesService) {
                     for (IndexShard shard : indexService) {
                         final SeqNoStats seqNoStats = shard.seqNoStats();
-                        if(shard.isRemoteTranslogEnabled() == false) {
+                        if((shard.isPrimaryMode() && shard.isRemoteTranslogEnabled() == true) || shard.isRemoteTranslogEnabled() == false) {
                             assertThat(seqNoStats.getLocalCheckpoint(), equalTo(seqNoStats.getMaxSeqNo()));
+                            assertThat(shard.getLastKnownGlobalCheckpoint(), equalTo(seqNoStats.getMaxSeqNo()));
+                            assertThat(shard.getLastSyncedGlobalCheckpoint(), equalTo(seqNoStats.getMaxSeqNo()));
                         }
-                        assertThat(shard.getLastKnownGlobalCheckpoint(), equalTo(seqNoStats.getMaxSeqNo()));
-                        assertThat(shard.getLastSyncedGlobalCheckpoint(), equalTo(seqNoStats.getMaxSeqNo()));
                     }
                 }
             }
