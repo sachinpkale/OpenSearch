@@ -25,6 +25,8 @@ import org.opensearch.common.unit.TimeValue;
 import org.opensearch.index.SegmentReplicationShardStats;
 import org.opensearch.index.shard.IndexShard;
 import org.opensearch.indices.IndicesService;
+import org.opensearch.indices.recovery.PeerRecoverySourceService;
+import org.opensearch.indices.recovery.PeerRecoveryTargetService;
 import org.opensearch.test.OpenSearchIntegTestCase;
 import org.opensearch.test.transport.MockTransportService;
 import org.opensearch.transport.TransportService;
@@ -340,7 +342,13 @@ public class SegmentReplicationRelocationIT extends SegmentReplicationBaseIT {
         mockTargetTransportService.addSendBehavior(
             internalCluster().getInstance(TransportService.class, primary),
             (connection, requestId, action, request, options) -> {
-                if (action.equals(SegmentReplicationSourceService.Actions.GET_SEGMENT_FILES)) {
+                String actionToCheck = null;
+                try {
+                    actionToCheck = isIndexRemoteStoreEnabled(INDEX_NAME) ? SegmentReplicationSourceService.Actions.GET_SEGMENT_FILES :  PeerRecoverySourceService.Actions.START_RECOVERY;
+                } catch (Exception e) {
+                   fail("Exception" + e);
+                }
+                if (action.equals(actionToCheck)) {
                     blockSegRepLatch.countDown();
                     try {
                         waitForIndexingLatch.await();
@@ -471,7 +479,13 @@ public class SegmentReplicationRelocationIT extends SegmentReplicationBaseIT {
         mockTransportService.addSendBehavior(
             internalCluster().getInstance(TransportService.class, replica),
             (connection, requestId, action, request, options) -> {
-                if (action.equals(SegmentReplicationTargetService.Actions.FILE_CHUNK)) {
+                String actionToCheck = null;
+                try {
+                    actionToCheck = isIndexRemoteStoreEnabled(INDEX_NAME) ? SegmentReplicationTargetService.Actions.FILE_CHUNK :  PeerRecoveryTargetService.Actions.FILE_CHUNK;
+                } catch (Exception e) {
+                    fail("Exception "+ e);
+                }
+                if (action.equals(actionToCheck)) {
                     waitForRecovery.countDown();
                     throw new OpenSearchCorruptionException("expected");
                 }
