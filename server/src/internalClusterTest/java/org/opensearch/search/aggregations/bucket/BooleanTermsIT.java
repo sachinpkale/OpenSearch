@@ -50,7 +50,7 @@ public class BooleanTermsIT extends OpenSearchIntegTestCase {
     private static final String SINGLE_VALUED_FIELD_NAME = "b_value";
     private static final String MULTI_VALUED_FIELD_NAME = "b_values";
 
-    static int numSingleTrues, numSingleFalses, numMultiTrues, numMultiFalses;
+    int numSingleTrues, numSingleFalses, numMultiTrues, numMultiFalses;
 
     @Before
     public void setupTest() throws Exception {

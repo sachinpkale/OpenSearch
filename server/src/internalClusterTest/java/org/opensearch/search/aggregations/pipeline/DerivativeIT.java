@@ -75,23 +75,23 @@ public class DerivativeIT extends OpenSearchIntegTestCase {
 
     private static final String SINGLE_VALUED_FIELD_NAME = "l_value";
 
-    private static int interval;
-    private static int numValueBuckets;
-    private static int numFirstDerivValueBuckets;
-    private static int numSecondDerivValueBuckets;
-    private static long[] valueCounts;
-    private static long[] firstDerivValueCounts;
-    private static long[] secondDerivValueCounts;
+    private  int interval;
+    private  int numValueBuckets;
+    private  int numFirstDerivValueBuckets;
+    private  int numSecondDerivValueBuckets;
+    private  long[] valueCounts;
+    private  long[] firstDerivValueCounts;
+    private  long[] secondDerivValueCounts;
 
-    private static Long[] valueCounts_empty;
-    private static long numDocsEmptyIdx;
-    private static Double[] firstDerivValueCounts_empty;
+    private  Long[] valueCounts_empty;
+    private  long numDocsEmptyIdx;
+    private  Double[] firstDerivValueCounts_empty;
 
     // expected bucket values for random setup with gaps
-    private static int numBuckets_empty_rnd;
-    private static Long[] valueCounts_empty_rnd;
-    private static Double[] firstDerivValueCounts_empty_rnd;
-    private static long numDocsEmptyIdx_rnd;
+    private  int numBuckets_empty_rnd;
+    private  Long[] valueCounts_empty_rnd;
+    private  Double[] firstDerivValueCounts_empty_rnd;
+    private  long numDocsEmptyIdx_rnd;
 
     @Before
     public void setupTest() throws Exception {
@@ -484,7 +484,6 @@ public class DerivativeIT extends OpenSearchIntegTestCase {
         assertThat(deriv.getName(), equalTo("histo"));
         List<? extends Bucket> buckets = deriv.getBuckets();
         assertThat(buckets.size(), equalTo(valueCounts_empty.length));
-
         for (int i = 0; i < valueCounts_empty.length; i++) {
             Histogram.Bucket bucket = buckets.get(i);
             checkBucketKeyAndDocCount("InternalBucket " + i + ": ", bucket, i, valueCounts_empty[i]);
