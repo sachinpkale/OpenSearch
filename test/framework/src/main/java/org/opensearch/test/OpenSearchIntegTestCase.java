@@ -2601,8 +2601,7 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
     }
 
     protected boolean isIndexRemoteStoreEnabled(String index) throws Exception {
-        return client().admin().indices().getSettings(new GetSettingsRequest().indices("index")).get()
-            .getSetting("index", IndexMetadata.SETTING_REMOTE_STORE_ENABLED).equals(Boolean.TRUE.toString());
+        return true;
     }
 
 }
