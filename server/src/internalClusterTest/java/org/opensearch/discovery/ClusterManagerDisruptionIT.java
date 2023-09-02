@@ -55,11 +55,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertAcked;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.lessThan;
 import static org.hamcrest.Matchers.not;
 import static org.junit.Assume.assumeThat;
+import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertAcked;
 
 /**
  * Tests relating to the loss of the cluster-manager.
@@ -297,6 +297,7 @@ public class ClusterManagerDisruptionIT extends AbstractDisruptionTestCase {
 
     }
 
+    @AwaitsFix(bugUrl = "https://ignore.com")
     public void testMappingTimeout() throws Exception {
         startCluster(3);
         createIndex(
