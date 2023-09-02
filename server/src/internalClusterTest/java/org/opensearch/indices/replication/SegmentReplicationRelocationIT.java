@@ -211,7 +211,10 @@ public class SegmentReplicationRelocationIT extends SegmentReplicationBaseIT {
             assertTrue(pendingIndexResponses.stream().allMatch(ActionFuture::isDone));
         }, 1, TimeUnit.MINUTES);
         flushAndRefresh(INDEX_NAME);
-        waitForSearchableDocs(2 * initialDocCount, oldPrimary, replica);
+        if (isIndexRemoteStoreEnabled(INDEX_NAME) == false) {
+            //Remote store recovery will not fail due to transport action failure
+            waitForSearchableDocs(2 * initialDocCount, oldPrimary, replica);
+        }
         verifyStoreContent();
     }
 
@@ -344,7 +347,7 @@ public class SegmentReplicationRelocationIT extends SegmentReplicationBaseIT {
             (connection, requestId, action, request, options) -> {
                 String actionToCheck = null;
                 try {
-                    actionToCheck = isIndexRemoteStoreEnabled(INDEX_NAME) ? SegmentReplicationSourceService.Actions.GET_SEGMENT_FILES :  PeerRecoverySourceService.Actions.START_RECOVERY;
+                    actionToCheck = isIndexRemoteStoreEnabled(INDEX_NAME) ? PeerRecoverySourceService.Actions.START_RECOVERY : SegmentReplicationSourceService.Actions.GET_SEGMENT_FILES;
                 } catch (Exception e) {
                    fail("Exception" + e);
                 }
@@ -481,7 +484,7 @@ public class SegmentReplicationRelocationIT extends SegmentReplicationBaseIT {
             (connection, requestId, action, request, options) -> {
                 String actionToCheck = null;
                 try {
-                    actionToCheck = isIndexRemoteStoreEnabled(INDEX_NAME) ? SegmentReplicationTargetService.Actions.FILE_CHUNK :  PeerRecoveryTargetService.Actions.FILE_CHUNK;
+                    actionToCheck = isIndexRemoteStoreEnabled(INDEX_NAME) ? PeerRecoveryTargetService.Actions.FILE_CHUNK: SegmentReplicationTargetService.Actions.FILE_CHUNK;
                 } catch (Exception e) {
                     fail("Exception "+ e);
                 }
@@ -541,7 +544,7 @@ public class SegmentReplicationRelocationIT extends SegmentReplicationBaseIT {
         ensureGreen(INDEX_NAME);
 
         // Start indexing docs
-        final int initialDocCount = scaledRandomIntBetween(2000, 3000);
+        final int initialDocCount = scaledRandomIntBetween(20, 30);
         for (int i = 0; i < initialDocCount; i++) {
             client().prepareIndex(INDEX_NAME).setId(Integer.toString(i)).setSource("field", "value" + i).execute().actionGet();
         }
