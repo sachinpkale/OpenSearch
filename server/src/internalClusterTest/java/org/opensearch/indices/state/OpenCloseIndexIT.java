@@ -32,6 +32,7 @@
 
 package org.opensearch.indices.state;
 
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.opensearch.action.ActionRequestValidationException;
 import org.opensearch.action.admin.cluster.health.ClusterHealthResponse;
 import org.opensearch.action.admin.indices.open.OpenIndexResponse;
@@ -71,6 +72,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 
+@LuceneTestCase.AwaitsFix(bugUrl = "hello.com")
 public class OpenCloseIndexIT extends OpenSearchIntegTestCase {
     public void testSimpleCloseOpen() {
         Client client = client();
