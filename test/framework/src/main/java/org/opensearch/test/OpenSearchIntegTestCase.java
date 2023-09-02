@@ -64,6 +64,7 @@ import org.opensearch.action.admin.indices.segments.IndexSegments;
 import org.opensearch.action.admin.indices.segments.IndexShardSegments;
 import org.opensearch.action.admin.indices.segments.IndicesSegmentResponse;
 import org.opensearch.action.admin.indices.segments.ShardSegments;
+import org.opensearch.action.admin.indices.settings.get.GetSettingsRequest;
 import org.opensearch.action.admin.indices.template.put.PutIndexTemplateRequestBuilder;
 import org.opensearch.action.bulk.BulkRequestBuilder;
 import org.opensearch.action.bulk.BulkResponse;
@@ -203,6 +204,7 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -2596,6 +2598,11 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
 
     protected ClusterState getClusterState() {
         return client(internalCluster().getClusterManagerName()).admin().cluster().prepareState().get().getState();
+    }
+
+    protected boolean isIndexRemoteStoreEnabled(String index) throws Exception {
+        return client().admin().indices().getSettings(new GetSettingsRequest().indices("index")).get()
+            .getSetting("index", IndexMetadata.SETTING_REMOTE_STORE_ENABLED).equals(Boolean.TRUE.toString());
     }
 
 }

@@ -41,6 +41,7 @@ import org.opensearch.common.settings.Setting;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.common.unit.TimeValue;
 import org.opensearch.core.action.ActionListener;
+import org.opensearch.core.common.util.CollectionUtils;
 import org.opensearch.core.index.shard.ShardId;
 import org.opensearch.index.IndexService;
 import org.opensearch.index.IndexSettings;
@@ -70,12 +71,12 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.opensearch.indices.recovery.RecoverySettings.INDICES_RECOVERY_RETRY_DELAY_NETWORK_SETTING;
-import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertAcked;
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
+import static org.opensearch.indices.recovery.RecoverySettings.INDICES_RECOVERY_RETRY_DELAY_NETWORK_SETTING;
+import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertAcked;
 
 @OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST)
 public class RetentionLeaseIT extends OpenSearchIntegTestCase {
@@ -141,13 +142,22 @@ public class RetentionLeaseIT extends OpenSearchIntegTestCase {
                 final Map<String, RetentionLease> retentionLeasesOnReplica = RetentionLeaseUtils.toMapExcludingPeerRecoveryRetentionLeases(
                     replica.getRetentionLeases()
                 );
-                assertThat(retentionLeasesOnReplica, equalTo(currentRetentionLeases));
+                if (isIndexRemoteStoreEnabled("index")) {
+                    assertThat(retentionLeasesOnReplica, equalTo(Collections.EMPTY_MAP));
+                } else {
+                    assertThat(retentionLeasesOnReplica, equalTo(currentRetentionLeases));
+                }
 
                 // check retention leases have been written on the replica
-                assertThat(
-                    currentRetentionLeases,
-                    equalTo(RetentionLeaseUtils.toMapExcludingPeerRecoveryRetentionLeases(replica.loadRetentionLeases()))
-                );
+                if (isIndexRemoteStoreEnabled("index")) {
+                    assertThat(
+                        RetentionLeaseUtils.toMapExcludingPeerRecoveryRetentionLeases(replica.loadRetentionLeases()), equalTo(Collections.EMPTY_MAP)
+                    );
+                } else {
+                    assertThat(
+                        RetentionLeaseUtils.toMapExcludingPeerRecoveryRetentionLeases(replica.loadRetentionLeases()), equalTo(currentRetentionLeases)
+                    );
+                }
             }
         }
     }
@@ -205,13 +215,22 @@ public class RetentionLeaseIT extends OpenSearchIntegTestCase {
                 final Map<String, RetentionLease> retentionLeasesOnReplica = RetentionLeaseUtils.toMapExcludingPeerRecoveryRetentionLeases(
                     replica.getRetentionLeases()
                 );
-                assertThat(retentionLeasesOnReplica, equalTo(currentRetentionLeases));
+                if (isIndexRemoteStoreEnabled("index")) {
+                    assertThat(retentionLeasesOnReplica, equalTo(Collections.EMPTY_MAP));
+                } else {
+                    assertThat(retentionLeasesOnReplica, equalTo(currentRetentionLeases));
+                }
 
                 // check retention leases have been written on the replica
-                assertThat(
-                    currentRetentionLeases,
-                    equalTo(RetentionLeaseUtils.toMapExcludingPeerRecoveryRetentionLeases(replica.loadRetentionLeases()))
-                );
+                if (isIndexRemoteStoreEnabled("index")) {
+                    assertThat(
+                        RetentionLeaseUtils.toMapExcludingPeerRecoveryRetentionLeases(replica.loadRetentionLeases()), equalTo(Collections.EMPTY_MAP)
+                    );
+                } else {
+                    assertThat(
+                        RetentionLeaseUtils.toMapExcludingPeerRecoveryRetentionLeases(replica.loadRetentionLeases()), equalTo(currentRetentionLeases)
+                    );
+                }
             }
         }
     }
@@ -352,7 +371,11 @@ public class RetentionLeaseIT extends OpenSearchIntegTestCase {
                     final String replicaShardNodeName = clusterService().state().nodes().get(replicaShardNodeId).getName();
                     final IndexShard replica = internalCluster().getInstance(IndicesService.class, replicaShardNodeName)
                         .getShardOrNull(new ShardId(resolveIndex("index"), 0));
-                    assertThat(replica.getRetentionLeases(), equalTo(primary.getRetentionLeases()));
+                    if(isIndexRemoteStoreEnabled("index")) {
+                        assertThat(replica.getRetentionLeases(), equalTo(new RetentionLeases(primary.getOperationPrimaryTerm(), 0, new ArrayList<>())));
+                    } else {
+                        assertThat(replica.getRetentionLeases(), equalTo(primary.getRetentionLeases()));
+                    }
                 }
             });
         }
@@ -444,13 +467,24 @@ public class RetentionLeaseIT extends OpenSearchIntegTestCase {
             final Map<String, RetentionLease> retentionLeasesOnReplica = RetentionLeaseUtils.toMapExcludingPeerRecoveryRetentionLeases(
                 replica.getRetentionLeases()
             );
-            assertThat(retentionLeasesOnReplica, equalTo(currentRetentionLeases));
+            if(isIndexRemoteStoreEnabled("index")) {
+                assertThat(retentionLeasesOnReplica, equalTo(Collections.EMPTY_MAP));
+            } else {
+                assertThat(retentionLeasesOnReplica, equalTo(currentRetentionLeases));
+            }
 
             // check retention leases have been written on the replica; see RecoveryTarget#finalizeRecovery
-            assertThat(
-                currentRetentionLeases,
-                equalTo(RetentionLeaseUtils.toMapExcludingPeerRecoveryRetentionLeases(replica.loadRetentionLeases()))
-            );
+            if(isIndexRemoteStoreEnabled("index")) {
+                assertThat(
+                    RetentionLeaseUtils.toMapExcludingPeerRecoveryRetentionLeases(replica.loadRetentionLeases()),
+                    equalTo(Collections.EMPTY_MAP)
+                );
+            } else {
+                assertThat(
+                    RetentionLeaseUtils.toMapExcludingPeerRecoveryRetentionLeases(replica.loadRetentionLeases()),
+                    equalTo(currentRetentionLeases)
+                );
+            }
         }
     }
 
