@@ -75,6 +75,8 @@ public class ShardIndexingPressureIT extends OpenSearchIntegTestCase {
         return 1;
     }
 
+    @AwaitsFix(bugUrl = "The tests blocks write threadpool on replica to mimic replication getting stuck. Since primary term validation is pretty light-weight we use transport_worker instead and the backpressure" +
+        " for segrep is dealt with differently hence skipping")
     public void testShardIndexingPressureTrackingDuringBulkWrites() throws Exception {
         assertAcked(
             prepareCreate(
@@ -266,6 +268,8 @@ public class ShardIndexingPressureIT extends OpenSearchIntegTestCase {
         }
     }
 
+    @AwaitsFix(bugUrl = "The tests blocks write threadpool on replica to mimic replication getting stuck. Since primary term validation is pretty light-weight we use transport_worker instead and the backpressure" +
+        " for segrep is dealt with differently hence skipping")
     public void testWritesRejectedForSingleCoordinatingShardDueToNodeLevelLimitBreach() throws Exception {
         final BulkRequest bulkRequest = new BulkRequest();
         int totalRequestSize = 0;
@@ -354,6 +358,8 @@ public class ShardIndexingPressureIT extends OpenSearchIntegTestCase {
         }
     }
 
+    @AwaitsFix(bugUrl = "The tests blocks write threadpool on replica to mimic replication getting stuck. Since primary term validation is pretty light-weight we use transport_worker instead and the backpressure" +
+        " for segrep is dealt with differently hence skipping")
     public void testWritesRejectedFairnessWithMultipleCoordinatingShardsDueToNodeLevelLimitBreach() throws Exception {
         final BulkRequest largeBulkRequest = new BulkRequest();
         int totalRequestSize = 0;
@@ -518,6 +524,8 @@ public class ShardIndexingPressureIT extends OpenSearchIntegTestCase {
         }
     }
 
+    @AwaitsFix(bugUrl = "The tests blocks write threadpool on replica to mimic replication getting stuck. Since primary term validation is pretty light-weight we use transport_worker instead and the backpressure" +
+        " for segrep is dealt with differently hence skipping")
     public void testWritesRejectedForSinglePrimaryShardDueToNodeLevelLimitBreach() throws Exception {
         final BulkRequest bulkRequest = new BulkRequest();
         int totalRequestSize = 0;
@@ -598,6 +606,8 @@ public class ShardIndexingPressureIT extends OpenSearchIntegTestCase {
         }
     }
 
+    @AwaitsFix(bugUrl = "The tests blocks write threadpool on replica to mimic replication getting stuck. Since primary term validation is pretty light-weight we use transport_worker instead and the backpressure" +
+        " for segrep is dealt with differently hence skipping")
     public void testWritesRejectedFairnessWithMultiplePrimaryShardsDueToNodeLevelLimitBreach() throws Exception {
         final BulkRequest largeBulkRequest = new BulkRequest();
         int totalRequestSize = 0;
