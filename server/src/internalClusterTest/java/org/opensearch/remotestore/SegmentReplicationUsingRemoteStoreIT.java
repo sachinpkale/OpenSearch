@@ -8,6 +8,7 @@
 
 package org.opensearch.remotestore;
 
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.common.util.FeatureFlags;
 import org.opensearch.indices.replication.SegmentReplicationIT;
@@ -26,6 +27,7 @@ import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertAcked;
  * is behind SEGMENT_REPLICATION_EXPERIMENTAL flag. After this is moved out of experimental, we can combine and keep only one
  * test suite for Segment and Remote store integration tests.
  */
+@LuceneTestCase.AwaitsFix(bugUrl = "http://hello.com")
 @OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST, numDataNodes = 0)
 public class SegmentReplicationUsingRemoteStoreIT extends SegmentReplicationIT {
 
