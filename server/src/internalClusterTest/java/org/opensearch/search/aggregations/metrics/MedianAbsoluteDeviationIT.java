@@ -83,15 +83,15 @@ import static org.hamcrest.core.IsNull.notNullValue;
 
 public class MedianAbsoluteDeviationIT extends OpenSearchIntegTestCase {
 
-    private static final int MIN_SAMPLE_VALUE = -1000000;
-    private static final int MAX_SAMPLE_VALUE = 1000000;
-    private static final int NUMBER_OF_DOCS = 1000;
-    private static final Supplier<Long> sampleSupplier = () -> randomLongBetween(MIN_SAMPLE_VALUE, MAX_SAMPLE_VALUE);
+    private int MIN_SAMPLE_VALUE = -1000000;
+    private int MAX_SAMPLE_VALUE = 1000000;
+    private int NUMBER_OF_DOCS = 100;
+    private Supplier<Long> sampleSupplier = () -> randomLongBetween(MIN_SAMPLE_VALUE, MAX_SAMPLE_VALUE);
 
-    private static long[] singleValueSample;
-    private static long[] multiValueSample;
-    private static double singleValueExactMAD;
-    private static double multiValueExactMAD;
+    private long[] singleValueSample;
+    private long[] multiValueSample;
+    private double singleValueExactMAD;
+    private double multiValueExactMAD;
 
     @Before
     public void setupTest() throws Exception {

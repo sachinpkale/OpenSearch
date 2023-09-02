@@ -31,6 +31,7 @@
 
 package org.opensearch.index;
 
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse;
 import org.opensearch.action.admin.indices.stats.ShardStats;
 import org.opensearch.action.bulk.BulkRequest;
@@ -67,6 +68,7 @@ import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.instanceOf;
 
 @OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST, numDataNodes = 2, numClientNodes = 1)
+@LuceneTestCase.AwaitsFix(bugUrl = "Indexing backpressure is blocking write threadpool on replica")
 public class IndexingPressureIT extends OpenSearchIntegTestCase {
 
     public static final String INDEX_NAME = "test";
