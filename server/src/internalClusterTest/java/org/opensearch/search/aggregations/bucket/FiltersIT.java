@@ -69,7 +69,7 @@ import static org.hamcrest.core.IsNull.notNullValue;
 
 public class FiltersIT extends OpenSearchIntegTestCase {
 
-    static int numDocs, numTag1Docs, numTag2Docs, numOtherDocs;
+    int numDocs, numTag1Docs, numTag2Docs, numOtherDocs;
 
     @Before
     public void setupTest() throws Exception {
