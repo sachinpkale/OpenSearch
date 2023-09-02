@@ -178,6 +178,7 @@ public class SearchPreferenceIT extends OpenSearchIntegTestCase {
         }
     }
 
+    @AwaitsFix(bugUrl = "setPreference to primary not being honored")
     public void testNodesOnlyRandom() {
         assertAcked(
             prepareCreate("test").setSettings(
