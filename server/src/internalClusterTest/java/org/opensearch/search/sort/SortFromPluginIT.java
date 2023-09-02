@@ -39,12 +39,12 @@ public class SortFromPluginIT extends OpenSearchIntegTestCase {
 
         refresh();
 
-        SearchResponse searchResponse = client().prepareSearch("test").addSort(new CustomSortBuilder("field", SortOrder.ASC)).get();
+        SearchResponse searchResponse = client().prepareSearch("test").setPreference("_primary").addSort(new CustomSortBuilder("field", SortOrder.ASC)).get();
         assertThat(searchResponse.getHits().getAt(0).getId(), equalTo("3"));
         assertThat(searchResponse.getHits().getAt(1).getId(), equalTo("2"));
         assertThat(searchResponse.getHits().getAt(2).getId(), equalTo("1"));
 
-        searchResponse = client().prepareSearch("test").addSort(new CustomSortBuilder("field", SortOrder.DESC)).get();
+        searchResponse = client().prepareSearch("test").setPreference("_primary").addSort(new CustomSortBuilder("field", SortOrder.DESC)).get();
         assertThat(searchResponse.getHits().getAt(0).getId(), equalTo("1"));
         assertThat(searchResponse.getHits().getAt(1).getId(), equalTo("2"));
         assertThat(searchResponse.getHits().getAt(2).getId(), equalTo("3"));
@@ -61,7 +61,7 @@ public class SortFromPluginIT extends OpenSearchIntegTestCase {
         refresh();
 
         // builder -> json -> builder
-        SearchResponse searchResponse = client().prepareSearch("test")
+        SearchResponse searchResponse = client().prepareSearch("test").setPreference("_primary")
             .setSource(
                 SearchSourceBuilder.fromXContent(
                     createParser(
@@ -76,7 +76,7 @@ public class SortFromPluginIT extends OpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(1).getId(), equalTo("2"));
         assertThat(searchResponse.getHits().getAt(2).getId(), equalTo("1"));
 
-        searchResponse = client().prepareSearch("test")
+        searchResponse = client().prepareSearch("test").setPreference("_primary")
             .setSource(
                 SearchSourceBuilder.fromXContent(
                     createParser(
