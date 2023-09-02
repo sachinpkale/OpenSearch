@@ -579,7 +579,7 @@ public abstract class AbstractClient implements Client {
 
     @Override
     public GetRequestBuilder prepareGet(String index, String id) {
-        return prepareGet().setIndex(index).setId(id);
+        return prepareGet().setIndex(index).setId(id).setPreference("_primary");
     }
 
     @Override
@@ -679,7 +679,7 @@ public abstract class AbstractClient implements Client {
 
     @Override
     public TermVectorsRequestBuilder prepareTermVectors(String index, String id) {
-        return new TermVectorsRequestBuilder(this, TermVectorsAction.INSTANCE, index, id);
+        return new TermVectorsRequestBuilder(this, TermVectorsAction.INSTANCE, index, id).setPreference("_primary");
     }
 
     @Override
