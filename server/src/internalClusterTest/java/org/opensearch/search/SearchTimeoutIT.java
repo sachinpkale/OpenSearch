@@ -94,7 +94,7 @@ public class SearchTimeoutIT extends ParameterizedOpenSearchIntegTestCase {
         }
         refresh("test");
 
-        SearchResponse searchResponse = client().prepareSearch("test")
+        SearchResponse searchResponse = client().prepareSearch("test").setPreference("_primary")
             .setTimeout(new TimeValue(5, TimeUnit.MILLISECONDS))
             .setQuery(scriptQuery(new Script(ScriptType.INLINE, "mockscript", SCRIPT_NAME, Collections.emptyMap())))
             .setAllowPartialSearchResults(true)
