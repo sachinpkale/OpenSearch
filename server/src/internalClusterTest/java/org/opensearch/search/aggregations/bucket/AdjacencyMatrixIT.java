@@ -71,8 +71,8 @@ import static org.hamcrest.core.IsNull.notNullValue;
 
 public class AdjacencyMatrixIT extends OpenSearchIntegTestCase {
 
-    static int numDocs, numSingleTag1Docs, numSingleTag2Docs, numTag1Docs, numTag2Docs, numMultiTagDocs;
-    static final int MAX_NUM_FILTERS = 3;
+    int numDocs, numSingleTag1Docs, numSingleTag2Docs, numTag1Docs, numTag2Docs, numMultiTagDocs;
+    final int MAX_NUM_FILTERS = 3;
 
     @Before
     public void setupTest() throws Exception {
