@@ -1426,10 +1426,13 @@ public class IndexStatsIT extends OpenSearchIntegTestCase {
         assertThat(executionFailures.get(), emptyCollectionOf(Exception.class));
     }
 
-    public void testZeroRemoteStoreStatsOnNonRemoteStoreIndex() {
+    public void testZeroRemoteStoreStatsOnNonRemoteStoreIndex() throws Exception {
         String indexName = "test-index";
         createIndex(indexName, Settings.builder().put("index.number_of_shards", 1).put("index.number_of_replicas", 0).build());
         ensureGreen(indexName);
+        if (isIndexRemoteStoreEnabled(indexName)) {
+            return;
+        }
         assertEquals(
             RestStatus.CREATED,
             client().prepareIndex(indexName)
