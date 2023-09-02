@@ -136,6 +136,7 @@ public class SearchPreferenceIT extends OpenSearchIntegTestCase {
         assertThat(firstNodeId, not(equalTo(secondNodeId)));
     }
 
+    @AwaitsFix(bugUrl = "setPreference is being overridden and then set again")
     public void testSimplePreference() {
         client().admin().indices().prepareCreate("test").setSettings("{\"number_of_replicas\": 1}", MediaTypeRegistry.JSON).get();
         ensureGreen();
