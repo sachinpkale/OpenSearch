@@ -31,6 +31,7 @@
 
 package org.opensearch.action.bulk;
 
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.opensearch.action.index.IndexRequest;
 import org.opensearch.action.support.WriteRequest;
 import org.opensearch.common.action.ActionFuture;
@@ -47,6 +48,7 @@ import java.util.Collections;
 
 import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertAcked;
 
+@LuceneTestCase.AwaitsFix(bugUrl = "hello.com")
 @OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST, numDataNodes = 2)
 public class BulkRejectionIT extends OpenSearchIntegTestCase {
 
