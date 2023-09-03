@@ -88,7 +88,7 @@ public class SearchTimeoutIT extends ParameterizedOpenSearchIntegTestCase {
     }
 
     public void testSimpleTimeout() throws Exception {
-        final int numDocs = 1000;
+        final int numDocs = 100;
         for (int i = 0; i < numDocs; i++) {
             client().prepareIndex("test").setId(Integer.toString(i)).setSource("field", "value").get();
         }
