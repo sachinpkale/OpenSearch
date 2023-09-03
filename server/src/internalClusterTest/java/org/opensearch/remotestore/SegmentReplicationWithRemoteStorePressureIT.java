@@ -8,6 +8,7 @@
 
 package org.opensearch.remotestore;
 
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.common.util.FeatureFlags;
 import org.opensearch.index.SegmentReplicationPressureIT;
@@ -25,6 +26,7 @@ import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertAcked;
  * Setup is similar to SegmentReplicationPressureIT but this also enables the segment replication using remote store which
  * is behind SEGMENT_REPLICATION_EXPERIMENTAL flag.
  */
+@LuceneTestCase.AwaitsFix(bugUrl = "Already running in main, skipping")
 @OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST, numDataNodes = 0)
 public class SegmentReplicationWithRemoteStorePressureIT extends SegmentReplicationPressureIT {
 
