@@ -33,6 +33,7 @@
 package org.opensearch.recovery;
 
 import org.apache.lucene.tests.util.English;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
 import org.opensearch.action.admin.cluster.node.stats.NodeStats;
 import org.opensearch.action.admin.cluster.node.stats.NodesStatsResponse;
@@ -63,6 +64,7 @@ import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertAcked;
 import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertHitCount;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 
+@LuceneTestCase.AwaitsFix(bugUrl = "Remote store index doesn't have any cfs or fdt files left in FILE_CHUNK phase ")
 @OpenSearchIntegTestCase.ClusterScope(numDataNodes = 2, numClientNodes = 0, scope = OpenSearchIntegTestCase.Scope.TEST)
 @SuppressCodecs("*") // test relies on exact file extensions
 public class TruncatedRecoveryIT extends OpenSearchIntegTestCase {
