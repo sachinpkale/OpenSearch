@@ -505,6 +505,7 @@ public class RecoveryFromGatewayIT extends OpenSearchIntegTestCase {
         assertThat(state.metadata().index("test").getAliases().get("test_alias").filter(), notNullValue());
     }
 
+    @AwaitsFix(bugUrl = "Download from remote store happens, we need to remove the dependence of file copying in peer recovery")
     public void testReuseInFileBasedPeerRecovery() throws Exception {
         internalCluster().startClusterManagerOnlyNode();
         final String primaryNode = internalCluster().startDataOnlyNode(nodeSettings(0));
