@@ -79,8 +79,15 @@ public class DocumentActionsIT extends OpenSearchIntegTestCase {
     public void testIndexActions() throws Exception {
         createIndex();
         NumShards numShards = getNumShards(getConcreteIndexName());
-        logger.info("Running Cluster Health");
+        logger.info("ConcreteIndexName Running Cluster Health" + getConcreteIndexName());
         ensureGreen();
+
+        GetSettingsRequest getSettingsRequest = new GetSettingsRequest().indices(getConcreteIndexName());
+        client().admin().indices().getSettings(getSettingsRequest).actionGet().getIndexToSettings();
+        String remoteStoreEnabledStr = client().admin().indices().getSettings(getSettingsRequest).actionGet().getSetting(getConcreteIndexName(), IndexMetadata.SETTING_REMOTE_STORE_ENABLED);
+        logger.warn("MyIndexSettings (" + remoteStoreEnabledStr + ")");
+        logger.warn("MyFullSettings ( " + client().admin().indices().getSettings(getSettingsRequest).actionGet().getIndexToSettings() + ")");
+
         logger.info("Indexing [type1/1]");
         IndexResponse indexResponse = client().prepareIndex()
             .setIndex("test")
@@ -93,9 +100,6 @@ public class DocumentActionsIT extends OpenSearchIntegTestCase {
         logger.info("Refreshing");
         RefreshResponse refreshResponse = refresh();
 
-        GetSettingsRequest getSettingsRequest = new GetSettingsRequest().indices("test");
-        String remoteStoreEnabledStr = client().admin().indices().getSettings(getSettingsRequest).actionGet().getSetting("test", IndexMetadata.SETTING_REMOTE_STORE_ENABLED);
-        logger.warn("IndexSettings (" + remoteStoreEnabledStr + ")");
         if(Objects.equals(remoteStoreEnabledStr, "true")) {
             assertThat(refreshResponse.getSuccessfulShards(), equalTo(numShards.numPrimaries));
         } else {
@@ -113,20 +117,12 @@ public class DocumentActionsIT extends OpenSearchIntegTestCase {
             .clearCache(clearIndicesCacheRequest("test").fieldDataCache(true).queryCache(true))
             .actionGet();
         assertNoFailures(clearIndicesCacheResponse);
-        if(Objects.equals(remoteStoreEnabledStr, "true")) {
-            assertThat(clearIndicesCacheResponse.getSuccessfulShards(), equalTo(numShards.numPrimaries));
-        } else {
-            assertThat(clearIndicesCacheResponse.getSuccessfulShards(), equalTo(numShards.totalNumShards));
-        }
+        assertThat(clearIndicesCacheResponse.getSuccessfulShards(), equalTo(numShards.totalNumShards));
 
         logger.info("Force Merging");
         waitForRelocation(ClusterHealthStatus.GREEN);
         ForceMergeResponse mergeResponse = forceMerge();
-        if(Objects.equals(remoteStoreEnabledStr, "true")) {
-            assertThat(mergeResponse.getSuccessfulShards(), equalTo(numShards.numPrimaries));
-        } else {
-            assertThat(mergeResponse.getSuccessfulShards(), equalTo(numShards.totalNumShards));
-        }
+        assertThat(mergeResponse.getSuccessfulShards(), equalTo(numShards.totalNumShards));
 
         GetResponse getResult;
 
@@ -176,7 +172,12 @@ public class DocumentActionsIT extends OpenSearchIntegTestCase {
 
         logger.info("Flushing");
         FlushResponse flushResult = client().admin().indices().prepareFlush("test").execute().actionGet();
-        assertThat(flushResult.getSuccessfulShards(), equalTo(numShards.totalNumShards));
+        if(Objects.equals(remoteStoreEnabledStr, "true")) {
+            assertThat(flushResult.getSuccessfulShards(), equalTo(numShards.numPrimaries));
+        }
+        else {
+            assertThat(flushResult.getSuccessfulShards(), equalTo(numShards.totalNumShards));
+        }
         assertThat(flushResult.getFailedShards(), equalTo(0));
         logger.info("Refreshing");
         client().admin().indices().refresh(refreshRequest("test")).actionGet();
@@ -221,6 +222,9 @@ public class DocumentActionsIT extends OpenSearchIntegTestCase {
         NumShards numShards = getNumShards(getConcreteIndexName());
         logger.info("-> running Cluster Health");
         ensureGreen();
+        GetSettingsRequest getSettingsRequest = new GetSettingsRequest().indices(getConcreteIndexName());
+        String remoteStoreEnabledStr = client().admin().indices().getSettings(getSettingsRequest).actionGet().getSetting(getConcreteIndexName(), IndexMetadata.SETTING_REMOTE_STORE_ENABLED);
+        logger.warn("MyIndexSettings (" + remoteStoreEnabledStr + ")");
 
         BulkResponse bulkResponse = client().prepareBulk()
             .add(client().prepareIndex().setIndex("test").setId("1").setSource(source("1", "test")))
@@ -268,9 +272,6 @@ public class DocumentActionsIT extends OpenSearchIntegTestCase {
         RefreshResponse refreshResponse = client().admin().indices().prepareRefresh("test").execute().actionGet();
         assertNoFailures(refreshResponse);
 
-        GetSettingsRequest getSettingsRequest = new GetSettingsRequest().indices("test");
-        String remoteStoreEnabledStr = client().admin().indices().getSettings(getSettingsRequest).actionGet().getSetting("test", IndexMetadata.SETTING_REMOTE_STORE_ENABLED);
-        logger.warn("IndexSettings (" + remoteStoreEnabledStr + ")");
         if(Objects.equals(remoteStoreEnabledStr, "true")) {
             assertThat(refreshResponse.getSuccessfulShards(), equalTo(numShards.numPrimaries));
         } else {
