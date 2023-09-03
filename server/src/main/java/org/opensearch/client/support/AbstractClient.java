@@ -664,6 +664,7 @@ public abstract class AbstractClient implements Client {
 
     @Override
     public ActionFuture<TermVectorsResponse> termVectors(final TermVectorsRequest request) {
+        request.preference("_primary");
         return execute(TermVectorsAction.INSTANCE, request);
     }
 
