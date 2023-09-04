@@ -445,12 +445,6 @@ public class IndicesService extends AbstractLifecycleComponent
         this.clusterDefaultRefreshInterval = CLUSTER_DEFAULT_INDEX_REFRESH_INTERVAL_SETTING.get(clusterService.getSettings());
         clusterService.getClusterSettings()
             .addSettingsUpdateConsumer(CLUSTER_DEFAULT_INDEX_REFRESH_INTERVAL_SETTING, this::onRefreshIntervalUpdate);
-
-        if (FeatureFlags.isEnabled(FeatureFlags.REMOTE_STORE)) {
-            this.clusterRemoteTranslogBufferInterval = CLUSTER_REMOTE_TRANSLOG_BUFFER_INTERVAL_SETTING.get(clusterService.getSettings());
-            clusterService.getClusterSettings()
-                .addSettingsUpdateConsumer(CLUSTER_REMOTE_TRANSLOG_BUFFER_INTERVAL_SETTING, this::setClusterRemoteTranslogBufferInterval);
-        }
     }
 
     /**
