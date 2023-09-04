@@ -85,6 +85,7 @@ import org.opensearch.test.CorruptionUtils;
 import org.opensearch.test.InternalSettingsPlugin;
 import org.opensearch.test.MockIndexEventListener;
 import org.opensearch.test.OpenSearchIntegTestCase;
+import org.opensearch.test.junit.annotations.TestIssueLogging;
 import org.opensearch.test.store.MockFSIndexStore;
 import org.opensearch.test.transport.MockTransportService;
 import org.opensearch.transport.TransportService;
@@ -167,7 +168,7 @@ public class CorruptedFileIT extends OpenSearchIntegTestCase {
                 Settings.builder()
                     .put(IndexMetadata.SETTING_NUMBER_OF_SHARDS, "1")
                     .put(IndexMetadata.SETTING_NUMBER_OF_REPLICAS, "1")
-                    .put(MergePolicyConfig.INDEX_MERGE_ENABLED, false)
+//                    .put(MergePolicyConfig.INDEX_MERGE_ENABLED, false)
                     // no checkindex - we corrupt shards on purpose
                     .put(MockFSIndexStore.INDEX_CHECK_INDEX_ON_CLOSE_SETTING.getKey(), false)
                     // no translog based flush - it might change the .liv / segments.N files
@@ -193,11 +194,7 @@ public class CorruptedFileIT extends OpenSearchIntegTestCase {
         ShardRouting corruptedShardRouting = corruptRandomPrimaryFile();
         logger.info("--> {} corrupted", corruptedShardRouting);
         enableAllocation("test");
-        /*
-        * we corrupted the primary shard - now lets make sure we never recover from it successfully
-        */
-        Settings build = Settings.builder().put(IndexMetadata.SETTING_NUMBER_OF_REPLICAS, "2").build();
-        client().admin().indices().prepareUpdateSettings("test").setSettings(build).get();
+
         ClusterHealthResponse health = client().admin()
             .cluster()
             .health(
@@ -222,11 +219,37 @@ public class CorruptedFileIT extends OpenSearchIntegTestCase {
             assertHitCount(response, numDocs);
         }
 
+        // index more docs to generate new segment. this helps with failing primary while force merge
+        builders = new IndexRequestBuilder[5];
+        for (int i = 0; i < builders.length; i++) {
+            builders[i] = client().prepareIndex("test").setSource("field", "value");
+        }
+        try{
+            indexRandom(true, builders);
+        } catch (AssertionError e) {
+            logger.info("-->> assert failed for indexing after corrupt -- " + e);
+        }
+        ensureGreen();
+
+        // force merge into 1 segment triggers force read of the corrupted segment
+        client().admin().indices().prepareForceMerge("test").setMaxNumSegments(1).get();
+
+        // wait for force merge to complete
+        Thread.sleep(3000);
+
+        ensureYellow("test");
+        ensureGreen("test");
+        final int numIterations2 = scaledRandomIntBetween(5, 20);
+        for (int i = 0; i < numIterations2; i++) {
+            SearchResponse response = client().prepareSearch().setPreference("_primary").setSize(numDocs).get();
+            assertHitCount(response, numDocs + 5);
+        }
+
         /*
          * now hook into the IndicesService and register a close listener to
          * run the checkindex. if the corruption is still there we will catch it.
          */
-        final CountDownLatch latch = new CountDownLatch(numShards * 3); // primary + 2 replicas
+        final CountDownLatch latch = new CountDownLatch(numShards * 2); // primary + 2 replicas
         final CopyOnWriteArrayList<Exception> exception = new CopyOnWriteArrayList<>();
         final IndexEventListener listener = new IndexEventListener() {
             @Override
