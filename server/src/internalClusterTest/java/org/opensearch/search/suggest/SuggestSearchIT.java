@@ -1039,14 +1039,14 @@ public class SuggestSearchIT extends OpenSearchIntegTestCase {
 
         // Tons of different options very near the exact query term
         titles.add("United States House of Representatives Elections in Washington 1789");
-        for (int year = 1790; year < 2014; year += 2) {
+        for (int year = 2000; year < 2014; year += 2) {
             titles.add("United States House of Representatives Elections in Washington " + year);
         }
         // Six of these are near enough to be viable suggestions, just not the top one
 
         // But we can't stop there! Titles that are just a year are pretty common so lets just add one per year
         // since 0. Why not?
-        for (int year = 0; year < 2015; year++) {
+        for (int year = 2000; year < 2015; year++) {
             titles.add(Integer.toString(year));
         }
         // That ought to provide more less good candidates for the last term
@@ -1135,7 +1135,7 @@ public class SuggestSearchIT extends OpenSearchIntegTestCase {
         ).confidence(0f).maxErrors(2f).shardSize(30000).size(30000);
         Suggest searchSuggest = searchSuggest("united states house of representatives elections in washington 2006", "title", suggest);
         assertSuggestion(searchSuggest, 0, 0, "title", "united states house of representatives elections in washington 2006");
-        assertSuggestionSize(searchSuggest, 0, 25480, "title");  // Just to prove that we've run through a ton of options
+        assertSuggestionSize(searchSuggest, 0, 25076, "title");  // Just to prove that we've run through a ton of options
 
         suggest.size(1);
         searchSuggest = searchSuggest("united states house of representatives elections in washington 2006", "title", suggest);
