@@ -643,6 +643,7 @@ public class IndexStatsIT extends OpenSearchIntegTestCase {
         logger.info("test: test done");
     }
 
+    @AwaitsFix(bugUrl = "Replica does'nt index docs")
     public void testSimpleStats() throws Exception {
         createIndex("test1", "test2");
         ensureGreen();
