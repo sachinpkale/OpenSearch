@@ -522,6 +522,11 @@ public abstract class AbstractSnapshotIntegTestCase extends OpenSearchIntegTestC
         }
         indexRandom(true, builders);
         flushAndRefresh(index);
+        try {
+            waitForCurrentReplicas();
+        } catch (Throwable t) {
+            // Ignore for now.
+        }
         assertDocCount(index, numdocs);
     }
 
