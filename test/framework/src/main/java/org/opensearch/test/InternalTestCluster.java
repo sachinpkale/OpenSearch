@@ -52,6 +52,7 @@ import org.opensearch.client.Client;
 import org.opensearch.cluster.ClusterName;
 import org.opensearch.cluster.ClusterState;
 import org.opensearch.cluster.action.index.MappingUpdatedAction;
+import org.opensearch.cluster.block.ClusterBlockLevel;
 import org.opensearch.cluster.coordination.ClusterBootstrapService;
 import org.opensearch.cluster.coordination.NoClusterManagerBlockService;
 import org.opensearch.cluster.metadata.IndexMetadata;
@@ -92,6 +93,7 @@ import org.opensearch.core.util.FileSystemUtils;
 import org.opensearch.env.Environment;
 import org.opensearch.env.NodeEnvironment;
 import org.opensearch.env.ShardLockObtainFailedException;
+import org.opensearch.gateway.GatewayService;
 import org.opensearch.http.HttpServerTransport;
 import org.opensearch.index.IndexService;
 import org.opensearch.index.IndexingPressure;
@@ -1320,7 +1322,16 @@ public final class InternalTestCluster extends TestCluster {
                     }
                 });
                 states.forEach(cs -> {
-                    if (cs.nodes().getNodes().values().stream().findFirst().get().isRemoteStoreNode()) {
+                    /* Adding check to ensure that the repository checks are only performed when the cluster state has been recovered.
+                     Useful for test cases which deliberately block cluster state recovery through gateway.xxxx cluster settings
+                     */
+                    if (!cs.blocks().hasGlobalBlock(GatewayService.STATE_NOT_RECOVERED_BLOCK) && cs.nodes()
+                        .getNodes()
+                        .values()
+                        .stream()
+                        .findFirst()
+                        .get()
+                        .isRemoteStoreNode()) {
                         RepositoriesMetadata repositoriesMetadata = cs.metadata().custom(RepositoriesMetadata.TYPE);
                         assertTrue(repositoriesMetadata != null && !repositoriesMetadata.repositories().isEmpty());
                     }

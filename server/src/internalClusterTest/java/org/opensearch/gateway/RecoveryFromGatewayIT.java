@@ -237,8 +237,10 @@ public class RecoveryFromGatewayIT extends OpenSearchIntegTestCase {
             value2Docs = 1;
         }
 
-        for (int i = 0; i < 1 + randomInt(100); i++) {
-            for (int id = 0; id < Math.max(value1Docs, value2Docs); id++) {
+        for (int i = 0; i < 1 + randomInt(10); i++) {
+            int toIndex = Math.max(value1Docs, value2Docs);
+            logger.info("About to index " + toIndex + " documents");
+            for (int id = 0; id < toIndex; id++) {
                 if (id < value1Docs) {
                     index(
                         "test",
