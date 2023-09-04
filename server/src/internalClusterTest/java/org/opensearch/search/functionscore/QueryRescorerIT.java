@@ -458,9 +458,8 @@ public class QueryRescorerIT extends OpenSearchIntegTestCase {
             int rescoreWindow = between(1, 3) * resultSize;
             String intToEnglish = English.intToEnglish(between(0, numDocs - 1));
             String query = intToEnglish.split(" ")[0];
-            SearchResponse rescored = client().prepareSearch().setPreference("_primary")
+            SearchRequestBuilder rescoredRequestBuilder =  client().prepareSearch()
                 .setSearchType(SearchType.QUERY_THEN_FETCH)
-                .setPreference("test") // ensure we hit the same shards for tie-breaking
                 .setQuery(QueryBuilders.matchQuery("field1", query).operator(Operator.OR))
                 .setFrom(0)
                 .setSize(resultSize)
@@ -469,23 +468,33 @@ public class QueryRescorerIT extends OpenSearchIntegTestCase {
                         // no weight - so we basically use the same score as the actual query
                         .setRescoreQueryWeight(0.0f),
                     rescoreWindow
-                )
-                .get();
+                );
+            if (isRemoteStoreEnabled()) {
+                rescoredRequestBuilder.setPreference("_primary");
+            } else {
+                rescoredRequestBuilder.setPreference("test"); // ensure we hit the same shards for tie-breaking
+            }
+            SearchResponse rescored = rescoredRequestBuilder.get();
 
-            SearchResponse plain = client().prepareSearch().setPreference("_primary")
+            SearchRequestBuilder plainRequestBuilder = client().prepareSearch()
                 .setSearchType(SearchType.QUERY_THEN_FETCH)
-                .setPreference("test") // ensure we hit the same shards for tie-breaking
                 .setQuery(QueryBuilders.matchQuery("field1", query).operator(Operator.OR))
                 .setFrom(0)
-                .setSize(resultSize)
-                .get();
+                .setSize(resultSize);
+
+            if (isRemoteStoreEnabled()) {
+                plainRequestBuilder.setPreference("_primary");
+            } else {
+                plainRequestBuilder.setPreference("test"); // ensure we hit the same shards for tie-breaking
+            }
+
+            SearchResponse plain = plainRequestBuilder.get();
 
             // check equivalence
             assertEquivalent(query, plain, rescored);
 
-            rescored = client().prepareSearch().setPreference("_primary")
+            rescoredRequestBuilder = client().prepareSearch()
                 .setSearchType(SearchType.QUERY_THEN_FETCH)
-                .setPreference("test") // ensure we hit the same shards for tie-breaking
                 .setQuery(QueryBuilders.matchQuery("field1", query).operator(Operator.OR))
                 .setFrom(0)
                 .setSize(resultSize)
@@ -494,8 +503,13 @@ public class QueryRescorerIT extends OpenSearchIntegTestCase {
                         1.0f
                     ).setRescoreQueryWeight(1.0f),
                     rescoreWindow
-                )
-                .get();
+                );
+            if (isRemoteStoreEnabled()) {
+                rescoredRequestBuilder.setPreference("_primary");
+            } else {
+                rescoredRequestBuilder.setPreference("test"); // ensure we hit the same shards for tie-breaking
+            }
+            rescored = rescoredRequestBuilder.get();
             // check equivalence
             assertEquivalent(query, plain, rescored);
         }
