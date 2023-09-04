@@ -804,6 +804,14 @@ public class CorruptedFileIT extends OpenSearchIntegTestCase {
         // validation failure.
         final ShardRouting corruptedShardRouting = corruptRandomPrimaryFile();
         logger.info("--> {} corrupted", corruptedShardRouting);
+
+        // index more docs to create new segments so that force merge reads segments
+        client().prepareIndex("test").setSource("field", "value").execute();
+        client().prepareIndex("test").setSource("field", "value").execute();
+
+        // force merge into 1 segment triggers force read of the corrupted segment
+        client().admin().indices().prepareForceMerge("test").setMaxNumSegments(1).get();
+
         final CreateSnapshotResponse createSnapshotResponse = client().admin()
             .cluster()
             .prepareCreateSnapshot("test-repo", "test-snap")
@@ -812,6 +820,9 @@ public class CorruptedFileIT extends OpenSearchIntegTestCase {
             .get();
         final SnapshotState snapshotState = createSnapshotResponse.getSnapshotInfo().state();
         MatcherAssert.assertThat("Expect file corruption to cause PARTIAL snapshot state", snapshotState, equalTo(SnapshotState.PARTIAL));
+
+        // force merge into 1 segment triggers force read of the corrupted segment
+        client().admin().indices().prepareForceMerge("test").setMaxNumSegments(1).get();
 
         // Unblock the blocked indexing thread now that corruption on the primary has been confirmed
         corruptionHasHappened.countDown();
