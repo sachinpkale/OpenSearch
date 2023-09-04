@@ -106,6 +106,7 @@ public class MultiClusterRepoAccessIT extends AbstractSnapshotIntegTestCase {
         IOUtils.close(secondCluster);
     }
 
+    @AwaitsFix(bugUrl = "Sharing the same base repo path between 2 test clusters seem to be tricky currently, will need capbility to allow multi test clusters in OpenSearchIntegTest base class with sharing of base repo path")
     public void testConcurrentDeleteFromOtherCluster() throws InterruptedException {
         internalCluster().startClusterManagerOnlyNode();
         internalCluster().startDataOnlyNode();
