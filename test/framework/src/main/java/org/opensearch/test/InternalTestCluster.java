@@ -52,7 +52,6 @@ import org.opensearch.client.Client;
 import org.opensearch.cluster.ClusterName;
 import org.opensearch.cluster.ClusterState;
 import org.opensearch.cluster.action.index.MappingUpdatedAction;
-import org.opensearch.cluster.block.ClusterBlockLevel;
 import org.opensearch.cluster.coordination.ClusterBootstrapService;
 import org.opensearch.cluster.coordination.NoClusterManagerBlockService;
 import org.opensearch.cluster.metadata.IndexMetadata;
@@ -1325,13 +1324,7 @@ public final class InternalTestCluster extends TestCluster {
                     /* Adding check to ensure that the repository checks are only performed when the cluster state has been recovered.
                      Useful for test cases which deliberately block cluster state recovery through gateway.xxxx cluster settings
                      */
-                    if (!cs.blocks().hasGlobalBlock(GatewayService.STATE_NOT_RECOVERED_BLOCK) && cs.nodes()
-                        .getNodes()
-                        .values()
-                        .stream()
-                        .findFirst()
-                        .get()
-                        .isRemoteStoreNode()) {
+                    if (!gatewaySettingsBlockingStateRecovery(cs) && cs.nodes().getNodes().values().stream().findFirst().get().isRemoteStoreNode()) {
                         RepositoriesMetadata repositoriesMetadata = cs.metadata().custom(RepositoriesMetadata.TYPE);
                         assertTrue(repositoriesMetadata != null && !repositoriesMetadata.repositories().isEmpty());
                     }
@@ -1341,6 +1334,27 @@ public final class InternalTestCluster extends TestCluster {
             throw new IllegalStateException("cluster failed to form", ae);
         } catch (Exception e) {
             throw new IllegalStateException(e);
+        }
+    }
+
+    private boolean gatewaySettingsBlockingStateRecovery(ClusterState cs) {
+        // Is cluster state publication blocked?
+        boolean clusterStateNotRecovered = cs.blocks().hasGlobalBlock(GatewayService.STATE_NOT_RECOVERED_BLOCK);
+
+        // Iterate through each node and find out the max value of 'gateway.recover_after_nodes'
+        int recoverAfterNodes = -1;
+        for (NodeAndClient nodeAndClient: nodes.values()) {
+            Settings nodeSettings = nodeAndClient.node.settings();
+            if (nodeSettings.hasValue(GatewayService.RECOVER_AFTER_NODES_SETTING.getKey())) {
+                recoverAfterNodes = Math.max(recoverAfterNodes, Integer.parseInt(nodeSettings.get(GatewayService.RECOVER_AFTER_NODES_SETTING.getKey())));
+            }
+        }
+
+        // Return true if the cluster has state_not_recovered block and the current node count is less than 'gateway.recover_after_nodes'
+        if (recoverAfterNodes != -1 && clusterStateNotRecovered) {
+            return nodes.size() < recoverAfterNodes;
+        } else {
+            return false;
         }
     }
 

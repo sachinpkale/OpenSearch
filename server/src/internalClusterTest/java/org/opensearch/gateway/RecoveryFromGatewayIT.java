@@ -199,6 +199,7 @@ public class RecoveryFromGatewayIT extends OpenSearchIntegTestCase {
         return result;
     }
 
+    // RemoteStore: Reducing number of docs being ingested to speed up test
     public void testSingleNodeNoFlush() throws Exception {
         internalCluster().startNode();
 
@@ -228,8 +229,8 @@ public class RecoveryFromGatewayIT extends OpenSearchIntegTestCase {
 
         if (indexToAllShards) {
             // insert enough docs so all shards will have a doc
-            value1Docs = randomIntBetween(numberOfShards * 10, numberOfShards * 20);
-            value2Docs = randomIntBetween(numberOfShards * 10, numberOfShards * 20);
+            value1Docs = randomIntBetween(numberOfShards * 2, numberOfShards * 5);
+            value2Docs = randomIntBetween(numberOfShards * 2, numberOfShards * 5);
 
         } else {
             // insert a two docs, some shards will not have anything
@@ -237,9 +238,10 @@ public class RecoveryFromGatewayIT extends OpenSearchIntegTestCase {
             value2Docs = 1;
         }
 
-        for (int i = 0; i < 1 + randomInt(10); i++) {
-            int toIndex = Math.max(value1Docs, value2Docs);
-            logger.info("About to index " + toIndex + " documents");
+        int toIndex = Math.max(value1Docs, value2Docs);
+        int multiplier = 1 + randomInt(5);
+        logger.info("About to index " + toIndex * multiplier + " documents");
+        for (int i = 0; i < multiplier; i++) {
             for (int id = 0; id < toIndex; id++) {
                 if (id < value1Docs) {
                     index(
