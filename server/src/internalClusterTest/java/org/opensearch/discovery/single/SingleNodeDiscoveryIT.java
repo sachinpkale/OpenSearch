@@ -117,6 +117,7 @@ public class SingleNodeDiscoveryIT extends OpenSearchIntegTestCase {
         }
     }
 
+    @AwaitsFix(bugUrl = "Fails in CodeBuild but unable to reproduce")
     public void testCannotJoinNodeWithSingleNodeDiscovery() throws Exception {
         Logger clusterLogger = LogManager.getLogger(JoinHelper.class);
         try (MockLogAppender mockAppender = MockLogAppender.createForLoggers(clusterLogger)) {
