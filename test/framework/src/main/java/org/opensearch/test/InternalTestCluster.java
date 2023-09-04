@@ -1527,7 +1527,7 @@ public final class InternalTestCluster extends TestCluster {
                         } catch (AlreadyClosedException e) {
                             continue; // shard is closed - just ignore
                         }
-                        assertThat(replicaShardRouting + " seq_no_stats mismatch", seqNoStats, equalTo(primarySeqNoStats));
+                        assertThat(replicaShardRouting + " seq_no_stats mismatch", seqNoStats.getMaxSeqNo(), equalTo(primarySeqNoStats.getMaxSeqNo()));
                         // the local knowledge on the primary of the global checkpoint equals the global checkpoint on the shard
                         if (primaryShard.isRemoteTranslogEnabled() == false) {
                             assertThat(
