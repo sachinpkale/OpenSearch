@@ -70,13 +70,13 @@ public abstract class AbstractGeoTestCase extends OpenSearchIntegTestCase {
     protected static final String HIGH_CARD_IDX_NAME = "high_card_idx";
     protected static final String IDX_ZERO_NAME = "idx_zero";
 
-    protected static int numDocs;
-    protected static int numUniqueGeoPoints;
-    protected static GeoPoint[] singleValues, multiValues;
-    protected static GeoPoint singleTopLeft, singleBottomRight, multiTopLeft, multiBottomRight, singleCentroid, multiCentroid,
+    protected int numDocs;
+    protected int numUniqueGeoPoints;
+    protected GeoPoint[] singleValues, multiValues;
+    protected GeoPoint singleTopLeft, singleBottomRight, multiTopLeft, multiBottomRight, singleCentroid, multiCentroid,
         unmappedCentroid;
-    protected static Map<String, Integer> expectedDocCountsForGeoHash = null;
-    protected static Map<String, GeoPoint> expectedCentroidsForGeoHash = null;
+    protected Map<String, Integer> expectedDocCountsForGeoHash = null;
+    protected Map<String, GeoPoint> expectedCentroidsForGeoHash = null;
     protected static final double GEOHASH_TOLERANCE = 1E-5D;
 
     @Before

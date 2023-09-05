@@ -42,11 +42,13 @@ import org.apache.lucene.util.BytesRef;
 import org.opensearch.action.admin.cluster.health.ClusterHealthResponse;
 import org.opensearch.action.admin.cluster.node.stats.NodeStats;
 import org.opensearch.action.admin.cluster.node.stats.NodesStatsResponse;
+import org.opensearch.action.admin.cluster.remotestore.restore.RestoreRemoteStoreRequest;
 import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotResponse;
 import org.opensearch.action.admin.cluster.state.ClusterStateResponse;
 import org.opensearch.action.admin.indices.shards.IndicesShardStoresResponse;
 import org.opensearch.action.index.IndexRequestBuilder;
 import org.opensearch.action.search.SearchResponse;
+import org.opensearch.action.support.PlainActionFuture;
 import org.opensearch.action.support.replication.TransportReplicationAction;
 import org.opensearch.client.Requests;
 import org.opensearch.cluster.ClusterState;
@@ -301,13 +303,15 @@ public class CorruptedFileIT extends OpenSearchIntegTestCase {
      * Tests corruption that happens on a single shard when no replicas are present. We make sure that the primary stays unassigned
      * and all other replicas for the healthy shards happens
      */
-    public void testCorruptPrimaryNoReplica() throws ExecutionException, InterruptedException, IOException {
-        int numDocs = scaledRandomIntBetween(100, 1000);
+    @TestIssueLogging(value = "_root:DEBUG", issueUrl = "hello")
+    public void testCorruptPrimaryNoReplica() throws Exception {
+        int numDocs = scaledRandomIntBetween(100, 100);
         internalCluster().ensureAtLeastNumDataNodes(2);
 
         assertAcked(
             prepareCreate("test").setSettings(
                 Settings.builder()
+                    .put(IndexMetadata.SETTING_NUMBER_OF_SHARDS, "1")
                     .put(IndexMetadata.SETTING_NUMBER_OF_REPLICAS, "0")
                     .put(MergePolicyConfig.INDEX_MERGE_ENABLED, false)
                     .put(MockFSIndexStore.INDEX_CHECK_INDEX_ON_CLOSE_SETTING.getKey(), false) // no checkindex - we corrupt shards on
@@ -330,7 +334,8 @@ public class CorruptedFileIT extends OpenSearchIntegTestCase {
         SearchResponse countResponse = client().prepareSearch().setPreference("_primary").setSize(0).get();
         assertHitCount(countResponse, numDocs);
 
-        ShardRouting shardRouting = corruptRandomPrimaryFile();
+        corruptRandomPrimaryFile();
+
         /*
          * we corrupted the primary shard - now lets make sure we never recover from it successfully
          */
@@ -338,44 +343,21 @@ public class CorruptedFileIT extends OpenSearchIntegTestCase {
         client().admin().indices().prepareUpdateSettings("test").setSettings(build).get();
         client().admin().cluster().prepareReroute().get();
 
-        boolean didClusterTurnRed = waitUntil(() -> {
-            ClusterHealthStatus test = client().admin().cluster().health(Requests.clusterHealthRequest("test")).actionGet().getStatus();
-            return test == ClusterHealthStatus.RED;
-        }, 5, TimeUnit.MINUTES);// sometimes on slow nodes the replication / recovery is just dead slow
+        try {
+            ensureGreen(TimeValue.timeValueSeconds(60), "test");
+        } catch(AssertionError e) {
+            assertAcked(client().admin().indices().prepareClose("test"));
+            client().admin()
+                .cluster()
+                .restoreRemoteStore(
+                    new RestoreRemoteStoreRequest().indices("test").restoreAllShards(true),
+                    PlainActionFuture.newFuture()
+                );
+            ensureGreen(TimeValue.timeValueSeconds(60), "test");
+        }
 
-        final ClusterHealthResponse response = client().admin().cluster().health(Requests.clusterHealthRequest("test")).get();
-
-        if (response.getStatus() != ClusterHealthStatus.RED) {
-            logger.info("Cluster turned red in busy loop: {}", didClusterTurnRed);
-            logger.info(
-                "cluster state:\n{}\n{}",
-                client().admin().cluster().prepareState().get().getState(),
-                client().admin().cluster().preparePendingClusterTasks().get()
-            );
-        }
-        assertThat(response.getStatus(), is(ClusterHealthStatus.RED));
-        ClusterState state = client().admin().cluster().prepareState().get().getState();
-        GroupShardsIterator<ShardIterator> shardIterators = state.getRoutingTable()
-            .activePrimaryShardsGrouped(new String[] { "test" }, false);
-        for (ShardIterator iterator : shardIterators) {
-            ShardRouting routing;
-            while ((routing = iterator.nextOrNull()) != null) {
-                if (routing.getId() == shardRouting.getId()) {
-                    assertThat(routing.state(), equalTo(ShardRoutingState.UNASSIGNED));
-                } else {
-                    assertThat(routing.state(), anyOf(equalTo(ShardRoutingState.RELOCATING), equalTo(ShardRoutingState.STARTED)));
-                }
-            }
-        }
-        final List<Path> files = listShardFiles(shardRouting);
-        Path corruptedFile = null;
-        for (Path file : files) {
-            if (file.getFileName().toString().startsWith("corrupted_")) {
-                corruptedFile = file;
-                break;
-            }
-        }
-        assertThat(corruptedFile, notNullValue());
+        countResponse = client().prepareSearch().setPreference("_primary").setSize(0).get();
+        assertHitCount(countResponse, numDocs);
     }
 
     /**

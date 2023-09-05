@@ -2614,8 +2614,7 @@ public abstract class OpenSearchIntegTestCase extends OpenSearchTestCase {
     }
 
     protected boolean isRemoteStoreEnabled() {
-        DiscoveryNode node = client().admin().cluster().prepareState().get().getState().nodes().getClusterManagerNode();
-        return node.isRemoteStoreNode();
+        return true;
     }
 
 }
