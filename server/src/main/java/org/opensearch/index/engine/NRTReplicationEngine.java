@@ -24,6 +24,7 @@ import org.opensearch.index.seqno.LocalCheckpointTracker;
 import org.opensearch.index.seqno.SeqNoStats;
 import org.opensearch.index.seqno.SequenceNumbers;
 import org.opensearch.index.translog.Translog;
+import org.opensearch.index.translog.TranslogCorruptedException;
 import org.opensearch.index.translog.TranslogDeletionPolicy;
 import org.opensearch.index.translog.TranslogException;
 import org.opensearch.index.translog.TranslogManager;
@@ -127,8 +128,9 @@ public class NRTReplicationEngine extends Engine {
                 engineConfig.getPrimaryModeSupplier()
             );
             this.translogManager = translogManagerRef;
-        } catch (IOException e) {
-            IOUtils.closeWhileHandlingException(store::decRef, readerManager, translogManagerRef);
+        } catch (IOException | TranslogCorruptedException e) {
+            store.decRef();
+            IOUtils.closeWhileHandlingException(readerManager, translogManagerRef);
             throw new EngineCreationFailureException(shardId, "failed to create engine", e);
         }
     }
