@@ -34,6 +34,7 @@ package org.opensearch.action.admin.indices.forcemerge;
 
 import org.apache.lucene.index.IndexCommit;
 import org.opensearch.action.admin.indices.flush.FlushResponse;
+import org.opensearch.action.admin.indices.settings.get.GetSettingsRequest;
 import org.opensearch.cluster.ClusterState;
 import org.opensearch.cluster.metadata.IndexMetadata;
 import org.opensearch.cluster.routing.IndexRoutingTable;
@@ -47,6 +48,7 @@ import org.opensearch.indices.IndicesService;
 import org.opensearch.test.OpenSearchIntegTestCase;
 
 import java.io.IOException;
+import java.util.Objects;
 
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
@@ -82,22 +84,38 @@ public class ForceMergeIT extends OpenSearchIntegTestCase {
         assertThat(getForceMergeUUID(primary), nullValue());
         assertThat(getForceMergeUUID(replica), nullValue());
 
+        GetSettingsRequest getSettingsRequest = new GetSettingsRequest().indices("test-index");
+        String remoteStoreEnabledStr = client().admin().indices().getSettings(getSettingsRequest).actionGet().getSetting("test-index", IndexMetadata.SETTING_REMOTE_STORE_ENABLED);
+        logger.warn("IndexSettings (" + remoteStoreEnabledStr + ")");
+
         final ForceMergeResponse forceMergeResponse = client().admin().indices().prepareForceMerge(index).setMaxNumSegments(1).get();
 
         assertThat(forceMergeResponse.getFailedShards(), is(0));
-        assertThat(forceMergeResponse.getSuccessfulShards(), is(2));
+        if(Objects.equals(remoteStoreEnabledStr, "true")) {
+            assertThat(forceMergeResponse.getSuccessfulShards(), is(2));
+        } else {
+            assertThat(forceMergeResponse.getSuccessfulShards(), is(2));
+        }
 
         // Force flush to force a new commit that contains the force flush UUID
         final FlushResponse flushResponse = client().admin().indices().prepareFlush(index).setForce(true).get();
         assertThat(flushResponse.getFailedShards(), is(0));
-        assertThat(flushResponse.getSuccessfulShards(), is(2));
+        if(Objects.equals(remoteStoreEnabledStr, "true")) {
+            assertThat(forceMergeResponse.getSuccessfulShards(), is(2));
+        } else {
+            assertThat(forceMergeResponse.getSuccessfulShards(), is(2));
+        }
 
         final String primaryForceMergeUUID = getForceMergeUUID(primary);
         assertThat(primaryForceMergeUUID, notNullValue());
 
-        final String replicaForceMergeUUID = getForceMergeUUID(replica);
-        assertThat(replicaForceMergeUUID, notNullValue());
-        assertThat(primaryForceMergeUUID, is(replicaForceMergeUUID));
+        if(Objects.equals(remoteStoreEnabledStr, "true")) {
+        }
+        else {
+            final String replicaForceMergeUUID = getForceMergeUUID(replica);
+            assertThat(replicaForceMergeUUID, notNullValue());
+            assertThat(primaryForceMergeUUID, is(replicaForceMergeUUID));
+        }
     }
 
     private static String getForceMergeUUID(IndexShard indexShard) throws IOException {

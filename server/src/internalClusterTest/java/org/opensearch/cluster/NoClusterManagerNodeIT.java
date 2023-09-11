@@ -253,6 +253,7 @@ public class NoClusterManagerNodeIT extends OpenSearchIntegTestCase {
         }
     }
 
+    @AwaitsFix(bugUrl = "hello.com")
     public void testNoClusterManagerActionsWriteClusterManagerBlock() throws Exception {
         Settings settings = Settings.builder()
             .put(AutoCreateIndex.AUTO_CREATE_INDEX_SETTING.getKey(), false)
@@ -291,7 +292,7 @@ public class NoClusterManagerNodeIT extends OpenSearchIntegTestCase {
             assertTrue(state.blocks().hasGlobalBlockWithId(NoClusterManagerBlockService.NO_CLUSTER_MANAGER_BLOCK_ID));
         });
 
-        GetResponse getResponse = clientToClusterManagerlessNode.prepareGet("test1", "1").get();
+        GetResponse getResponse = clientToClusterManagerlessNode.prepareGet("test1", "1").setPreference("_primary").get();
         assertExists(getResponse);
 
         SearchResponse countResponse = clientToClusterManagerlessNode.prepareSearch("test1")

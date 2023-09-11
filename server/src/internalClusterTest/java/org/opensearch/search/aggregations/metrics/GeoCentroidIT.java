@@ -50,7 +50,7 @@ import static org.hamcrest.Matchers.sameInstance;
 /**
  * Integration Test for GeoCentroid metric aggregator
  */
-@OpenSearchIntegTestCase.SuiteScopeTestCase
+
 public class GeoCentroidIT extends AbstractGeoTestCase {
     private static final String aggName = "geoCentroid";
 

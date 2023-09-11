@@ -25,6 +25,8 @@ import org.opensearch.common.unit.TimeValue;
 import org.opensearch.index.SegmentReplicationShardStats;
 import org.opensearch.index.shard.IndexShard;
 import org.opensearch.indices.IndicesService;
+import org.opensearch.indices.recovery.PeerRecoverySourceService;
+import org.opensearch.indices.recovery.PeerRecoveryTargetService;
 import org.opensearch.test.OpenSearchIntegTestCase;
 import org.opensearch.test.transport.MockTransportService;
 import org.opensearch.transport.TransportService;
@@ -209,7 +211,10 @@ public class SegmentReplicationRelocationIT extends SegmentReplicationBaseIT {
             assertTrue(pendingIndexResponses.stream().allMatch(ActionFuture::isDone));
         }, 1, TimeUnit.MINUTES);
         flushAndRefresh(INDEX_NAME);
-        waitForSearchableDocs(2 * initialDocCount, oldPrimary, replica);
+        if (isIndexRemoteStoreEnabled(INDEX_NAME) == false) {
+            //Remote store recovery will not fail due to transport action failure
+            waitForSearchableDocs(2 * initialDocCount, oldPrimary, replica);
+        }
         verifyStoreContent();
     }
 
@@ -340,7 +345,13 @@ public class SegmentReplicationRelocationIT extends SegmentReplicationBaseIT {
         mockTargetTransportService.addSendBehavior(
             internalCluster().getInstance(TransportService.class, primary),
             (connection, requestId, action, request, options) -> {
-                if (action.equals(SegmentReplicationSourceService.Actions.GET_SEGMENT_FILES)) {
+                String actionToCheck = null;
+                try {
+                    actionToCheck = isIndexRemoteStoreEnabled(INDEX_NAME) ? PeerRecoverySourceService.Actions.START_RECOVERY : SegmentReplicationSourceService.Actions.GET_SEGMENT_FILES;
+                } catch (Exception e) {
+                   fail("Exception" + e);
+                }
+                if (action.equals(actionToCheck)) {
                     blockSegRepLatch.countDown();
                     try {
                         waitForIndexingLatch.await();
@@ -471,7 +482,13 @@ public class SegmentReplicationRelocationIT extends SegmentReplicationBaseIT {
         mockTransportService.addSendBehavior(
             internalCluster().getInstance(TransportService.class, replica),
             (connection, requestId, action, request, options) -> {
-                if (action.equals(SegmentReplicationTargetService.Actions.FILE_CHUNK)) {
+                String actionToCheck = null;
+                try {
+                    actionToCheck = isIndexRemoteStoreEnabled(INDEX_NAME) ? PeerRecoveryTargetService.Actions.FILE_CHUNK: SegmentReplicationTargetService.Actions.FILE_CHUNK;
+                } catch (Exception e) {
+                    fail("Exception "+ e);
+                }
+                if (action.equals(actionToCheck)) {
                     waitForRecovery.countDown();
                     throw new OpenSearchCorruptionException("expected");
                 }
@@ -527,7 +544,7 @@ public class SegmentReplicationRelocationIT extends SegmentReplicationBaseIT {
         ensureGreen(INDEX_NAME);
 
         // Start indexing docs
-        final int initialDocCount = scaledRandomIntBetween(2000, 3000);
+        final int initialDocCount = scaledRandomIntBetween(20, 30);
         for (int i = 0; i < initialDocCount; i++) {
             client().prepareIndex(INDEX_NAME).setId(Integer.toString(i)).setSource("field", "value" + i).execute().actionGet();
         }

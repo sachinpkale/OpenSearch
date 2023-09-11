@@ -32,6 +32,7 @@
 
 package org.opensearch.search.aggregations.metrics;
 
+import org.junit.Before;
 import org.opensearch.action.index.IndexRequestBuilder;
 import org.opensearch.action.search.SearchResponse;
 import org.opensearch.common.settings.Settings;
@@ -46,6 +47,7 @@ import org.opensearch.search.aggregations.bucket.global.Global;
 import org.opensearch.search.aggregations.bucket.histogram.Histogram;
 import org.opensearch.search.aggregations.bucket.range.Range;
 import org.opensearch.search.aggregations.bucket.terms.Terms;
+import org.opensearch.test.OpenSearchIntegTestCase;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -79,29 +81,29 @@ import static org.hamcrest.Matchers.sameInstance;
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.core.IsNull.notNullValue;
 
-public class MedianAbsoluteDeviationIT extends AbstractNumericTestCase {
+public class MedianAbsoluteDeviationIT extends OpenSearchIntegTestCase {
 
-    private static final int MIN_SAMPLE_VALUE = -1000000;
-    private static final int MAX_SAMPLE_VALUE = 1000000;
-    private static final int NUMBER_OF_DOCS = 1000;
-    private static final Supplier<Long> sampleSupplier = () -> randomLongBetween(MIN_SAMPLE_VALUE, MAX_SAMPLE_VALUE);
+    private int MIN_SAMPLE_VALUE = -1000000;
+    private int MAX_SAMPLE_VALUE = 1000000;
+    private int NUMBER_OF_DOCS = 100;
+    private Supplier<Long> sampleSupplier = () -> randomLongBetween(MIN_SAMPLE_VALUE, MAX_SAMPLE_VALUE);
 
-    private static long[] singleValueSample;
-    private static long[] multiValueSample;
-    private static double singleValueExactMAD;
-    private static double multiValueExactMAD;
+    private long[] singleValueSample;
+    private long[] multiValueSample;
+    private double singleValueExactMAD;
+    private double multiValueExactMAD;
 
-    @Override
-    public void setupSuiteScopeCluster() throws Exception {
+    @Before
+    public void setupTest() throws Exception {
         final Settings settings = Settings.builder().put(SETTING_NUMBER_OF_SHARDS, 1).put(SETTING_NUMBER_OF_REPLICAS, 0).build();
 
         createIndex("idx", settings);
         createIndex("idx_unmapped", settings);
 
-        minValue = MIN_SAMPLE_VALUE;
-        minValues = MIN_SAMPLE_VALUE;
-        maxValue = MAX_SAMPLE_VALUE;
-        maxValues = MAX_SAMPLE_VALUE;
+//        minValue = MIN_SAMPLE_VALUE;
+//        minValues = MIN_SAMPLE_VALUE;
+//        maxValue = MAX_SAMPLE_VALUE;
+//        maxValues = MAX_SAMPLE_VALUE;
 
         singleValueSample = new long[NUMBER_OF_DOCS];
         multiValueSample = new long[NUMBER_OF_DOCS * 2];
@@ -164,7 +166,6 @@ public class MedianAbsoluteDeviationIT extends AbstractNumericTestCase {
         return builder;
     }
 
-    @Override
     public void testEmptyAggregation() throws Exception {
         final SearchResponse response = client().prepareSearch("empty_bucket_idx")
             .addAggregation(histogram("histogram").field("value").interval(1).minDocCount(0).subAggregation(randomBuilder().field("value")))
@@ -183,12 +184,10 @@ public class MedianAbsoluteDeviationIT extends AbstractNumericTestCase {
         assertThat(mad.getMedianAbsoluteDeviation(), is(Double.NaN));
     }
 
-    @Override
     public void testUnmapped() throws Exception {
         // Test moved to MedianAbsoluteDeviationAggregatorTests.testUnmapped()
     }
 
-    @Override
     public void testSingleValuedField() throws Exception {
         final SearchResponse response = client().prepareSearch("idx")
             .setQuery(matchAllQuery())
@@ -203,7 +202,6 @@ public class MedianAbsoluteDeviationIT extends AbstractNumericTestCase {
         assertThat(mad.getMedianAbsoluteDeviation(), closeToRelative(singleValueExactMAD));
     }
 
-    @Override
     public void testSingleValuedFieldGetProperty() throws Exception {
         final SearchResponse response = client().prepareSearch("idx")
             .setQuery(matchAllQuery())
@@ -225,7 +223,6 @@ public class MedianAbsoluteDeviationIT extends AbstractNumericTestCase {
         assertThat(((InternalAggregation) global).getProperty("mad"), sameInstance(mad));
     }
 
-    @Override
     public void testSingleValuedFieldPartiallyUnmapped() throws Exception {
         final SearchResponse response = client().prepareSearch("idx", "idx_unmapped")
             .setQuery(matchAllQuery())
@@ -240,10 +237,11 @@ public class MedianAbsoluteDeviationIT extends AbstractNumericTestCase {
         assertThat(mad.getMedianAbsoluteDeviation(), closeToRelative(singleValueExactMAD));
     }
 
-    @Override
     public void testSingleValuedFieldWithValueScript() throws Exception {
+        refresh("idx");
         final SearchResponse response = client().prepareSearch("idx")
             .setQuery(matchAllQuery())
+            .setPreference("_primary")
             .addAggregation(
                 randomBuilder().field("value")
                     .script(new Script(ScriptType.INLINE, AggregationTestScriptsPlugin.NAME, "_value + 1", Collections.emptyMap()))
@@ -260,7 +258,6 @@ public class MedianAbsoluteDeviationIT extends AbstractNumericTestCase {
         assertThat(mad.getMedianAbsoluteDeviation(), closeToRelative(fromIncrementedSampleMAD));
     }
 
-    @Override
     public void testSingleValuedFieldWithValueScriptWithParams() throws Exception {
         final Map<String, Object> params = new HashMap<>();
         params.put("inc", 1);
@@ -283,7 +280,6 @@ public class MedianAbsoluteDeviationIT extends AbstractNumericTestCase {
         assertThat(mad.getMedianAbsoluteDeviation(), closeToRelative(fromIncrementedSampleMAD));
     }
 
-    @Override
     public void testMultiValuedField() throws Exception {
         final SearchResponse response = client().prepareSearch("idx")
             .setQuery(matchAllQuery())
@@ -298,7 +294,6 @@ public class MedianAbsoluteDeviationIT extends AbstractNumericTestCase {
         assertThat(mad.getMedianAbsoluteDeviation(), closeToRelative(multiValueExactMAD));
     }
 
-    @Override
     public void testMultiValuedFieldWithValueScript() throws Exception {
         final SearchResponse response = client().prepareSearch("idx")
             .setQuery(matchAllQuery())
@@ -317,7 +312,6 @@ public class MedianAbsoluteDeviationIT extends AbstractNumericTestCase {
         assertThat(mad.getMedianAbsoluteDeviation(), closeToRelative(fromIncrementedSampleMAD));
     }
 
-    @Override
     public void testMultiValuedFieldWithValueScriptWithParams() throws Exception {
         final Map<String, Object> params = new HashMap<>();
         params.put("inc", 1);
@@ -339,7 +333,6 @@ public class MedianAbsoluteDeviationIT extends AbstractNumericTestCase {
         assertThat(mad.getMedianAbsoluteDeviation(), closeToRelative(fromIncrementedSampleMAD));
     }
 
-    @Override
     public void testScriptSingleValued() throws Exception {
         final SearchResponse response = client().prepareSearch("idx")
             .setQuery(matchAllQuery())
@@ -358,7 +351,6 @@ public class MedianAbsoluteDeviationIT extends AbstractNumericTestCase {
         assertThat(mad.getMedianAbsoluteDeviation(), closeToRelative(singleValueExactMAD));
     }
 
-    @Override
     public void testScriptSingleValuedWithParams() throws Exception {
         final Map<String, Object> params = new HashMap<>();
         params.put("inc", 1);
@@ -380,7 +372,6 @@ public class MedianAbsoluteDeviationIT extends AbstractNumericTestCase {
         assertThat(mad.getMedianAbsoluteDeviation(), closeToRelative(fromIncrementedSampleMAD));
     }
 
-    @Override
     public void testScriptMultiValued() throws Exception {
         final SearchResponse response = client().prepareSearch("idx")
             .setQuery(matchAllQuery())
@@ -399,7 +390,6 @@ public class MedianAbsoluteDeviationIT extends AbstractNumericTestCase {
         assertThat(mad.getMedianAbsoluteDeviation(), closeToRelative(multiValueExactMAD));
     }
 
-    @Override
     public void testScriptMultiValuedWithParams() throws Exception {
         final Map<String, Object> params = new HashMap<>();
         params.put("inc", 1);
@@ -473,7 +463,6 @@ public class MedianAbsoluteDeviationIT extends AbstractNumericTestCase {
 
     }
 
-    @Override
     public void testOrderByEmptyAggregation() throws Exception {
         final int numberOfBuckets = 10;
         final SearchResponse response = client().prepareSearch("idx")

@@ -171,7 +171,7 @@ public class PartitionedRoutingIT extends OpenSearchIntegTestCase {
             String routing = routingEntry.getKey();
             int expectedDocuments = routingEntry.getValue().size();
 
-            SearchResponse response = client().prepareSearch()
+            SearchResponse response = client().prepareSearch().setPreference("_primary")
                 .setQuery(QueryBuilders.termQuery("_routing", routing))
                 .setRouting(routing)
                 .setIndices(index)
@@ -209,7 +209,7 @@ public class PartitionedRoutingIT extends OpenSearchIntegTestCase {
             String routing = routingEntry.getKey();
             int expectedDocuments = routingEntry.getValue().size();
 
-            SearchResponse response = client().prepareSearch()
+            SearchResponse response = client().prepareSearch().setPreference("_primary")
                 .setQuery(QueryBuilders.termQuery("_routing", routing))
                 .setIndices(index)
                 .setSize(100)
@@ -242,7 +242,7 @@ public class PartitionedRoutingIT extends OpenSearchIntegTestCase {
 
         for (int i = 0; i < numRoutingValues; i++) {
             String routingValue = String.valueOf(i);
-            int numDocuments = randomIntBetween(10, 100);
+            int numDocuments = randomIntBetween(10, 20);
             routingToDocumentIds.put(String.valueOf(routingValue), new HashSet<>());
 
             for (int k = 0; k < numDocuments; k++) {

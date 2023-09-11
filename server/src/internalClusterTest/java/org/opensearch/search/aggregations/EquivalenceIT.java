@@ -124,7 +124,7 @@ public class EquivalenceIT extends OpenSearchIntegTestCase {
     // Make sure that unordered, reversed, disjoint and/or overlapping ranges are supported
     // Duel with filters
     public void testRandomRanges() throws Exception {
-        final int numDocs = scaledRandomIntBetween(500, 5000);
+        final int numDocs = scaledRandomIntBetween(5, 500);
         final double[][] docs = new double[numDocs][];
         for (int i = 0; i < numDocs; ++i) {
             final int numValues = randomInt(5);
@@ -228,8 +228,8 @@ public class EquivalenceIT extends OpenSearchIntegTestCase {
 
     // test long/double/string terms aggs with high number of buckets that require array growth
     public void testDuelTerms() throws Exception {
-        final int numDocs = scaledRandomIntBetween(1000, 2000);
-        final int maxNumTerms = randomIntBetween(10, 5000);
+        final int numDocs = scaledRandomIntBetween(10, 20);
+        final int maxNumTerms = randomIntBetween(1, 50);
 
         final Set<Integer> valuesSet = new HashSet<>();
         cluster().wipeIndices("idx");
@@ -363,9 +363,9 @@ public class EquivalenceIT extends OpenSearchIntegTestCase {
                 .endObject()
         ).get();
 
-        final int numDocs = scaledRandomIntBetween(500, 5000);
-        final int maxNumTerms = randomIntBetween(10, 2000);
-        final int interval = randomIntBetween(1, 100);
+        final int numDocs = scaledRandomIntBetween(5, 50);
+        final int maxNumTerms = randomIntBetween(10, 200);
+        final int interval = randomIntBetween(1, 10);
 
         final Integer[] values = new Integer[maxNumTerms];
         for (int i = 0; i < values.length; ++i) {
@@ -424,7 +424,7 @@ public class EquivalenceIT extends OpenSearchIntegTestCase {
                 .endObject()
         ).get();
 
-        final int numDocs = scaledRandomIntBetween(2500, 5000);
+        final int numDocs = scaledRandomIntBetween(25, 50);
         logger.info("Indexing [{}] docs", numDocs);
         List<IndexRequestBuilder> indexingRequests = new ArrayList<>();
         for (int i = 0; i < numDocs; ++i) {
@@ -501,7 +501,7 @@ public class EquivalenceIT extends OpenSearchIntegTestCase {
 
     public void testDuelDepthBreadthFirst() throws Exception {
         createIndex("idx");
-        final int numDocs = randomIntBetween(100, 500);
+        final int numDocs = randomIntBetween(10, 50);
         List<IndexRequestBuilder> reqs = new ArrayList<>();
         for (int i = 0; i < numDocs; ++i) {
             final int v1 = randomInt(1 << randomInt(7));

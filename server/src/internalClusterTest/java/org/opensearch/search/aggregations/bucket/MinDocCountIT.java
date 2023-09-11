@@ -34,6 +34,7 @@ package org.opensearch.search.aggregations.bucket;
 
 import com.carrotsearch.randomizedtesting.generators.RandomStrings;
 
+import org.junit.Before;
 import org.opensearch.action.index.IndexRequestBuilder;
 import org.opensearch.action.search.SearchRequest;
 import org.opensearch.action.search.SearchResponse;
@@ -75,7 +76,7 @@ import static org.opensearch.search.aggregations.AggregationBuilders.terms;
 import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertAcked;
 import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertAllSuccessful;
 
-@OpenSearchIntegTestCase.SuiteScopeTestCase
+
 public class MinDocCountIT extends AbstractTermsTestCase {
 
     private static final QueryBuilder QUERY = QueryBuilders.termQuery("match", true);
@@ -114,8 +115,8 @@ public class MinDocCountIT extends AbstractTermsTestCase {
         }
     }
 
-    @Override
-    public void setupSuiteScopeCluster() throws Exception {
+    @Before
+    public void setupTest() throws Exception {
         assertAcked(client().admin().indices().prepareCreate("idx").setMapping("s", "type=keyword").get());
 
         cardinality = randomIntBetween(8, 30);

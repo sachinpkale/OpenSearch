@@ -72,6 +72,7 @@ import org.opensearch.env.Environment;
 import org.opensearch.env.NodeEnvironment;
 import org.opensearch.env.TestEnvironment;
 import org.opensearch.gateway.GatewayMetaState;
+import org.opensearch.index.IndexService;
 import org.opensearch.index.IndexSettings;
 import org.opensearch.index.MergePolicyConfig;
 import org.opensearch.index.MockEngineFactoryPlugin;
@@ -285,10 +286,13 @@ public class RemoveCorruptedShardDataCommandIT extends OpenSearchIntegTestCase {
         final Pattern pattern = Pattern.compile("Corrupted Lucene index segments found -\\s+(?<docs>\\d+) documents will be lost.");
         final Matcher matcher = pattern.matcher(terminal.getOutput());
         assertThat(matcher.find(), equalTo(true));
-        final int expectedNumDocs = numDocs - Integer.parseInt(matcher.group("docs"));
+        int expectedNumDocs = numDocs - Integer.parseInt(matcher.group("docs"));
 
         ensureGreen(indexName);
 
+        if (isIndexRemoteStoreEnabled(indexName)) {
+            expectedNumDocs = numDocs;
+        }
         assertHitCount(client().prepareSearch(indexName).setQuery(matchAllQuery()).get(), expectedNumDocs);
     }
 
@@ -357,6 +361,10 @@ public class RemoveCorruptedShardDataCommandIT extends OpenSearchIntegTestCase {
         // shut down the replica node to be tested later
         internalCluster().stopRandomNode(InternalTestCluster.nameFilter(node2));
 
+        Index index = resolveIndex(indexName);
+        IndexShard primary = internalCluster().getInstance(IndicesService.class, node1).getShardOrNull(new ShardId(index, 0));
+        boolean remoteStoreEnabled = primary.isRemoteTranslogEnabled();
+
         final Path translogDir = getPathToShardData(indexName, ShardPath.TRANSLOG_FOLDER_NAME);
         final Path indexDir = getPathToShardData(indexName, ShardPath.INDEX_FOLDER_NAME);
 
@@ -371,6 +379,10 @@ public class RemoveCorruptedShardDataCommandIT extends OpenSearchIntegTestCase {
             }
         });
 
+        if (remoteStoreEnabled) {
+            ensureYellow();
+            return;
+        }
         // all shards should be failed due to a corrupted translog
         assertBusy(() -> {
             final UnassignedInfo unassignedInfo = client().admin()
@@ -563,7 +575,7 @@ public class RemoveCorruptedShardDataCommandIT extends OpenSearchIntegTestCase {
 
         // Start the node with the non-corrupted data path
         logger.info("--> starting node");
-        internalCluster().startNode(node1PathSettings);
+        String nodeNew1 = internalCluster().startNode(node1PathSettings);
 
         ensureYellow();
 
@@ -587,11 +599,20 @@ public class RemoveCorruptedShardDataCommandIT extends OpenSearchIntegTestCase {
         logger.info("--> starting the replica node to test recovery");
         internalCluster().startNode(node2PathSettings);
         ensureGreen(indexName);
+        IndicesService indicesService = internalCluster().getInstance(IndicesService.class, nodeNew1);
+        IndexService indexService = indicesService.indexServiceSafe(resolveIndex(indexName));
         for (String node : internalCluster().nodesInclude(indexName)) {
-            assertHitCount(
-                client().prepareSearch(indexName).setPreference("_only_nodes:" + node).setQuery(matchAllQuery()).get(),
-                totalDocs
-            );
+            if (indexService.getIndexSettings().isRemoteStoreEnabled()) {
+                assertHitCount(
+                    client().prepareSearch(indexName).setQuery(matchAllQuery()).get(),
+                    totalDocs
+                );
+            } else {
+                assertHitCount(
+                    client().prepareSearch(indexName).setPreference("_only_nodes:" + node).setQuery(matchAllQuery()).get(),
+                    totalDocs
+                );
+            }
         }
 
         final RecoveryResponse recoveryResponse = client().admin().indices().prepareRecoveries(indexName).setActiveOnly(false).get();
@@ -604,9 +625,13 @@ public class RemoveCorruptedShardDataCommandIT extends OpenSearchIntegTestCase {
         // the replica translog was disabled so it doesn't know what hte global checkpoint is and thus can't do ops based recovery
         assertThat(replicaRecoveryState.getIndex().toString(), replicaRecoveryState.getIndex().recoveredFileCount(), greaterThan(0));
         // Ensure that the global checkpoint and local checkpoint are restored from the max seqno of the last commit.
-        final SeqNoStats seqNoStats = getSeqNoStats(indexName, 0);
-        assertThat(seqNoStats.getGlobalCheckpoint(), equalTo(seqNoStats.getMaxSeqNo()));
-        assertThat(seqNoStats.getLocalCheckpoint(), equalTo(seqNoStats.getMaxSeqNo()));
+        if (isIndexRemoteStoreEnabled(indexName) == false) {
+            assertBusy(() -> {
+                final SeqNoStats seqNoStats = getSeqNoStats(indexName, 0);
+                assertThat(seqNoStats.getGlobalCheckpoint(), equalTo(seqNoStats.getMaxSeqNo()));
+                assertThat(seqNoStats.getLocalCheckpoint(), equalTo(seqNoStats.getMaxSeqNo()));
+            });
+        }
     }
 
     public void testResolvePath() throws Exception {

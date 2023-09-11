@@ -245,7 +245,7 @@ public class GeoFilterIT extends OpenSearchIntegTestCase {
         client().admin().indices().prepareRefresh().get();
 
         // Point in polygon
-        SearchResponse result = client().prepareSearch()
+        SearchResponse result = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .setPostFilter(QueryBuilders.geoIntersectionQuery("area", new PointBuilder(3, 3)))
             .get();
@@ -253,7 +253,7 @@ public class GeoFilterIT extends OpenSearchIntegTestCase {
         assertFirstHit(result, hasId("1"));
 
         // Point in polygon hole
-        result = client().prepareSearch()
+        result = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .setPostFilter(QueryBuilders.geoIntersectionQuery("area", new PointBuilder(4.5, 4.5)))
             .get();
@@ -264,7 +264,7 @@ public class GeoFilterIT extends OpenSearchIntegTestCase {
         // of the polygon NOT the hole
 
         // Point on polygon border
-        result = client().prepareSearch()
+        result = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .setPostFilter(QueryBuilders.geoIntersectionQuery("area", new PointBuilder(10.0, 5.0)))
             .get();
@@ -272,7 +272,7 @@ public class GeoFilterIT extends OpenSearchIntegTestCase {
         assertFirstHit(result, hasId("1"));
 
         // Point on hole border
-        result = client().prepareSearch()
+        result = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .setPostFilter(QueryBuilders.geoIntersectionQuery("area", new PointBuilder(5.0, 2.0)))
             .get();
@@ -281,14 +281,14 @@ public class GeoFilterIT extends OpenSearchIntegTestCase {
 
         if (disjointSupport) {
             // Point not in polygon
-            result = client().prepareSearch()
+            result = client().prepareSearch().setPreference("_primary")
                 .setQuery(matchAllQuery())
                 .setPostFilter(QueryBuilders.geoDisjointQuery("area", new PointBuilder(3, 3)))
                 .get();
             assertHitCount(result, 0);
 
             // Point in polygon hole
-            result = client().prepareSearch()
+            result = client().prepareSearch().setPreference("_primary")
                 .setQuery(matchAllQuery())
                 .setPostFilter(QueryBuilders.geoDisjointQuery("area", new PointBuilder(4.5, 4.5)))
                 .get();
@@ -308,7 +308,7 @@ public class GeoFilterIT extends OpenSearchIntegTestCase {
         client().admin().indices().prepareRefresh().get();
 
         // re-check point on polygon hole
-        result = client().prepareSearch()
+        result = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .setPostFilter(QueryBuilders.geoIntersectionQuery("area", new PointBuilder(4.5, 4.5)))
             .get();
@@ -330,7 +330,7 @@ public class GeoFilterIT extends OpenSearchIntegTestCase {
                 new CoordinatesBuilder().coordinate(-30, -30).coordinate(-30, 30).coordinate(30, 30).coordinate(30, -30).close()
             );
 
-            result = client().prepareSearch()
+            result = client().prepareSearch().setPreference("_primary")
                 .setQuery(matchAllQuery())
                 .setPostFilter(QueryBuilders.geoWithinQuery("area", builder.buildGeometry()))
                 .get();
@@ -359,25 +359,25 @@ public class GeoFilterIT extends OpenSearchIntegTestCase {
         client().prepareIndex("shapes").setId("1").setSource(data, MediaTypeRegistry.JSON).get();
         client().admin().indices().prepareRefresh().get();
 
-        result = client().prepareSearch()
+        result = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .setPostFilter(QueryBuilders.geoIntersectionQuery("area", new PointBuilder(174, -4).buildGeometry()))
             .get();
         assertHitCount(result, 1);
 
-        result = client().prepareSearch()
+        result = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .setPostFilter(QueryBuilders.geoIntersectionQuery("area", new PointBuilder(-174, -4).buildGeometry()))
             .get();
         assertHitCount(result, 1);
 
-        result = client().prepareSearch()
+        result = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .setPostFilter(QueryBuilders.geoIntersectionQuery("area", new PointBuilder(180, -4).buildGeometry()))
             .get();
         assertHitCount(result, 0);
 
-        result = client().prepareSearch()
+        result = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .setPostFilter(QueryBuilders.geoIntersectionQuery("area", new PointBuilder(180, -6).buildGeometry()))
             .get();
@@ -412,7 +412,7 @@ public class GeoFilterIT extends OpenSearchIntegTestCase {
         client().admin().indices().prepareRefresh().get();
         String key = "DE";
 
-        SearchResponse searchResponse = client().prepareSearch().setQuery(matchQuery("_id", key)).get();
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchQuery("_id", key)).get();
 
         assertHitCount(searchResponse, 1);
 
@@ -420,14 +420,14 @@ public class GeoFilterIT extends OpenSearchIntegTestCase {
             assertThat(hit.getId(), equalTo(key));
         }
 
-        SearchResponse world = client().prepareSearch()
+        SearchResponse world = client().prepareSearch().setPreference("_primary")
             .addStoredField("pin")
             .setQuery(geoBoundingBoxQuery("pin").setCorners(90, -179.99999, -90, 179.99999))
             .get();
 
         assertHitCount(world, 53);
 
-        SearchResponse distance = client().prepareSearch()
+        SearchResponse distance = client().prepareSearch().setPreference("_primary")
             .addStoredField("pin")
             .setQuery(geoDistanceQuery("pin").distance("425km").point(51.11, 9.851))
             .get();

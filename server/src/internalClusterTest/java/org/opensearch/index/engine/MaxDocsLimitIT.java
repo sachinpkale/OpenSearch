@@ -124,7 +124,7 @@ public class MaxDocsLimitIT extends OpenSearchIntegTestCase {
         );
         assertThat(deleteError.getMessage(), containsString("Number of documents in the index can't exceed [" + maxDocs.get() + "]"));
         client().admin().indices().prepareRefresh("test").get();
-        SearchResponse searchResponse = client().prepareSearch("test")
+        SearchResponse searchResponse = client().prepareSearch("test").setPreference("_primary")
             .setQuery(new MatchAllQueryBuilder())
             .setTrackTotalHitsUpTo(Integer.MAX_VALUE)
             .setSize(0)
@@ -137,7 +137,7 @@ public class MaxDocsLimitIT extends OpenSearchIntegTestCase {
         internalCluster().fullRestart();
         internalCluster().ensureAtLeastNumDataNodes(2);
         ensureGreen("test");
-        searchResponse = client().prepareSearch("test")
+        searchResponse = client().prepareSearch("test").setPreference("_primary")
             .setQuery(new MatchAllQueryBuilder())
             .setTrackTotalHitsUpTo(Integer.MAX_VALUE)
             .setSize(0)
@@ -155,7 +155,7 @@ public class MaxDocsLimitIT extends OpenSearchIntegTestCase {
         assertThat(indexingResult.numFailures, greaterThan(0));
         assertThat(indexingResult.numSuccess, both(greaterThan(0)).and(lessThanOrEqualTo(maxDocs.get())));
         client().admin().indices().prepareRefresh("test").get();
-        SearchResponse searchResponse = client().prepareSearch("test")
+        SearchResponse searchResponse = client().prepareSearch("test").setPreference("_primary")
             .setQuery(new MatchAllQueryBuilder())
             .setTrackTotalHitsUpTo(Integer.MAX_VALUE)
             .setSize(0)
@@ -173,7 +173,7 @@ public class MaxDocsLimitIT extends OpenSearchIntegTestCase {
             assertThat(indexingResult.numSuccess, equalTo(0));
         }
         client().admin().indices().prepareRefresh("test").get();
-        searchResponse = client().prepareSearch("test")
+        searchResponse = client().prepareSearch("test").setPreference("_primary")
             .setQuery(new MatchAllQueryBuilder())
             .setTrackTotalHitsUpTo(Integer.MAX_VALUE)
             .setSize(0)

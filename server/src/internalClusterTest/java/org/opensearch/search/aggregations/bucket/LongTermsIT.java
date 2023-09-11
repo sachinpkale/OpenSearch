@@ -31,6 +31,7 @@
 
 package org.opensearch.search.aggregations.bucket;
 
+import org.junit.Before;
 import org.opensearch.OpenSearchException;
 import org.opensearch.action.index.IndexRequestBuilder;
 import org.opensearch.action.search.SearchResponse;
@@ -83,7 +84,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.core.IsNull.notNullValue;
 
-@OpenSearchIntegTestCase.SuiteScopeTestCase
+
 public class LongTermsIT extends AbstractTermsTestCase {
 
     @Override
@@ -128,8 +129,8 @@ public class LongTermsIT extends AbstractTermsTestCase {
     private static final String MULTI_VALUED_FIELD_NAME = "l_values";
     private static HashMap<Long, Map<String, Object>> expectedMultiSortBuckets;
 
-    @Override
-    public void setupSuiteScopeCluster() throws Exception {
+    @Before
+    public void setupTest() throws Exception {
         createIndex("idx", "high_card_idx");
         IndexRequestBuilder[] lowCardBuilders = new IndexRequestBuilder[NUM_DOCS];
         for (int i = 0; i < lowCardBuilders.length; i++) {

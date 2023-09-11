@@ -60,17 +60,18 @@ abstract class AbstractTasksIT extends OpenSearchIntegTestCase {
         return Settings.builder()
             .put(super.nodeSettings(nodeOrdinal))
             .put(MockTaskManager.USE_MOCK_TASK_MANAGER_SETTING.getKey(), true)
+            //.put(remoteStoreGlobalClusterSettings(REPOSITORY_NAME, REPOSITORY_2_NAME))
             .build();
     }
 
     @Override
     public void tearDown() throws Exception {
-        for (Map.Entry<Tuple<String, String>, RecordingTaskManagerListener> entry : listeners.entrySet()) {
-            ((MockTaskManager) internalCluster().getInstance(TransportService.class, entry.getKey().v1()).getTaskManager()).removeListener(
-                entry.getValue()
-            );
-        }
-        listeners.clear();
+//        for (Map.Entry<Tuple<String, String>, RecordingTaskManagerListener> entry : listeners.entrySet()) {
+//            ((MockTaskManager) internalCluster().getInstance(TransportService.class, entry.getKey().v1()).getTaskManager()).removeListener(
+//                entry.getValue()
+//            );
+//        }
+//        listeners.clear();
         super.tearDown();
     }
 

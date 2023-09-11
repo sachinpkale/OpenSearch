@@ -32,6 +32,7 @@
 
 package org.opensearch.search.aggregations;
 
+import org.junit.Before;
 import org.opensearch.OpenSearchException;
 import org.opensearch.action.index.IndexRequestBuilder;
 import org.opensearch.action.search.SearchPhaseExecutionException;
@@ -53,7 +54,7 @@ import static org.opensearch.search.aggregations.AggregationBuilders.terms;
 import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertAcked;
 import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertSearchResponse;
 
-@OpenSearchIntegTestCase.SuiteScopeTestCase
+
 public class AggregationsIntegrationIT extends OpenSearchIntegTestCase {
 
     static int numDocs;
@@ -63,8 +64,8 @@ public class AggregationsIntegrationIT extends OpenSearchIntegTestCase {
         + LARGE_STRING.length()
         + "] used in the request has exceeded the allowed maximum";
 
-    @Override
-    public void setupSuiteScopeCluster() throws Exception {
+    @Before
+    public void setupTest() throws Exception {
         assertAcked(prepareCreate("index").setMapping("f", "type=keyword").get());
         numDocs = randomIntBetween(1, 20);
         List<IndexRequestBuilder> docs = new ArrayList<>();

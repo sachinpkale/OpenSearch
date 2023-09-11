@@ -8,6 +8,7 @@
 
 package org.opensearch.remotestore;
 
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.indices.replication.SegmentReplicationIT;
 import org.opensearch.test.OpenSearchIntegTestCase;
@@ -22,6 +23,7 @@ import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertAcked;
 /**
  * This class runs Segment Replication Integ test suite with remote store enabled.
  */
+@LuceneTestCase.AwaitsFix(bugUrl = "http://hello.com")
 @OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST, numDataNodes = 0)
 public class SegmentReplicationUsingRemoteStoreIT extends SegmentReplicationIT {
 

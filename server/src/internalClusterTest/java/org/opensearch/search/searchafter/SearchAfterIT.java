@@ -176,21 +176,21 @@ public class SearchAfterIT extends OpenSearchIntegTestCase {
         request.setIndices(new String[] { "test" });
         ActionFuture<CreatePitResponse> execute = client().execute(CreatePitAction.INSTANCE, request);
         CreatePitResponse pitResponse = execute.get();
-        SearchResponse sr = client().prepareSearch()
+        SearchResponse sr = client().prepareSearch().setPreference("_primary")
             .addSort("field1", SortOrder.ASC)
             .setQuery(matchAllQuery())
             .searchAfter(new Object[] { 99 })
             .setPointInTime(new PointInTimeBuilder(pitResponse.getId()))
             .get();
         assertEquals(2, sr.getHits().getHits().length);
-        sr = client().prepareSearch()
+        sr = client().prepareSearch().setPreference("_primary")
             .addSort("field1", SortOrder.ASC)
             .setQuery(matchAllQuery())
             .searchAfter(new Object[] { 100 })
             .setPointInTime(new PointInTimeBuilder(pitResponse.getId()))
             .get();
         assertEquals(1, sr.getHits().getHits().length);
-        sr = client().prepareSearch()
+        sr = client().prepareSearch().setPreference("_primary")
             .addSort("field1", SortOrder.ASC)
             .setQuery(matchAllQuery())
             .searchAfter(new Object[] { 0 })
@@ -201,14 +201,14 @@ public class SearchAfterIT extends OpenSearchIntegTestCase {
          * Add new data and assert PIT results remain the same and normal search results gets refreshed
          */
         indexRandom(true, client().prepareIndex("test").setId("4").setSource("field1", 102));
-        sr = client().prepareSearch()
+        sr = client().prepareSearch().setPreference("_primary")
             .addSort("field1", SortOrder.ASC)
             .setQuery(matchAllQuery())
             .searchAfter(new Object[] { 0 })
             .setPointInTime(new PointInTimeBuilder(pitResponse.getId()))
             .get();
         assertEquals(3, sr.getHits().getHits().length);
-        sr = client().prepareSearch().addSort("field1", SortOrder.ASC).setQuery(matchAllQuery()).searchAfter(new Object[] { 0 }).get();
+        sr = client().prepareSearch().setPreference("_primary").addSort("field1", SortOrder.ASC).setQuery(matchAllQuery()).searchAfter(new Object[] { 0 }).get();
         assertEquals(4, sr.getHits().getHits().length);
         client().admin().indices().prepareDelete("test").get();
     }

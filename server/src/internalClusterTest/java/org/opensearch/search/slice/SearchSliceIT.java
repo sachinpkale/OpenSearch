@@ -57,6 +57,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 import static org.opensearch.common.xcontent.XContentFactory.jsonBuilder;
 import static org.opensearch.index.query.QueryBuilders.matchAllQuery;
@@ -292,44 +293,46 @@ public class SearchSliceIT extends OpenSearchIntegTestCase {
         setupIndex(0, 1);
         SearchPhaseExecutionException exc = expectThrows(
             SearchPhaseExecutionException.class,
-            () -> client().prepareSearch().setQuery(matchAllQuery()).slice(new SliceBuilder("invalid_random_int", 0, 10)).get()
+            () -> client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).slice(new SliceBuilder("invalid_random_int", 0, 10)).get()
         );
         Throwable rootCause = findRootCause(exc);
         assertThat(rootCause.getClass(), equalTo(SearchException.class));
         assertThat(rootCause.getMessage(), equalTo("`slice` cannot be used outside of a scroll context or PIT context"));
     }
 
-    private void assertSearchSlicesWithScroll(SearchRequestBuilder request, String field, int numSlice, int numDocs) {
-        int totalResults = 0;
-        List<String> keys = new ArrayList<>();
-        for (int id = 0; id < numSlice; id++) {
-            SliceBuilder sliceBuilder = new SliceBuilder(field, id, numSlice);
-            SearchResponse searchResponse = request.slice(sliceBuilder).get();
-            totalResults += searchResponse.getHits().getHits().length;
-            int expectedSliceResults = (int) searchResponse.getHits().getTotalHits().value;
-            int numSliceResults = searchResponse.getHits().getHits().length;
-            String scrollId = searchResponse.getScrollId();
-            for (SearchHit hit : searchResponse.getHits().getHits()) {
-                assertTrue(keys.add(hit.getId()));
-            }
-            while (searchResponse.getHits().getHits().length > 0) {
-                searchResponse = client().prepareSearchScroll("test")
-                    .setScrollId(scrollId)
-                    .setScroll(new Scroll(TimeValue.timeValueSeconds(10)))
-                    .get();
-                scrollId = searchResponse.getScrollId();
+    private void assertSearchSlicesWithScroll(SearchRequestBuilder request, String field, int numSlice, int numDocs) throws Exception {
+        assertBusy(() -> {
+            int totalResults = 0;
+            List<String> keys = new ArrayList<>();
+            for (int id = 0; id < numSlice; id++) {
+                SliceBuilder sliceBuilder = new SliceBuilder(field, id, numSlice);
+                SearchResponse searchResponse = request.slice(sliceBuilder).get();
                 totalResults += searchResponse.getHits().getHits().length;
-                numSliceResults += searchResponse.getHits().getHits().length;
+                int expectedSliceResults = (int) searchResponse.getHits().getTotalHits().value;
+                int numSliceResults = searchResponse.getHits().getHits().length;
+                String scrollId = searchResponse.getScrollId();
                 for (SearchHit hit : searchResponse.getHits().getHits()) {
                     assertTrue(keys.add(hit.getId()));
                 }
+                while (searchResponse.getHits().getHits().length > 0) {
+                    searchResponse = client().prepareSearchScroll("test")
+                        .setScrollId(scrollId)
+                        .setScroll(new Scroll(TimeValue.timeValueSeconds(10)))
+                        .get();
+                    scrollId = searchResponse.getScrollId();
+                    totalResults += searchResponse.getHits().getHits().length;
+                    numSliceResults += searchResponse.getHits().getHits().length;
+                    for (SearchHit hit : searchResponse.getHits().getHits()) {
+                        assertTrue(keys.add(hit.getId()));
+                    }
+                }
+                assertThat(numSliceResults, equalTo(expectedSliceResults));
+                clearScroll(scrollId);
             }
-            assertThat(numSliceResults, equalTo(expectedSliceResults));
-            clearScroll(scrollId);
-        }
-        assertThat(totalResults, equalTo(numDocs));
-        assertThat(keys.size(), equalTo(numDocs));
-        assertThat(new HashSet(keys).size(), equalTo(numDocs));
+            assertThat(totalResults, equalTo(numDocs));
+            assertThat(keys.size(), equalTo(numDocs));
+            assertThat(new HashSet(keys).size(), equalTo(numDocs));
+        }, 30 , TimeUnit.SECONDS);
     }
 
     private Throwable findRootCause(Exception e) {

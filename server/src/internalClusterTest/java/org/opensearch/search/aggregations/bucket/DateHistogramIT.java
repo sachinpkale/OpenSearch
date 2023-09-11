@@ -31,6 +31,7 @@
 
 package org.opensearch.search.aggregations.bucket;
 
+import org.junit.Before;
 import org.opensearch.OpenSearchException;
 import org.opensearch.action.index.IndexRequestBuilder;
 import org.opensearch.action.search.SearchPhaseExecutionException;
@@ -92,7 +93,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.core.IsNull.notNullValue;
 
-@OpenSearchIntegTestCase.SuiteScopeTestCase
+
 public class DateHistogramIT extends OpenSearchIntegTestCase {
 
     static Map<ZonedDateTime, Map<String, Object>> expectedMultiSortBuckets;
@@ -138,8 +139,8 @@ public class DateHistogramIT extends OpenSearchIntegTestCase {
             );
     }
 
-    @Override
-    public void setupSuiteScopeCluster() throws Exception {
+    @Before
+    public void setupTest() throws Exception {
         createIndex("idx", "idx_unmapped");
         // TODO: would be nice to have more random data here
         assertAcked(prepareCreate("empty_bucket_idx").setMapping("value", "type=integer"));
@@ -1005,7 +1006,7 @@ public class DateHistogramIT extends OpenSearchIntegTestCase {
     }
 
     public void testEmptyAggregation() throws Exception {
-        SearchResponse searchResponse = client().prepareSearch("empty_bucket_idx")
+        SearchResponse searchResponse = client().prepareSearch("empty_bucket_idx").setPreference("_primary")
             .setQuery(matchAllQuery())
             .addAggregation(
                 histogram("histo").field("value")
@@ -1044,7 +1045,7 @@ public class DateHistogramIT extends OpenSearchIntegTestCase {
         }
         indexRandom(true, reqs);
 
-        SearchResponse response = client().prepareSearch("idx2")
+        SearchResponse response = client().prepareSearch("idx2").setPreference("_primary")
             .setQuery(matchAllQuery())
             .addAggregation(
                 dateHistogram("date_histo").field("date")
@@ -1140,7 +1141,7 @@ public class DateHistogramIT extends OpenSearchIntegTestCase {
 
         SearchResponse response = null;
         try {
-            response = client().prepareSearch("idx2")
+            response = client().prepareSearch("idx2").setPreference("_primary")
                 .addAggregation(
                     dateHistogram("histo").field("date")
                         .dateHistogramInterval(DateHistogramInterval.days(interval))
@@ -1419,7 +1420,7 @@ public class DateHistogramIT extends OpenSearchIntegTestCase {
             client().prepareIndex("test8209").setSource("d", "2014-04-30T00:00:00Z")
         );
         ensureSearchable("test8209");
-        SearchResponse response = client().prepareSearch("test8209")
+        SearchResponse response = client().prepareSearch("test8209").setPreference("_primary")
             .addAggregation(
                 dateHistogram("histo").field("d")
                     .dateHistogramInterval(DateHistogramInterval.MONTH)
@@ -1837,7 +1838,7 @@ public class DateHistogramIT extends OpenSearchIntegTestCase {
         assertEquals(946767600000L, ((ZonedDateTime) buckets.get(1).getKey()).toEpochSecond() * 1000);
         assertEquals(1, buckets.get(1).getDocCount());
 
-        r = client().prepareSearch("nanos")
+        r = client().prepareSearch("nanos").setPreference("_primary")
             .addAggregation(dateHistogram("histo").field("date").interval(1000 * 60 * 60 * 24).timeZone(ZoneId.of("UTC")))
             .addDocValueField("date")
             .get();

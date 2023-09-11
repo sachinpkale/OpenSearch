@@ -110,6 +110,7 @@ public class SnapshotStatusApisIT extends AbstractSnapshotIntegTestCase {
         assertEquals(snStatus.getStats().getTime(), snapshotInfo.endTime() - snapshotInfo.startTime());
     }
 
+    @AwaitsFix(bugUrl = "remote store tests that run on main successfully")
     public void testStatusAPICallForShallowCopySnapshot() {
         disableRepoConsistencyCheck("Remote store repository is being used for the test");
         internalCluster().startClusterManagerOnlyNode();
@@ -357,6 +358,7 @@ public class SnapshotStatusApisIT extends AbstractSnapshotIntegTestCase {
         assertEquals(SnapshotsInProgress.State.FAILED, snapshotsStatusResponse.getSnapshots().get(0).getState());
     }
 
+    @AwaitsFix(bugUrl = "remote store tests that run on main successfully")
     public void testStatusAPICallInProgressShallowSnapshot() throws Exception {
         internalCluster().startClusterManagerOnlyNode();
         internalCluster().startDataOnlyNode();

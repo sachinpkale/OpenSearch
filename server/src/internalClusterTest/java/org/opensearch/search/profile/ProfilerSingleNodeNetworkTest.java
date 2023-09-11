@@ -46,7 +46,7 @@ public class ProfilerSingleNodeNetworkTest extends OpenSearchSingleNodeTestCase 
             QueryBuilder q = randomQueryBuilder(stringFields, numericFields, numDocs, 3);
             logger.info("Query: {}", q);
 
-            SearchResponse resp = client().prepareSearch()
+            SearchResponse resp = client().prepareSearch().setPreference("_primary")
                 .setQuery(q)
                 .setTrackTotalHits(true)
                 .setProfile(true)

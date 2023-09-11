@@ -61,6 +61,7 @@ import org.opensearch.core.common.io.stream.VersionedNamedWriteable;
 import org.opensearch.core.xcontent.ToXContentFragment;
 import org.opensearch.core.xcontent.XContentBuilder;
 import org.opensearch.discovery.Discovery;
+import org.opensearch.indices.replication.common.ReplicationType;
 
 import java.io.IOException;
 import java.util.Collections;

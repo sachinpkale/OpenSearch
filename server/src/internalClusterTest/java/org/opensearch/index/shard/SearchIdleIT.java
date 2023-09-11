@@ -98,7 +98,7 @@ public class SearchIdleIT extends OpenSearchSingleNodeTestCase {
         assertFalse(indexService.getIndexSettings().isExplicitRefresh());
         ensureGreen();
         AtomicInteger totalNumDocs = new AtomicInteger(Integer.MAX_VALUE);
-        assertNoSearchHits(client().prepareSearch().get());
+        assertNoSearchHits(client().prepareSearch().setPreference("_primary").get());
         int numDocs = scaledRandomIntBetween(25, 100);
         totalNumDocs.set(numDocs);
         CountDownLatch indexingDone = new CountDownLatch(numDocs);
@@ -166,7 +166,7 @@ public class SearchIdleIT extends OpenSearchSingleNodeTestCase {
         CountDownLatch refreshLatch = new CountDownLatch(1);
         client().admin().indices().prepareRefresh().execute(ActionListener.wrap(refreshLatch::countDown));// async on purpose to make sure
                                                                                                           // it happens concurrently
-        assertHitCount(client().prepareSearch().get(), 1);
+        assertHitCount(client().prepareSearch().setPreference("_primary").get(), 1);
         client().prepareIndex("test").setId("1").setSource("{\"foo\" : \"bar\"}", MediaTypeRegistry.JSON).get();
         assertFalse(shard.scheduledRefresh());
         assertTrue(shard.hasRefreshPending());
@@ -178,7 +178,7 @@ public class SearchIdleIT extends OpenSearchSingleNodeTestCase {
             .prepareUpdateSettings("test")
             .setSettings(Settings.builder().put(IndexSettings.INDEX_REFRESH_INTERVAL_SETTING.getKey(), -1).build())
             .execute(ActionListener.wrap(updateSettingsLatch::countDown));
-        assertHitCount(client().prepareSearch().get(), 2);
+        assertHitCount(client().prepareSearch().setPreference("_primary").get(), 2);
         // wait for both to ensure we don't have in-flight operations
         updateSettingsLatch.await();
         refreshLatch.await();
@@ -190,7 +190,7 @@ public class SearchIdleIT extends OpenSearchSingleNodeTestCase {
         assertTrue(shard.scheduledRefresh());
         assertFalse(shard.hasRefreshPending());
         assertTrue(shard.isSearchIdle());
-        assertHitCount(client().prepareSearch().get(), 3);
+        assertHitCount(client().prepareSearch().setPreference("_primary").get(), 3);
     }
 
     private void ensureNoPendingScheduledRefresh(ThreadPool threadPool) {

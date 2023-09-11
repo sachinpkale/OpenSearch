@@ -71,7 +71,7 @@ public class SearchWithRejectionsIT extends OpenSearchIntegTestCase {
         SearchType searchType = randomFrom(SearchType.DEFAULT, SearchType.QUERY_THEN_FETCH, SearchType.DFS_QUERY_THEN_FETCH);
         logger.info("search type is {}", searchType);
         for (int i = 0; i < numSearches; i++) {
-            responses[i] = client().prepareSearch().setQuery(matchAllQuery()).setSearchType(searchType).execute();
+            responses[i] = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setSearchType(searchType).execute();
         }
         for (int i = 0; i < numSearches; i++) {
             try {

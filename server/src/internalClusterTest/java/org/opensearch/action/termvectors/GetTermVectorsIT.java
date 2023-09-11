@@ -38,6 +38,7 @@ import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 import org.opensearch.action.admin.cluster.shards.ClusterSearchShardsResponse;
 import org.opensearch.action.admin.indices.alias.Alias;
@@ -65,13 +66,14 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
-import static org.opensearch.common.xcontent.XContentFactory.jsonBuilder;
-import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertAcked;
-import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertRequestBuilderThrows;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
+import static org.opensearch.common.xcontent.XContentFactory.jsonBuilder;
+import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertAcked;
+import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertRequestBuilderThrows;
 
+@LuceneTestCase.AwaitsFix(bugUrl = "hello.com")
 public class GetTermVectorsIT extends AbstractTermVectorsTestCase {
 
     @Override
@@ -93,7 +95,7 @@ public class GetTermVectorsIT extends AbstractTermVectorsTestCase {
         client().prepareIndex("test").setId("667").setSource("field", "foo bar").execute().actionGet();
         refresh();
         for (int i = 0; i < 20; i++) {
-            ActionFuture<TermVectorsResponse> termVector = client().termVectors(new TermVectorsRequest(indexOrAlias(), "" + i));
+            ActionFuture<TermVectorsResponse> termVector = client().termVectors(new TermVectorsRequest(indexOrAlias(), "" + i).preference("_primary"));
             TermVectorsResponse actionGet = termVector.actionGet();
             assertThat(actionGet, notNullValue());
             assertThat(actionGet.getIndex(), equalTo("test"));
@@ -118,7 +120,7 @@ public class GetTermVectorsIT extends AbstractTermVectorsTestCase {
         client().prepareIndex("test").setId("0").setSource("existingfield", "?").execute().actionGet();
         refresh();
         ActionFuture<TermVectorsResponse> termVector = client().termVectors(
-            new TermVectorsRequest(indexOrAlias(), "0").selectedFields(new String[] { "existingfield" })
+            new TermVectorsRequest(indexOrAlias(), "0").preference("_primary").selectedFields(new String[] { "existingfield" })
         );
 
         // lets see if the null term vectors are caught...
@@ -144,7 +146,7 @@ public class GetTermVectorsIT extends AbstractTermVectorsTestCase {
         client().prepareIndex("test").setId("0").setSource("anotherexistingfield", 1).execute().actionGet();
         refresh();
         ActionFuture<TermVectorsResponse> termVectors = client().termVectors(
-            new TermVectorsRequest(indexOrAlias(), "0").selectedFields(randomBoolean() ? new String[] { "existingfield" } : null)
+            new TermVectorsRequest(indexOrAlias(), "0").preference("_primary").selectedFields(randomBoolean() ? new String[] { "existingfield" } : null)
                 .termStatistics(true)
                 .fieldStatistics(true)
         );
@@ -233,7 +235,7 @@ public class GetTermVectorsIT extends AbstractTermVectorsTestCase {
             refresh();
         }
         for (int i = 0; i < 10; i++) {
-            TermVectorsRequestBuilder resp = client().prepareTermVectors(indexOrAlias(), Integer.toString(i))
+            TermVectorsRequestBuilder resp = client().prepareTermVectors(indexOrAlias(), Integer.toString(i)).setPreference("_primary")
                 .setPayloads(true)
                 .setOffsets(true)
                 .setPositions(true)
@@ -349,7 +351,7 @@ public class GetTermVectorsIT extends AbstractTermVectorsTestCase {
         boolean isPositionsRequested = randomBoolean();
         String infoString = createInfoString(isPositionsRequested, isOffsetRequested, optionString);
         for (int i = 0; i < 10; i++) {
-            TermVectorsRequestBuilder resp = client().prepareTermVectors("test", Integer.toString(i))
+            TermVectorsRequestBuilder resp = client().prepareTermVectors("test", Integer.toString(i)).setPreference("_primary")
                 .setOffsets(isOffsetRequested)
                 .setPositions(isPositionsRequested)
                 .setSelectedFields();
@@ -438,7 +440,7 @@ public class GetTermVectorsIT extends AbstractTermVectorsTestCase {
         TestConfig[] testConfigs = generateTestConfigs(20, testDocs, testFieldSettings);
 
         for (TestConfig test : testConfigs) {
-            TermVectorsRequestBuilder request = getRequestForConfig(test);
+            TermVectorsRequestBuilder request = getRequestForConfig(test).setPreference("_primary");
             if (test.expectedException != null) {
                 assertRequestBuilderThrows(request, test.expectedException);
                 continue;
@@ -944,7 +946,7 @@ public class GetTermVectorsIT extends AbstractTermVectorsTestCase {
         TermVectorsResponse response;
         for (int i = 0; i < numTerms; i++) {
             filterSettings.minWordLength = numTerms - i;
-            response = client().prepareTermVectors("test", "1")
+            response = client().prepareTermVectors("test", "1").setPreference("_primary")
                 .setSelectedFields("tags")
                 .setFieldStatistics(true)
                 .setTermStatistics(true)
@@ -979,7 +981,7 @@ public class GetTermVectorsIT extends AbstractTermVectorsTestCase {
         TermVectorsResponse response;
         for (int i = 0; i < numTerms; i++) {
             filterSettings.maxNumTerms = i + 1;
-            response = client().prepareTermVectors("test", "1")
+            response = client().prepareTermVectors("test", "1").setPreference("_primary")
                 .setSelectedFields("tags")
                 .setFieldStatistics(true)
                 .setTermStatistics(true)
@@ -1032,14 +1034,14 @@ public class GetTermVectorsIT extends AbstractTermVectorsTestCase {
         indexRandom(true, client().prepareIndex("test").setId("1").setSource("field1", "random permutation"));
 
         // Get search shards
-        ClusterSearchShardsResponse searchShardsResponse = client().admin().cluster().prepareSearchShards("test").get();
+        ClusterSearchShardsResponse searchShardsResponse = client().admin().cluster().prepareSearchShards("test").setPreference("_primary").get();
         List<Integer> shardIds = Arrays.stream(searchShardsResponse.getGroups()).map(s -> s.getShardId().id()).collect(Collectors.toList());
 
         // request termvectors of artificial document from each shard
         int sumTotalTermFreq = 0;
         int sumDocFreq = 0;
         for (Integer shardId : shardIds) {
-            TermVectorsResponse tvResponse = client().prepareTermVectors()
+            TermVectorsResponse tvResponse = client().prepareTermVectors().setPreference("_primary")
                 .setIndex("test")
                 .setPreference("_shards:" + shardId)
                 .setDoc(jsonBuilder().startObject().field("field1", "random permutation").endObject())

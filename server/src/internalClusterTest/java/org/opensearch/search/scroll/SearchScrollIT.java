@@ -113,7 +113,7 @@ public class SearchScrollIT extends OpenSearchIntegTestCase {
 
         client().admin().indices().prepareRefresh().get();
 
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .setSize(35)
             .setScroll(TimeValue.timeValueMinutes(2))
@@ -166,7 +166,7 @@ public class SearchScrollIT extends OpenSearchIntegTestCase {
 
         client().admin().indices().prepareRefresh().get();
 
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setSearchType(SearchType.QUERY_THEN_FETCH)
             .setQuery(matchAllQuery())
             .setSize(3)
@@ -234,25 +234,25 @@ public class SearchScrollIT extends OpenSearchIntegTestCase {
 
         client().admin().indices().prepareRefresh().get();
 
-        assertThat(client().prepareSearch().setSize(0).setQuery(matchAllQuery()).get().getHits().getTotalHits().value, equalTo(500L));
+        assertThat(client().prepareSearch().setPreference("_primary").setSize(0).setQuery(matchAllQuery()).get().getHits().getTotalHits().value, equalTo(500L));
         assertThat(
-            client().prepareSearch().setSize(0).setQuery(termQuery("message", "test")).get().getHits().getTotalHits().value,
+            client().prepareSearch().setPreference("_primary").setSize(0).setQuery(termQuery("message", "test")).get().getHits().getTotalHits().value,
             equalTo(500L)
         );
         assertThat(
-            client().prepareSearch().setSize(0).setQuery(termQuery("message", "test")).get().getHits().getTotalHits().value,
+            client().prepareSearch().setPreference("_primary").setSize(0).setQuery(termQuery("message", "test")).get().getHits().getTotalHits().value,
             equalTo(500L)
         );
         assertThat(
-            client().prepareSearch().setSize(0).setQuery(termQuery("message", "update")).get().getHits().getTotalHits().value,
+            client().prepareSearch().setPreference("_primary").setSize(0).setQuery(termQuery("message", "update")).get().getHits().getTotalHits().value,
             equalTo(0L)
         );
         assertThat(
-            client().prepareSearch().setSize(0).setQuery(termQuery("message", "update")).get().getHits().getTotalHits().value,
+            client().prepareSearch().setPreference("_primary").setSize(0).setQuery(termQuery("message", "update")).get().getHits().getTotalHits().value,
             equalTo(0L)
         );
 
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(queryStringQuery("user:foobar"))
             .setSize(35)
             .setScroll(TimeValue.timeValueMinutes(2))
@@ -269,21 +269,21 @@ public class SearchScrollIT extends OpenSearchIntegTestCase {
             } while (searchResponse.getHits().getHits().length > 0);
 
             client().admin().indices().prepareRefresh().get();
-            assertThat(client().prepareSearch().setSize(0).setQuery(matchAllQuery()).get().getHits().getTotalHits().value, equalTo(500L));
+            assertThat(client().prepareSearch().setPreference("_primary").setSize(0).setQuery(matchAllQuery()).get().getHits().getTotalHits().value, equalTo(500L));
             assertThat(
-                client().prepareSearch().setSize(0).setQuery(termQuery("message", "test")).get().getHits().getTotalHits().value,
+                client().prepareSearch().setPreference("_primary").setSize(0).setQuery(termQuery("message", "test")).get().getHits().getTotalHits().value,
                 equalTo(0L)
             );
             assertThat(
-                client().prepareSearch().setSize(0).setQuery(termQuery("message", "test")).get().getHits().getTotalHits().value,
+                client().prepareSearch().setPreference("_primary").setSize(0).setQuery(termQuery("message", "test")).get().getHits().getTotalHits().value,
                 equalTo(0L)
             );
             assertThat(
-                client().prepareSearch().setSize(0).setQuery(termQuery("message", "update")).get().getHits().getTotalHits().value,
+                client().prepareSearch().setPreference("_primary").setSize(0).setQuery(termQuery("message", "update")).get().getHits().getTotalHits().value,
                 equalTo(500L)
             );
             assertThat(
-                client().prepareSearch().setSize(0).setQuery(termQuery("message", "update")).get().getHits().getTotalHits().value,
+                client().prepareSearch().setPreference("_primary").setSize(0).setQuery(termQuery("message", "update")).get().getHits().getTotalHits().value,
                 equalTo(500L)
             );
         } finally {
@@ -306,7 +306,7 @@ public class SearchScrollIT extends OpenSearchIntegTestCase {
 
         client().admin().indices().prepareRefresh().get();
 
-        SearchResponse searchResponse1 = client().prepareSearch()
+        SearchResponse searchResponse1 = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .setSize(35)
             .setScroll(TimeValue.timeValueMinutes(2))
@@ -314,7 +314,7 @@ public class SearchScrollIT extends OpenSearchIntegTestCase {
             .addSort("field", SortOrder.ASC)
             .get();
 
-        SearchResponse searchResponse2 = client().prepareSearch()
+        SearchResponse searchResponse2 = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .setSize(35)
             .setScroll(TimeValue.timeValueMinutes(2))
@@ -426,7 +426,7 @@ public class SearchScrollIT extends OpenSearchIntegTestCase {
 
         client().admin().indices().prepareRefresh().get();
 
-        SearchResponse searchResponse1 = client().prepareSearch()
+        SearchResponse searchResponse1 = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .setSize(35)
             .setScroll(TimeValue.timeValueMinutes(2))
@@ -434,7 +434,7 @@ public class SearchScrollIT extends OpenSearchIntegTestCase {
             .addSort("field", SortOrder.ASC)
             .get();
 
-        SearchResponse searchResponse2 = client().prepareSearch()
+        SearchResponse searchResponse2 = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .setSize(35)
             .setScroll(TimeValue.timeValueMinutes(2))
@@ -575,7 +575,7 @@ public class SearchScrollIT extends OpenSearchIntegTestCase {
             client().prepareIndex("test").setId(Integer.toString(i)).setSource("field", i).get();
         }
         refresh();
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .setSize(35)
             .setScroll(TimeValue.timeValueMinutes(2))
@@ -679,7 +679,7 @@ public class SearchScrollIT extends OpenSearchIntegTestCase {
 
         Exception exc = expectThrows(
             Exception.class,
-            () -> client().prepareSearch().setQuery(matchAllQuery()).setSize(1).setScroll(TimeValue.timeValueHours(2)).get()
+            () -> client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setSize(1).setScroll(TimeValue.timeValueHours(2)).get()
         );
         IllegalArgumentException illegalArgumentException = (IllegalArgumentException) ExceptionsHelper.unwrap(
             exc,
@@ -688,7 +688,7 @@ public class SearchScrollIT extends OpenSearchIntegTestCase {
         assertNotNull(illegalArgumentException);
         assertThat(illegalArgumentException.getMessage(), containsString("Keep alive for request (2h) is too large"));
 
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .setSize(1)
             .setScroll(TimeValue.timeValueMinutes(5))

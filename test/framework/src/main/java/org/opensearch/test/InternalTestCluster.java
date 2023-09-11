@@ -92,6 +92,7 @@ import org.opensearch.core.util.FileSystemUtils;
 import org.opensearch.env.Environment;
 import org.opensearch.env.NodeEnvironment;
 import org.opensearch.env.ShardLockObtainFailedException;
+import org.opensearch.gateway.GatewayService;
 import org.opensearch.http.HttpServerTransport;
 import org.opensearch.index.IndexService;
 import org.opensearch.index.IndexingPressure;
@@ -1320,7 +1321,10 @@ public final class InternalTestCluster extends TestCluster {
                     }
                 });
                 states.forEach(cs -> {
-                    if (cs.nodes().getNodes().values().stream().findFirst().get().isRemoteStoreNode()) {
+                    /* Adding check to ensure that the repository checks are only performed when the cluster state has been recovered.
+                     Useful for test cases which deliberately block cluster state recovery through gateway.xxxx cluster settings
+                     */
+                    if (!gatewaySettingsBlockingStateRecovery(cs) && cs.nodes().getNodes().values().stream().findFirst().get().isRemoteStoreNode()) {
                         RepositoriesMetadata repositoriesMetadata = cs.metadata().custom(RepositoriesMetadata.TYPE);
                         assertTrue(repositoriesMetadata != null && !repositoriesMetadata.repositories().isEmpty());
                     }
@@ -1330,6 +1334,27 @@ public final class InternalTestCluster extends TestCluster {
             throw new IllegalStateException("cluster failed to form", ae);
         } catch (Exception e) {
             throw new IllegalStateException(e);
+        }
+    }
+
+    private boolean gatewaySettingsBlockingStateRecovery(ClusterState cs) {
+        // Is cluster state publication blocked?
+        boolean clusterStateNotRecovered = cs.blocks().hasGlobalBlock(GatewayService.STATE_NOT_RECOVERED_BLOCK);
+
+        // Iterate through each node and find out the max value of 'gateway.recover_after_nodes'
+        int recoverAfterNodes = -1;
+        for (NodeAndClient nodeAndClient: nodes.values()) {
+            Settings nodeSettings = nodeAndClient.node.settings();
+            if (nodeSettings.hasValue(GatewayService.RECOVER_AFTER_NODES_SETTING.getKey())) {
+                recoverAfterNodes = Math.max(recoverAfterNodes, Integer.parseInt(nodeSettings.get(GatewayService.RECOVER_AFTER_NODES_SETTING.getKey())));
+            }
+        }
+
+        // Return true if the cluster has state_not_recovered block and the current node count is less than 'gateway.recover_after_nodes'
+        if (recoverAfterNodes != -1 && clusterStateNotRecovered) {
+            return nodes.size() < recoverAfterNodes;
+        } else {
+            return false;
         }
     }
 
@@ -1527,7 +1552,7 @@ public final class InternalTestCluster extends TestCluster {
                         } catch (AlreadyClosedException e) {
                             continue; // shard is closed - just ignore
                         }
-                        assertThat(replicaShardRouting + " seq_no_stats mismatch", seqNoStats, equalTo(primarySeqNoStats));
+                        assertThat(replicaShardRouting + " seq_no_stats mismatch", seqNoStats.getMaxSeqNo(), equalTo(primarySeqNoStats.getMaxSeqNo()));
                         // the local knowledge on the primary of the global checkpoint equals the global checkpoint on the shard
                         if (primaryShard.isRemoteTranslogEnabled() == false) {
                             assertThat(

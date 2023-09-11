@@ -1056,6 +1056,8 @@ public class DedicatedClusterSnapshotRestoreIT extends AbstractSnapshotIntegTest
         // drop 1st one to avoid miscalculation as snapshot reuses some files of prev snapshot
         assertAcked(startDeleteSnapshot(repositoryName, snapshot0).get());
 
+        Thread.sleep(5000);
+
         response = clusterAdmin().prepareSnapshotStatus(repositoryName).setSnapshots(snapshot1).get();
 
         final List<Path> snapshot1Files = scanSnapshotFolder(repoPath);

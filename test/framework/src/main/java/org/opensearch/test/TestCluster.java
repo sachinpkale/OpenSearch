@@ -34,6 +34,7 @@ package org.opensearch.test;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.opensearch.action.admin.cluster.repositories.get.GetRepositoriesResponse;
 import org.opensearch.action.admin.cluster.state.ClusterStateResponse;
 import org.opensearch.action.admin.indices.datastream.DeleteDataStreamAction;
 import org.opensearch.action.admin.indices.template.get.GetIndexTemplatesResponse;
@@ -42,6 +43,7 @@ import org.opensearch.action.support.master.AcknowledgedResponse;
 import org.opensearch.client.Client;
 import org.opensearch.cluster.metadata.IndexMetadata;
 import org.opensearch.cluster.metadata.IndexTemplateMetadata;
+import org.opensearch.cluster.metadata.RepositoryMetadata;
 import org.opensearch.core.common.io.stream.NamedWriteableRegistry;
 import org.opensearch.index.IndexNotFoundException;
 import org.opensearch.indices.IndexTemplateMissingException;
@@ -55,6 +57,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Base test cluster that exposes the basis to run tests against any opensearch cluster, whose layout
@@ -242,9 +245,6 @@ public abstract class TestCluster implements Closeable {
         }
     }
 
-    /**
-     * Deletes repositories, supports wildcard notation.
-     */
     public void wipeRepositories(String... repositories) {
         if (size() > 0) {
             // if nothing is provided, delete all

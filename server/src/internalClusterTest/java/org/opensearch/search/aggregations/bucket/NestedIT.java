@@ -32,6 +32,7 @@
 package org.opensearch.search.aggregations.bucket;
 
 import org.apache.lucene.search.join.ScoreMode;
+import org.junit.Before;
 import org.opensearch.action.index.IndexRequestBuilder;
 import org.opensearch.action.search.SearchPhaseExecutionException;
 import org.opensearch.action.search.SearchRequestBuilder;
@@ -84,15 +85,15 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.sameInstance;
 import static org.hamcrest.core.IsNull.notNullValue;
 
-@OpenSearchIntegTestCase.SuiteScopeTestCase
+
 public class NestedIT extends OpenSearchIntegTestCase {
 
     private static int numParents;
     private static int[] numChildren;
     private static SubAggCollectionMode aggCollectionMode;
 
-    @Override
-    public void setupSuiteScopeCluster() throws Exception {
+    @Before
+    public void setupTest() throws Exception {
 
         assertAcked(prepareCreate("idx").setMapping("nested", "type=nested", "incorrect", "type=object"));
         ensureGreen("idx");

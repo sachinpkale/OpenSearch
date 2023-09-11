@@ -32,6 +32,7 @@
 
 package org.opensearch.search.aggregations.pipeline;
 
+import org.junit.Before;
 import org.opensearch.action.index.IndexRequestBuilder;
 import org.opensearch.action.search.SearchResponse;
 import org.opensearch.common.collect.EvictingQueue;
@@ -60,7 +61,7 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.core.IsNull.notNullValue;
 import static org.hamcrest.core.IsNull.nullValue;
 
-@OpenSearchIntegTestCase.SuiteScopeTestCase
+
 public class SerialDiffIT extends OpenSearchIntegTestCase {
     private static final String INTERVAL_FIELD = "l_value";
     private static final String VALUE_FIELD = "v_value";
@@ -145,8 +146,8 @@ public class SerialDiffIT extends OpenSearchIntegTestCase {
         }
     }
 
-    @Override
-    public void setupSuiteScopeCluster() throws Exception {
+    @Before
+    public void setupTest() throws Exception {
         createIndex("idx");
         createIndex("idx_unmapped");
         List<IndexRequestBuilder> builders = new ArrayList<>();

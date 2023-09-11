@@ -2297,8 +2297,10 @@ public class InternalEngine extends Engine {
 
     @Override
     protected SegmentInfos getLatestSegmentInfos() {
-        try (final GatedCloseable<SegmentInfos> snapshot = getSegmentInfosSnapshot()) {
-            return snapshot.get();
+        OpenSearchDirectoryReader reader = null;
+        try {
+            reader = internalReaderManager.acquire();
+            return ((StandardDirectoryReader) reader.getDelegate()).getSegmentInfos();
         } catch (IOException e) {
             throw new EngineException(shardId, e.getMessage(), e);
         }

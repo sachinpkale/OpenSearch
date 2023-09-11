@@ -10,6 +10,7 @@ package org.opensearch.remotestore;
 
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.opensearch.action.admin.indices.close.CloseIndexResponse;
 import org.opensearch.action.index.IndexResponse;
 import org.opensearch.cluster.ClusterState;

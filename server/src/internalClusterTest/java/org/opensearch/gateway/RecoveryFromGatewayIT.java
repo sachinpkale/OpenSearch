@@ -147,7 +147,7 @@ public class RecoveryFromGatewayIT extends OpenSearchIntegTestCase {
             .actionGet();
 
         refresh();
-        assertHitCount(client().prepareSearch().setSize(0).setQuery(termQuery("appAccountIds", 179)).execute().actionGet(), 2);
+        assertHitCount(client().prepareSearch().setPreference("_primary").setSize(0).setQuery(termQuery("appAccountIds", 179)).execute().actionGet(), 2);
         ensureYellow("test"); // wait for primary allocations here otherwise if we have a lot of shards we might have a
         // shard that is still in post recovery when we restart and the ensureYellow() below will timeout
 
@@ -159,7 +159,7 @@ public class RecoveryFromGatewayIT extends OpenSearchIntegTestCase {
         primaryTerms = assertAndCapturePrimaryTerms(primaryTerms);
 
         client().admin().indices().prepareRefresh().execute().actionGet();
-        assertHitCount(client().prepareSearch().setSize(0).setQuery(termQuery("appAccountIds", 179)).execute().actionGet(), 2);
+        assertHitCount(client().prepareSearch().setPreference("_primary").setSize(0).setQuery(termQuery("appAccountIds", 179)).execute().actionGet(), 2);
 
         internalCluster().fullRestart();
 
@@ -168,7 +168,7 @@ public class RecoveryFromGatewayIT extends OpenSearchIntegTestCase {
         primaryTerms = assertAndCapturePrimaryTerms(primaryTerms);
 
         client().admin().indices().prepareRefresh().execute().actionGet();
-        assertHitCount(client().prepareSearch().setSize(0).setQuery(termQuery("appAccountIds", 179)).execute().actionGet(), 2);
+        assertHitCount(client().prepareSearch().setPreference("_primary").setSize(0).setQuery(termQuery("appAccountIds", 179)).execute().actionGet(), 2);
     }
 
     private Map<String, long[]> assertAndCapturePrimaryTerms(Map<String, long[]> previousTerms) {
@@ -199,6 +199,7 @@ public class RecoveryFromGatewayIT extends OpenSearchIntegTestCase {
         return result;
     }
 
+    // RemoteStore: Reducing number of docs being ingested to speed up test
     public void testSingleNodeNoFlush() throws Exception {
         internalCluster().startNode();
 
@@ -228,8 +229,8 @@ public class RecoveryFromGatewayIT extends OpenSearchIntegTestCase {
 
         if (indexToAllShards) {
             // insert enough docs so all shards will have a doc
-            value1Docs = randomIntBetween(numberOfShards * 10, numberOfShards * 20);
-            value2Docs = randomIntBetween(numberOfShards * 10, numberOfShards * 20);
+            value1Docs = randomIntBetween(numberOfShards * 2, numberOfShards * 5);
+            value2Docs = randomIntBetween(numberOfShards * 2, numberOfShards * 5);
 
         } else {
             // insert a two docs, some shards will not have anything
@@ -237,8 +238,11 @@ public class RecoveryFromGatewayIT extends OpenSearchIntegTestCase {
             value2Docs = 1;
         }
 
-        for (int i = 0; i < 1 + randomInt(100); i++) {
-            for (int id = 0; id < Math.max(value1Docs, value2Docs); id++) {
+        int toIndex = Math.max(value1Docs, value2Docs);
+        int multiplier = 1 + randomInt(5);
+        logger.info("About to index " + toIndex * multiplier + " documents");
+        for (int i = 0; i < multiplier; i++) {
+            for (int id = 0; id < toIndex; id++) {
                 if (id < value1Docs) {
                     index(
                         "test",
@@ -262,10 +266,10 @@ public class RecoveryFromGatewayIT extends OpenSearchIntegTestCase {
         refresh();
 
         for (int i = 0; i <= randomInt(10); i++) {
-            assertHitCount(client().prepareSearch().setSize(0).setQuery(matchAllQuery()).get(), value1Docs + value2Docs);
-            assertHitCount(client().prepareSearch().setSize(0).setQuery(termQuery("field", "value1")).get(), value1Docs);
-            assertHitCount(client().prepareSearch().setSize(0).setQuery(termQuery("field", "value2")).get(), value2Docs);
-            assertHitCount(client().prepareSearch().setSize(0).setQuery(termQuery("num", 179)).get(), value1Docs);
+            assertHitCount(client().prepareSearch().setPreference("_primary").setSize(0).setQuery(matchAllQuery()).get(), value1Docs + value2Docs);
+            assertHitCount(client().prepareSearch().setPreference("_primary").setSize(0).setQuery(termQuery("field", "value1")).get(), value1Docs);
+            assertHitCount(client().prepareSearch().setPreference("_primary").setSize(0).setQuery(termQuery("field", "value2")).get(), value2Docs);
+            assertHitCount(client().prepareSearch().setPreference("_primary").setSize(0).setQuery(termQuery("num", 179)).get(), value1Docs);
         }
         if (!indexToAllShards) {
             // we have to verify primaries are started for them to be restored
@@ -282,10 +286,10 @@ public class RecoveryFromGatewayIT extends OpenSearchIntegTestCase {
         primaryTerms = assertAndCapturePrimaryTerms(primaryTerms);
 
         for (int i = 0; i <= randomInt(10); i++) {
-            assertHitCount(client().prepareSearch().setSize(0).setQuery(matchAllQuery()).get(), value1Docs + value2Docs);
-            assertHitCount(client().prepareSearch().setSize(0).setQuery(termQuery("field", "value1")).get(), value1Docs);
-            assertHitCount(client().prepareSearch().setSize(0).setQuery(termQuery("field", "value2")).get(), value2Docs);
-            assertHitCount(client().prepareSearch().setSize(0).setQuery(termQuery("num", 179)).get(), value1Docs);
+            assertHitCount(client().prepareSearch().setPreference("_primary").setSize(0).setQuery(matchAllQuery()).get(), value1Docs + value2Docs);
+            assertHitCount(client().prepareSearch().setPreference("_primary").setSize(0).setQuery(termQuery("field", "value1")).get(), value1Docs);
+            assertHitCount(client().prepareSearch().setPreference("_primary").setSize(0).setQuery(termQuery("field", "value2")).get(), value2Docs);
+            assertHitCount(client().prepareSearch().setPreference("_primary").setSize(0).setQuery(termQuery("num", 179)).get(), value1Docs);
         }
 
         internalCluster().fullRestart();
@@ -295,10 +299,10 @@ public class RecoveryFromGatewayIT extends OpenSearchIntegTestCase {
         primaryTerms = assertAndCapturePrimaryTerms(primaryTerms);
 
         for (int i = 0; i <= randomInt(10); i++) {
-            assertHitCount(client().prepareSearch().setSize(0).setQuery(matchAllQuery()).get(), value1Docs + value2Docs);
-            assertHitCount(client().prepareSearch().setSize(0).setQuery(termQuery("field", "value1")).get(), value1Docs);
-            assertHitCount(client().prepareSearch().setSize(0).setQuery(termQuery("field", "value2")).get(), value2Docs);
-            assertHitCount(client().prepareSearch().setSize(0).setQuery(termQuery("num", 179)).get(), value1Docs);
+            assertHitCount(client().prepareSearch().setPreference("_primary").setSize(0).setQuery(matchAllQuery()).get(), value1Docs + value2Docs);
+            assertHitCount(client().prepareSearch().setPreference("_primary").setSize(0).setQuery(termQuery("field", "value1")).get(), value1Docs);
+            assertHitCount(client().prepareSearch().setPreference("_primary").setSize(0).setQuery(termQuery("field", "value2")).get(), value2Docs);
+            assertHitCount(client().prepareSearch().setPreference("_primary").setSize(0).setQuery(termQuery("num", 179)).get(), value1Docs);
         }
     }
 
@@ -317,7 +321,7 @@ public class RecoveryFromGatewayIT extends OpenSearchIntegTestCase {
             .actionGet();
         refresh();
 
-        assertHitCount(client().prepareSearch().setSize(0).setQuery(matchAllQuery()).execute().actionGet(), 2);
+        assertHitCount(client().prepareSearch().setPreference("_primary").setSize(0).setQuery(matchAllQuery()).execute().actionGet(), 2);
 
         ensureYellow("test"); // wait for primary allocations here otherwise if we have a lot of shards we might have a
         // shard that is still in post recovery when we restart and the ensureYellow() below will timeout
@@ -331,7 +335,7 @@ public class RecoveryFromGatewayIT extends OpenSearchIntegTestCase {
         primaryTerms = assertAndCapturePrimaryTerms(primaryTerms);
 
         for (int i = 0; i < 10; i++) {
-            assertHitCount(client().prepareSearch().setSize(0).setQuery(matchAllQuery()).execute().actionGet(), 2);
+            assertHitCount(client().prepareSearch().setPreference("_primary").setSize(0).setQuery(matchAllQuery()).execute().actionGet(), 2);
         }
 
         internalCluster().fullRestart();
@@ -341,7 +345,7 @@ public class RecoveryFromGatewayIT extends OpenSearchIntegTestCase {
         primaryTerms = assertAndCapturePrimaryTerms(primaryTerms);
 
         for (int i = 0; i < 10; i++) {
-            assertHitCount(client().prepareSearch().setSize(0).setQuery(matchAllQuery()).execute().actionGet(), 2);
+            assertHitCount(client().prepareSearch().setPreference("_primary").setSize(0).setQuery(matchAllQuery()).execute().actionGet(), 2);
         }
     }
 
@@ -366,7 +370,7 @@ public class RecoveryFromGatewayIT extends OpenSearchIntegTestCase {
         ensureGreen();
 
         for (int i = 0; i < 10; i++) {
-            assertHitCount(client().prepareSearch().setSize(0).setQuery(matchAllQuery()).execute().actionGet(), 2);
+            assertHitCount(client().prepareSearch().setPreference("_primary").setSize(0).setQuery(matchAllQuery()).execute().actionGet(), 2);
         }
 
         Map<String, long[]> primaryTerms = assertAndCapturePrimaryTerms(null);
@@ -394,7 +398,7 @@ public class RecoveryFromGatewayIT extends OpenSearchIntegTestCase {
         primaryTerms = assertAndCapturePrimaryTerms(primaryTerms);
 
         for (int i = 0; i < 10; i++) {
-            assertHitCount(client().prepareSearch().setSize(0).setQuery(matchAllQuery()).execute().actionGet(), 2);
+            assertHitCount(client().prepareSearch().setPreference("_primary").setSize(0).setQuery(matchAllQuery()).execute().actionGet(), 2);
         }
 
         client().execute(ClearVotingConfigExclusionsAction.INSTANCE, new ClearVotingConfigExclusionsRequest()).get();
@@ -424,7 +428,7 @@ public class RecoveryFromGatewayIT extends OpenSearchIntegTestCase {
         ensureGreen();
 
         for (int i = 0; i < 10; i++) {
-            assertHitCount(client().prepareSearch().setSize(0).setQuery(matchAllQuery()).execute().actionGet(), 2);
+            assertHitCount(client().prepareSearch().setPreference("_primary").setSize(0).setQuery(matchAllQuery()).execute().actionGet(), 2);
         }
 
         String metadataUuid = client().admin().cluster().prepareState().execute().get().getState().getMetadata().clusterUUID();
@@ -447,7 +451,7 @@ public class RecoveryFromGatewayIT extends OpenSearchIntegTestCase {
 
         logger.info("--> checking if documents exist, there should be 3");
         for (int i = 0; i < 10; i++) {
-            assertHitCount(client().prepareSearch().setSize(0).setQuery(matchAllQuery()).execute().actionGet(), 3);
+            assertHitCount(client().prepareSearch().setPreference("_primary").setSize(0).setQuery(matchAllQuery()).execute().actionGet(), 3);
         }
 
         logger.info("--> add some metadata and additional template");
@@ -496,7 +500,7 @@ public class RecoveryFromGatewayIT extends OpenSearchIntegTestCase {
         assertThat(client().admin().cluster().prepareState().execute().get().getState().getMetadata().clusterUUID(), equalTo(metadataUuid));
 
         for (int i = 0; i < 10; i++) {
-            assertHitCount(client().prepareSearch().setSize(0).setQuery(matchAllQuery()).execute().actionGet(), 3);
+            assertHitCount(client().prepareSearch().setPreference("_primary").setSize(0).setQuery(matchAllQuery()).execute().actionGet(), 3);
         }
 
         ClusterState state = client().admin().cluster().prepareState().execute().actionGet().getState();
@@ -505,6 +509,7 @@ public class RecoveryFromGatewayIT extends OpenSearchIntegTestCase {
         assertThat(state.metadata().index("test").getAliases().get("test_alias").filter(), notNullValue());
     }
 
+    @AwaitsFix(bugUrl = "Download from remote store happens, we need to remove the dependence of file copying in peer recovery")
     public void testReuseInFileBasedPeerRecovery() throws Exception {
         internalCluster().startClusterManagerOnlyNode();
         final String primaryNode = internalCluster().startDataOnlyNode(nodeSettings(0));

@@ -30,7 +30,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-@OpenSearchIntegTestCase.SuiteScopeTestCase
 public class SearchPipelineCommonIT extends OpenSearchIntegTestCase {
 
     @Override

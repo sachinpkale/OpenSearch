@@ -20,6 +20,7 @@ import org.opensearch.core.tasks.resourcetracker.ThreadResourceInfo;
 import org.opensearch.index.query.QueryBuilders;
 import org.opensearch.tasks.TaskInfo;
 import org.hamcrest.MatcherAssert;
+import org.opensearch.test.junit.annotations.TestIssueLogging;
 
 import java.util.List;
 import java.util.Map;
@@ -63,9 +64,11 @@ public class ConcurrentSearchTasksIT extends AbstractTasksIT {
     @Override
     protected Settings featureFlagSettings() {
         Settings.Builder featureSettings = Settings.builder();
+        featureSettings.put(super.featureFlagSettings());
         for (Setting builtInFlag : FeatureFlagSettings.BUILT_IN_FEATURE_FLAGS) {
             featureSettings.put(builtInFlag.getKey(), builtInFlag.getDefaultRaw(Settings.EMPTY));
         }
+        featureSettings.put(FeatureFlags.SEGMENT_REPLICATION_EXPERIMENTAL, "true");
         featureSettings.put(FeatureFlags.CONCURRENT_SEGMENT_SEARCH, true);
         return featureSettings.build();
     }

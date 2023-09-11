@@ -32,6 +32,7 @@
 
 package org.opensearch.search.aggregations.pipeline;
 
+import org.junit.Before;
 import org.opensearch.action.index.IndexRequestBuilder;
 import org.opensearch.action.search.SearchResponse;
 import org.opensearch.common.xcontent.XContentFactory;
@@ -68,7 +69,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 
-@OpenSearchIntegTestCase.SuiteScopeTestCase
+
 public class BucketScriptIT extends OpenSearchIntegTestCase {
 
     private static final String FIELD_1_NAME = "field1";
@@ -142,8 +143,8 @@ public class BucketScriptIT extends OpenSearchIntegTestCase {
         }
     }
 
-    @Override
-    public void setupSuiteScopeCluster() throws Exception {
+    @Before
+    public void setupTest() throws Exception {
         createIndex("idx");
         createIndex("idx_unmapped");
 

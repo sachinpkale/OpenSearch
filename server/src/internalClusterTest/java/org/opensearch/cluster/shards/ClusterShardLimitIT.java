@@ -611,6 +611,7 @@ public class ClusterShardLimitIT extends OpenSearchIntegTestCase {
     public void testIgnoreDotSettingOnMultipleNodes() throws IOException, InterruptedException {
         int maxAllowedShardsPerNode = 10, indexPrimaryShards = 11, indexReplicaShards = 1;
 
+        this.nodeAttributeSettings = null;
         InternalTestCluster cluster = new InternalTestCluster(
             randomLong(),
             createTempDir(),
@@ -647,6 +648,7 @@ public class ClusterShardLimitIT extends OpenSearchIntegTestCase {
         );
         cluster.beforeTest(random());
 
+        OpenSearchIntegTestCase.remoteStoreNodeAttributeCluster = cluster;
         // Starting 3 ClusterManagerOnlyNode nodes
         cluster.startClusterManagerOnlyNode(Settings.builder().put("cluster.ignore_dot_indexes", true).build());
         cluster.startClusterManagerOnlyNode(Settings.builder().put("cluster.ignore_dot_indexes", false).build());
@@ -655,6 +657,7 @@ public class ClusterShardLimitIT extends OpenSearchIntegTestCase {
         // Starting 2 data nodes
         cluster.startDataOnlyNode(Settings.builder().put("cluster.ignore_dot_indexes", false).build());
         cluster.startDataOnlyNode(Settings.builder().put("cluster.ignore_dot_indexes", false).build());
+        OpenSearchIntegTestCase.remoteStoreNodeAttributeCluster = null;
 
         // Setting max shards per node to be 10
         cluster.client()

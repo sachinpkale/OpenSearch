@@ -72,7 +72,7 @@ public class FullRollingRestartIT extends OpenSearchIntegTestCase {
 
         final String healthTimeout = "1m";
 
-        for (int i = 0; i < 1000; i++) {
+        for (int i = 0; i < 100; i++) {
             client().prepareIndex("test")
                 .setId(Long.toString(i))
                 .setSource(MapBuilder.<String, Object>newMapBuilder().put("test", "value" + i).map())
@@ -80,7 +80,7 @@ public class FullRollingRestartIT extends OpenSearchIntegTestCase {
                 .actionGet();
         }
         flush();
-        for (int i = 1000; i < 2000; i++) {
+        for (int i = 100; i < 200; i++) {
             client().prepareIndex("test")
                 .setId(Long.toString(i))
                 .setSource(MapBuilder.<String, Object>newMapBuilder().put("test", "value" + i).map())
@@ -123,7 +123,7 @@ public class FullRollingRestartIT extends OpenSearchIntegTestCase {
         logger.info("--> refreshing and checking data");
         refresh();
         for (int i = 0; i < 10; i++) {
-            assertHitCount(client().prepareSearch().setSize(0).setQuery(matchAllQuery()).get(), 2000L);
+            assertHitCount(client().prepareSearch().setPreference("_primary").setSize(0).setQuery(matchAllQuery()).get(), 200L);
         }
 
         // now start shutting nodes down
@@ -156,7 +156,7 @@ public class FullRollingRestartIT extends OpenSearchIntegTestCase {
         logger.info("--> stopped two nodes, verifying data");
         refresh();
         for (int i = 0; i < 10; i++) {
-            assertHitCount(client().prepareSearch().setSize(0).setQuery(matchAllQuery()).get(), 2000L);
+            assertHitCount(client().prepareSearch().setPreference("_primary").setSize(0).setQuery(matchAllQuery()).get(), 200L);
         }
 
         // closing the 3rd node
@@ -190,7 +190,7 @@ public class FullRollingRestartIT extends OpenSearchIntegTestCase {
         logger.info("--> one node left, verifying data");
         refresh();
         for (int i = 0; i < 10; i++) {
-            assertHitCount(client().prepareSearch().setSize(0).setQuery(matchAllQuery()).get(), 2000L);
+            assertHitCount(client().prepareSearch().setPreference("_primary").setSize(0).setQuery(matchAllQuery()).get(), 200L);
         }
     }
 

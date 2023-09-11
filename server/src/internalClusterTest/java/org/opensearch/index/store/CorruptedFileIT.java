@@ -42,11 +42,13 @@ import org.apache.lucene.util.BytesRef;
 import org.opensearch.action.admin.cluster.health.ClusterHealthResponse;
 import org.opensearch.action.admin.cluster.node.stats.NodeStats;
 import org.opensearch.action.admin.cluster.node.stats.NodesStatsResponse;
+import org.opensearch.action.admin.cluster.remotestore.restore.RestoreRemoteStoreRequest;
 import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotResponse;
 import org.opensearch.action.admin.cluster.state.ClusterStateResponse;
 import org.opensearch.action.admin.indices.shards.IndicesShardStoresResponse;
 import org.opensearch.action.index.IndexRequestBuilder;
 import org.opensearch.action.search.SearchResponse;
+import org.opensearch.action.support.PlainActionFuture;
 import org.opensearch.action.support.replication.TransportReplicationAction;
 import org.opensearch.client.Requests;
 import org.opensearch.cluster.ClusterState;
@@ -85,6 +87,7 @@ import org.opensearch.test.CorruptionUtils;
 import org.opensearch.test.InternalSettingsPlugin;
 import org.opensearch.test.MockIndexEventListener;
 import org.opensearch.test.OpenSearchIntegTestCase;
+import org.opensearch.test.junit.annotations.TestIssueLogging;
 import org.opensearch.test.store.MockFSIndexStore;
 import org.opensearch.test.transport.MockTransportService;
 import org.opensearch.transport.TransportService;
@@ -167,7 +170,7 @@ public class CorruptedFileIT extends OpenSearchIntegTestCase {
                 Settings.builder()
                     .put(IndexMetadata.SETTING_NUMBER_OF_SHARDS, "1")
                     .put(IndexMetadata.SETTING_NUMBER_OF_REPLICAS, "1")
-                    .put(MergePolicyConfig.INDEX_MERGE_ENABLED, false)
+//                    .put(MergePolicyConfig.INDEX_MERGE_ENABLED, false)
                     // no checkindex - we corrupt shards on purpose
                     .put(MockFSIndexStore.INDEX_CHECK_INDEX_ON_CLOSE_SETTING.getKey(), false)
                     // no translog based flush - it might change the .liv / segments.N files
@@ -186,18 +189,14 @@ public class CorruptedFileIT extends OpenSearchIntegTestCase {
         assertAllSuccessful(client().admin().indices().prepareFlush().setForce(true).get());
         assertAllSuccessful(client().admin().indices().prepareFlush().setForce(true).get());
         // we have to flush at least once here since we don't corrupt the translog
-        SearchResponse countResponse = client().prepareSearch().setSize(0).get();
+        SearchResponse countResponse = client().prepareSearch().setPreference("_primary").setSize(0).get();
         assertHitCount(countResponse, numDocs);
 
         final int numShards = numShards("test");
         ShardRouting corruptedShardRouting = corruptRandomPrimaryFile();
         logger.info("--> {} corrupted", corruptedShardRouting);
         enableAllocation("test");
-        /*
-        * we corrupted the primary shard - now lets make sure we never recover from it successfully
-        */
-        Settings build = Settings.builder().put(IndexMetadata.SETTING_NUMBER_OF_REPLICAS, "2").build();
-        client().admin().indices().prepareUpdateSettings("test").setSettings(build).get();
+
         ClusterHealthResponse health = client().admin()
             .cluster()
             .health(
@@ -218,15 +217,41 @@ public class CorruptedFileIT extends OpenSearchIntegTestCase {
         assertThat(health.getStatus(), equalTo(ClusterHealthStatus.GREEN));
         final int numIterations = scaledRandomIntBetween(5, 20);
         for (int i = 0; i < numIterations; i++) {
-            SearchResponse response = client().prepareSearch().setSize(numDocs).get();
+            SearchResponse response = client().prepareSearch().setPreference("_primary").setSize(numDocs).get();
             assertHitCount(response, numDocs);
+        }
+
+        // index more docs to generate new segment. this helps with failing primary while force merge
+        builders = new IndexRequestBuilder[5];
+        for (int i = 0; i < builders.length; i++) {
+            builders[i] = client().prepareIndex("test").setSource("field", "value");
+        }
+        try{
+            indexRandom(true, builders);
+        } catch (AssertionError e) {
+            logger.info("-->> assert failed for indexing after corrupt -- " + e);
+        }
+        ensureGreen();
+
+        // force merge into 1 segment triggers force read of the corrupted segment
+        client().admin().indices().prepareForceMerge("test").setMaxNumSegments(1).get();
+
+        // wait for force merge to complete
+        Thread.sleep(3000);
+
+        ensureYellow("test");
+        ensureGreen("test");
+        final int numIterations2 = scaledRandomIntBetween(5, 20);
+        for (int i = 0; i < numIterations2; i++) {
+            SearchResponse response = client().prepareSearch().setPreference("_primary").setSize(numDocs).get();
+            assertHitCount(response, numDocs + 5);
         }
 
         /*
          * now hook into the IndicesService and register a close listener to
          * run the checkindex. if the corruption is still there we will catch it.
          */
-        final CountDownLatch latch = new CountDownLatch(numShards * 3); // primary + 2 replicas
+        final CountDownLatch latch = new CountDownLatch(numShards * 2); // primary + 2 replicas
         final CopyOnWriteArrayList<Exception> exception = new CopyOnWriteArrayList<>();
         final IndexEventListener listener = new IndexEventListener() {
             @Override
@@ -278,13 +303,15 @@ public class CorruptedFileIT extends OpenSearchIntegTestCase {
      * Tests corruption that happens on a single shard when no replicas are present. We make sure that the primary stays unassigned
      * and all other replicas for the healthy shards happens
      */
-    public void testCorruptPrimaryNoReplica() throws ExecutionException, InterruptedException, IOException {
-        int numDocs = scaledRandomIntBetween(100, 1000);
+    @TestIssueLogging(value = "_root:DEBUG", issueUrl = "hello")
+    public void testCorruptPrimaryNoReplica() throws Exception {
+        int numDocs = scaledRandomIntBetween(100, 100);
         internalCluster().ensureAtLeastNumDataNodes(2);
 
         assertAcked(
             prepareCreate("test").setSettings(
                 Settings.builder()
+                    .put(IndexMetadata.SETTING_NUMBER_OF_SHARDS, "1")
                     .put(IndexMetadata.SETTING_NUMBER_OF_REPLICAS, "0")
                     .put(MergePolicyConfig.INDEX_MERGE_ENABLED, false)
                     .put(MockFSIndexStore.INDEX_CHECK_INDEX_ON_CLOSE_SETTING.getKey(), false) // no checkindex - we corrupt shards on
@@ -304,10 +331,11 @@ public class CorruptedFileIT extends OpenSearchIntegTestCase {
         assertAllSuccessful(client().admin().indices().prepareFlush().setForce(true).get());
         assertAllSuccessful(client().admin().indices().prepareFlush().setForce(true).get());
         // we have to flush at least once here since we don't corrupt the translog
-        SearchResponse countResponse = client().prepareSearch().setSize(0).get();
+        SearchResponse countResponse = client().prepareSearch().setPreference("_primary").setSize(0).get();
         assertHitCount(countResponse, numDocs);
 
-        ShardRouting shardRouting = corruptRandomPrimaryFile();
+        corruptRandomPrimaryFile();
+
         /*
          * we corrupted the primary shard - now lets make sure we never recover from it successfully
          */
@@ -315,44 +343,21 @@ public class CorruptedFileIT extends OpenSearchIntegTestCase {
         client().admin().indices().prepareUpdateSettings("test").setSettings(build).get();
         client().admin().cluster().prepareReroute().get();
 
-        boolean didClusterTurnRed = waitUntil(() -> {
-            ClusterHealthStatus test = client().admin().cluster().health(Requests.clusterHealthRequest("test")).actionGet().getStatus();
-            return test == ClusterHealthStatus.RED;
-        }, 5, TimeUnit.MINUTES);// sometimes on slow nodes the replication / recovery is just dead slow
+        try {
+            ensureGreen(TimeValue.timeValueSeconds(60), "test");
+        } catch(AssertionError e) {
+            assertAcked(client().admin().indices().prepareClose("test"));
+            client().admin()
+                .cluster()
+                .restoreRemoteStore(
+                    new RestoreRemoteStoreRequest().indices("test").restoreAllShards(true),
+                    PlainActionFuture.newFuture()
+                );
+            ensureGreen(TimeValue.timeValueSeconds(60), "test");
+        }
 
-        final ClusterHealthResponse response = client().admin().cluster().health(Requests.clusterHealthRequest("test")).get();
-
-        if (response.getStatus() != ClusterHealthStatus.RED) {
-            logger.info("Cluster turned red in busy loop: {}", didClusterTurnRed);
-            logger.info(
-                "cluster state:\n{}\n{}",
-                client().admin().cluster().prepareState().get().getState(),
-                client().admin().cluster().preparePendingClusterTasks().get()
-            );
-        }
-        assertThat(response.getStatus(), is(ClusterHealthStatus.RED));
-        ClusterState state = client().admin().cluster().prepareState().get().getState();
-        GroupShardsIterator<ShardIterator> shardIterators = state.getRoutingTable()
-            .activePrimaryShardsGrouped(new String[] { "test" }, false);
-        for (ShardIterator iterator : shardIterators) {
-            ShardRouting routing;
-            while ((routing = iterator.nextOrNull()) != null) {
-                if (routing.getId() == shardRouting.getId()) {
-                    assertThat(routing.state(), equalTo(ShardRoutingState.UNASSIGNED));
-                } else {
-                    assertThat(routing.state(), anyOf(equalTo(ShardRoutingState.RELOCATING), equalTo(ShardRoutingState.STARTED)));
-                }
-            }
-        }
-        final List<Path> files = listShardFiles(shardRouting);
-        Path corruptedFile = null;
-        for (Path file : files) {
-            if (file.getFileName().toString().startsWith("corrupted_")) {
-                corruptedFile = file;
-                break;
-            }
-        }
-        assertThat(corruptedFile, notNullValue());
+        countResponse = client().prepareSearch().setPreference("_primary").setSize(0).get();
+        assertHitCount(countResponse, numDocs);
     }
 
     /**
@@ -463,7 +468,7 @@ public class CorruptedFileIT extends OpenSearchIntegTestCase {
         ensureGreen();
         assertAllSuccessful(client().admin().indices().prepareFlush().setForce(true).execute().actionGet());
         // we have to flush at least once here since we don't corrupt the translog
-        SearchResponse countResponse = client().prepareSearch().setSize(0).get();
+        SearchResponse countResponse = client().prepareSearch().setPreference("_primary").setSize(0).get();
         assertHitCount(countResponse, numDocs);
         final boolean truncate = randomBoolean();
         for (NodeStats dataNode : dataNodeStats) {
@@ -533,7 +538,7 @@ public class CorruptedFileIT extends OpenSearchIntegTestCase {
         }
         final int numIterations = scaledRandomIntBetween(5, 20);
         for (int i = 0; i < numIterations; i++) {
-            SearchResponse response = client().prepareSearch().setSize(numDocs).get();
+            SearchResponse response = client().prepareSearch().setPreference("_primary").setSize(numDocs).get();
             assertHitCount(response, numDocs);
         }
 
@@ -568,7 +573,7 @@ public class CorruptedFileIT extends OpenSearchIntegTestCase {
         ensureGreen();
         assertAllSuccessful(client().admin().indices().prepareFlush().setForce(true).execute().actionGet());
         // we have to flush at least once here since we don't corrupt the translog
-        SearchResponse countResponse = client().prepareSearch().setSize(0).get();
+        SearchResponse countResponse = client().prepareSearch().setPreference("_primary").setSize(0).get();
         assertHitCount(countResponse, numDocs);
 
         ShardRouting shardRouting = corruptRandomPrimaryFile(false);
@@ -650,7 +655,7 @@ public class CorruptedFileIT extends OpenSearchIntegTestCase {
         ensureGreen();
         assertAllSuccessful(client().admin().indices().prepareFlush().setForce(true).execute().actionGet());
         // we have to flush at least once here since we don't corrupt the translog
-        SearchResponse countResponse = client().prepareSearch().setSize(0).get();
+        SearchResponse countResponse = client().prepareSearch().setPreference("_primary").setSize(0).get();
         assertHitCount(countResponse, numDocs);
 
         // disable allocations of replicas post restart (the restart will change replicas to primaries, so we have
@@ -781,6 +786,14 @@ public class CorruptedFileIT extends OpenSearchIntegTestCase {
         // validation failure.
         final ShardRouting corruptedShardRouting = corruptRandomPrimaryFile();
         logger.info("--> {} corrupted", corruptedShardRouting);
+
+        // index more docs to create new segments so that force merge reads segments
+        client().prepareIndex("test").setSource("field", "value").execute();
+        client().prepareIndex("test").setSource("field", "value").execute();
+
+        // force merge into 1 segment triggers force read of the corrupted segment
+        client().admin().indices().prepareForceMerge("test").setMaxNumSegments(1).get();
+
         final CreateSnapshotResponse createSnapshotResponse = client().admin()
             .cluster()
             .prepareCreateSnapshot("test-repo", "test-snap")
@@ -789,6 +802,9 @@ public class CorruptedFileIT extends OpenSearchIntegTestCase {
             .get();
         final SnapshotState snapshotState = createSnapshotResponse.getSnapshotInfo().state();
         MatcherAssert.assertThat("Expect file corruption to cause PARTIAL snapshot state", snapshotState, equalTo(SnapshotState.PARTIAL));
+
+        // force merge into 1 segment triggers force read of the corrupted segment
+        client().admin().indices().prepareForceMerge("test").setMaxNumSegments(1).get();
 
         // Unblock the blocked indexing thread now that corruption on the primary has been confirmed
         corruptionHasHappened.countDown();

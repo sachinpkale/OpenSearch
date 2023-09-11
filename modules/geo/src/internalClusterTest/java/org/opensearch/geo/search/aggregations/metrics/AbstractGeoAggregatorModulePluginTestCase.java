@@ -8,6 +8,7 @@
 
 package org.opensearch.geo.search.aggregations.metrics;
 
+import org.junit.Before;
 import org.opensearch.action.index.IndexRequestBuilder;
 import org.opensearch.action.search.SearchResponse;
 import org.opensearch.common.document.DocumentField;
@@ -65,8 +66,8 @@ public abstract class AbstractGeoAggregatorModulePluginTestCase extends GeoModul
     protected static Map<String, Integer> expectedDocCountsForGeoHash = null;
     protected static Map<String, GeoPoint> expectedCentroidsForGeoHash = null;
 
-    @Override
-    public void setupSuiteScopeCluster() throws Exception {
+    @Before
+    public void setupTest() throws Exception {
         createIndex(UNMAPPED_IDX_NAME);
         assertAcked(
             prepareCreate(IDX_NAME).setMapping(

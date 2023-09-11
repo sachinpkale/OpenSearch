@@ -32,6 +32,7 @@
 
 package org.opensearch.search.aggregations.pipeline;
 
+import org.junit.Before;
 import org.opensearch.action.ActionRequestValidationException;
 import org.opensearch.action.index.IndexRequestBuilder;
 import org.opensearch.action.search.SearchResponse;
@@ -67,7 +68,7 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.Matchers.notNullValue;
 
-@OpenSearchIntegTestCase.SuiteScopeTestCase
+
 public class BucketSortIT extends OpenSearchIntegTestCase {
 
     private static final String INDEX = "bucket-sort-it-data-index";
@@ -78,8 +79,8 @@ public class BucketSortIT extends OpenSearchIntegTestCase {
     private static final String VALUE_1_FIELD = "value_1";
     private static final String VALUE_2_FIELD = "value_2";
 
-    @Override
-    public void setupSuiteScopeCluster() throws Exception {
+    @Before
+    public void setupTest() throws Exception {
         createIndex(INDEX, INDEX_WITH_GAPS);
         client().admin()
             .indices()

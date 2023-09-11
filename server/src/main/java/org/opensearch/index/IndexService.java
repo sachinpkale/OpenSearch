@@ -645,7 +645,8 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
                 }
 
                 if (remoteStore != null && indexShard.isPrimaryMode() && deleted.get()) {
-                    remoteStore.close();
+                    //remoteStore.close();
+                    indexShard.getRemoteDirectory().close();
                 }
 
             } catch (Exception e) {

@@ -30,7 +30,7 @@ import static org.hamcrest.core.IsNull.notNullValue;
 /**
  * Extend {@link BaseStringTermsTestCase}.
  */
-@OpenSearchIntegTestCase.SuiteScopeTestCase
+
 public class MultiTermsIT extends BaseStringTermsTestCase {
 
     // the main purpose of this test is to make sure we're not allocating 2GB of memory per shard

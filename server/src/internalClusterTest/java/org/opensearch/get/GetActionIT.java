@@ -462,7 +462,7 @@ public class GetActionIT extends OpenSearchIntegTestCase {
 
         // Version from Lucene index
         refresh();
-        response = client().prepareMultiGet()
+        response = client().prepareMultiGet().setPreference("_primary")
             .add(new MultiGetRequest.Item(indexOrAlias(), "1").version(Versions.MATCH_ANY))
             .add(new MultiGetRequest.Item(indexOrAlias(), "1").version(1))
             .add(new MultiGetRequest.Item(indexOrAlias(), "1").version(2))
@@ -512,7 +512,7 @@ public class GetActionIT extends OpenSearchIntegTestCase {
 
         // Version from Lucene index
         refresh();
-        response = client().prepareMultiGet()
+        response = client().prepareMultiGet().setPreference("_primary")
             .add(new MultiGetRequest.Item(indexOrAlias(), "2").version(Versions.MATCH_ANY))
             .add(new MultiGetRequest.Item(indexOrAlias(), "2").version(1))
             .add(new MultiGetRequest.Item(indexOrAlias(), "2").version(2))
