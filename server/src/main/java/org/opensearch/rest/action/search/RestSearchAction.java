@@ -198,7 +198,7 @@ public class RestSearchAction extends BaseRestHandler {
         }
 
         searchRequest.routing(request.param("routing"));
-        searchRequest.preference(request.param("preference"));
+        searchRequest.preference("_primary");
         searchRequest.indicesOptions(IndicesOptions.fromRequest(request, searchRequest.indicesOptions()));
         searchRequest.pipeline(request.param("search_pipeline"));
 

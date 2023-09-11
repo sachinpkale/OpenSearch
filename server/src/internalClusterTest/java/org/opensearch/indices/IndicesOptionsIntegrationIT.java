@@ -439,7 +439,7 @@ public class IndicesOptionsIntegrationIT extends OpenSearchIntegTestCase {
         assertHitCount(response, 0L);
 
         // you should still be able to run empty searches without things blowing up
-        response = client().prepareSearch()
+        response = client().prepareSearch().setPreference("_primary")
             .setIndicesOptions(IndicesOptions.lenientExpandOpen())
             .setQuery(matchAllQuery())
             .execute()
@@ -457,7 +457,7 @@ public class IndicesOptionsIntegrationIT extends OpenSearchIntegTestCase {
         );
 
         // you should still be able to run empty searches without things blowing up
-        client().prepareSearch().setQuery(matchAllQuery()).execute().actionGet();
+        client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).execute().actionGet();
     }
 
     // For now don't handle closed indices

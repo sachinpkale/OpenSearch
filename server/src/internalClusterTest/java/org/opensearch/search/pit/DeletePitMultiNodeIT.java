@@ -268,7 +268,7 @@ public class DeletePitMultiNodeIT extends OpenSearchIntegTestCase {
                 try {
                     latch.await();
                     for (int j = 0; j < 30; j++) {
-                        SearchResponse searchResponse = client().prepareSearch()
+                        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
                             .setSize(2)
                             .setPointInTime(new PointInTimeBuilder(pitResponse.getId()).setKeepAlive(TimeValue.timeValueDays(1)))
                             .execute()

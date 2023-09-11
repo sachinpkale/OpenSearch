@@ -136,7 +136,7 @@ public class SearchStatsIT extends OpenSearchIntegTestCase {
         int iters = scaledRandomIntBetween(100, 150);
         for (int i = 0; i < iters; i++) {
             SearchResponse searchResponse = internalCluster().coordOnlyNodeClient()
-                .prepareSearch()
+                .prepareSearch().setPreference("_primary")
                 .setQuery(QueryBuilders.termQuery("field", "value"))
                 .setStats("group1", "group2")
                 .highlighter(new HighlightBuilder().field("field"))
@@ -220,7 +220,7 @@ public class SearchStatsIT extends OpenSearchIntegTestCase {
         assertThat(indicesStats.getTotal().getSearch().getOpenContexts(), equalTo(0L));
 
         int size = scaledRandomIntBetween(1, docs);
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .setSize(size)
             .setScroll(TimeValue.timeValueMinutes(2))

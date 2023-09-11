@@ -546,21 +546,21 @@ public class SimpleIndexTemplateIT extends OpenSearchIntegTestCase {
 
         refresh();
 
-        SearchResponse searchResponse = client().prepareSearch("test_index").get();
+        SearchResponse searchResponse = client().prepareSearch("test_index").setPreference("_primary").get();
         assertHitCount(searchResponse, 5L);
 
-        searchResponse = client().prepareSearch("simple_alias").get();
+        searchResponse = client().prepareSearch("simple_alias").setPreference("_primary").get();
         assertHitCount(searchResponse, 5L);
 
-        searchResponse = client().prepareSearch("templated_alias-test_index").get();
+        searchResponse = client().prepareSearch("templated_alias-test_index").setPreference("_primary").get();
         assertHitCount(searchResponse, 5L);
 
-        searchResponse = client().prepareSearch("filtered_alias").get();
+        searchResponse = client().prepareSearch("filtered_alias").setPreference("_primary").get();
         assertHitCount(searchResponse, 1L);
         assertThat(searchResponse.getHits().getAt(0).getSourceAsMap().get("type"), equalTo("type2"));
 
         // Search the complex filter alias
-        searchResponse = client().prepareSearch("complex_filtered_alias").get();
+        searchResponse = client().prepareSearch("complex_filtered_alias").setPreference("_primary").get();
         assertHitCount(searchResponse, 3L);
 
         Set<String> types = new HashSet<>();

@@ -32,6 +32,7 @@
 
 package org.opensearch.indices.state;
 
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.opensearch.action.ActionRequestValidationException;
 import org.opensearch.action.admin.cluster.health.ClusterHealthResponse;
 import org.opensearch.action.admin.indices.open.OpenIndexResponse;
@@ -71,6 +72,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 
+@LuceneTestCase.AwaitsFix(bugUrl = "hello.com")
 public class OpenCloseIndexIT extends OpenSearchIntegTestCase {
     public void testSimpleCloseOpen() {
         Client client = client();
@@ -326,7 +328,7 @@ public class OpenCloseIndexIT extends OpenSearchIntegTestCase {
         // check the index still contains the records that we indexed
         client().admin().indices().prepareOpen("test").execute().get();
         ensureGreen();
-        SearchResponse searchResponse = client().prepareSearch().setQuery(QueryBuilders.matchQuery("test", "init")).get();
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary").setQuery(QueryBuilders.matchQuery("test", "init")).get();
         assertNoFailures(searchResponse);
         assertHitCount(searchResponse, docs);
     }

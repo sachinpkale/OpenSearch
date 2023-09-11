@@ -32,10 +32,13 @@
 
 package org.opensearch.action.admin.indices.flush;
 
+import org.opensearch.action.admin.indices.settings.get.GetSettingsRequest;
+import org.opensearch.cluster.metadata.IndexMetadata;
 import org.opensearch.test.OpenSearchIntegTestCase;
 import org.opensearch.test.OpenSearchIntegTestCase.ClusterScope;
 
 import java.util.Arrays;
+import java.util.Objects;
 
 import static org.opensearch.cluster.metadata.IndexMetadata.SETTING_BLOCKS_METADATA;
 import static org.opensearch.cluster.metadata.IndexMetadata.SETTING_BLOCKS_READ;
@@ -67,10 +70,17 @@ public class FlushBlocksIT extends OpenSearchIntegTestCase {
             SETTING_READ_ONLY_ALLOW_DELETE
         )) {
             try {
+                GetSettingsRequest getSettingsRequest = new GetSettingsRequest().indices("test");
+                String remoteStoreEnabledStr = client().admin().indices().getSettings(getSettingsRequest).actionGet().getSetting("test", IndexMetadata.SETTING_REMOTE_STORE_ENABLED);
                 enableIndexBlock("test", blockSetting);
                 FlushResponse response = client().admin().indices().prepareFlush("test").execute().actionGet();
                 assertNoFailures(response);
-                assertThat(response.getSuccessfulShards(), equalTo(numShards.totalNumShards));
+                logger.warn("IndexSettings (" + remoteStoreEnabledStr + ")");
+                if(Objects.equals(remoteStoreEnabledStr, "true")) {
+                    assertThat(response.getSuccessfulShards(), equalTo(numShards.numPrimaries));
+                } else {
+                    assertThat(response.getSuccessfulShards(), equalTo(numShards.totalNumShards));
+                }
             } finally {
                 disableIndexBlock("test", blockSetting);
             }

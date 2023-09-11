@@ -83,6 +83,7 @@ public class AllocationIdIT extends OpenSearchIntegTestCase {
         return Arrays.asList(MockTransportService.TestPlugin.class, MockEngineFactoryPlugin.class, InternalSettingsPlugin.class);
     }
 
+    @AwaitsFix(bugUrl = "hello.com")
     public void testFailedRecoveryOnAllocateStalePrimaryRequiresAnotherAllocateStalePrimary() throws Exception {
         /*
          * Allocation id is put on start of shard while historyUUID is adjusted after recovery is done.

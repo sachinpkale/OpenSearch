@@ -163,7 +163,7 @@ public class SimpleRoutingIT extends OpenSearchIntegTestCase {
         logger.info("--> search with no routing, should fine one");
         for (int i = 0; i < 5; i++) {
             assertThat(
-                client().prepareSearch().setQuery(QueryBuilders.matchAllQuery()).execute().actionGet().getHits().getTotalHits().value,
+                client().prepareSearch().setPreference("_primary").setQuery(QueryBuilders.matchAllQuery()).execute().actionGet().getHits().getTotalHits().value,
                 equalTo(1L)
             );
         }
@@ -171,7 +171,7 @@ public class SimpleRoutingIT extends OpenSearchIntegTestCase {
         logger.info("--> search with wrong routing, should not find");
         for (int i = 0; i < 5; i++) {
             assertThat(
-                client().prepareSearch()
+                client().prepareSearch().setPreference("_primary")
                     .setRouting("1")
                     .setQuery(QueryBuilders.matchAllQuery())
                     .execute()
@@ -181,7 +181,7 @@ public class SimpleRoutingIT extends OpenSearchIntegTestCase {
                 equalTo(0L)
             );
             assertThat(
-                client().prepareSearch()
+                client().prepareSearch().setPreference("_primary")
                     .setSize(0)
                     .setRouting("1")
                     .setQuery(QueryBuilders.matchAllQuery())
@@ -196,7 +196,7 @@ public class SimpleRoutingIT extends OpenSearchIntegTestCase {
         logger.info("--> search with correct routing, should find");
         for (int i = 0; i < 5; i++) {
             assertThat(
-                client().prepareSearch()
+                client().prepareSearch().setPreference("_primary")
                     .setRouting(routingValue)
                     .setQuery(QueryBuilders.matchAllQuery())
                     .execute()
@@ -206,7 +206,7 @@ public class SimpleRoutingIT extends OpenSearchIntegTestCase {
                 equalTo(1L)
             );
             assertThat(
-                client().prepareSearch()
+                client().prepareSearch().setPreference("_primary")
                     .setSize(0)
                     .setRouting(routingValue)
                     .setQuery(QueryBuilders.matchAllQuery())
@@ -230,11 +230,11 @@ public class SimpleRoutingIT extends OpenSearchIntegTestCase {
         logger.info("--> search with no routing, should fine two");
         for (int i = 0; i < 5; i++) {
             assertThat(
-                client().prepareSearch().setQuery(QueryBuilders.matchAllQuery()).execute().actionGet().getHits().getTotalHits().value,
+                client().prepareSearch().setPreference("_primary").setQuery(QueryBuilders.matchAllQuery()).execute().actionGet().getHits().getTotalHits().value,
                 equalTo(2L)
             );
             assertThat(
-                client().prepareSearch()
+                client().prepareSearch().setPreference("_primary")
                     .setSize(0)
                     .setQuery(QueryBuilders.matchAllQuery())
                     .execute()
@@ -248,7 +248,7 @@ public class SimpleRoutingIT extends OpenSearchIntegTestCase {
         logger.info("--> search with {} routing, should find one", routingValue);
         for (int i = 0; i < 5; i++) {
             assertThat(
-                client().prepareSearch()
+                client().prepareSearch().setPreference("_primary")
                     .setRouting(routingValue)
                     .setQuery(QueryBuilders.matchAllQuery())
                     .execute()
@@ -258,7 +258,7 @@ public class SimpleRoutingIT extends OpenSearchIntegTestCase {
                 equalTo(1L)
             );
             assertThat(
-                client().prepareSearch()
+                client().prepareSearch().setPreference("_primary")
                     .setSize(0)
                     .setRouting(routingValue)
                     .setQuery(QueryBuilders.matchAllQuery())
@@ -273,7 +273,7 @@ public class SimpleRoutingIT extends OpenSearchIntegTestCase {
         logger.info("--> search with {} routing, should find one", secondRoutingValue);
         for (int i = 0; i < 5; i++) {
             assertThat(
-                client().prepareSearch()
+                client().prepareSearch().setPreference("_primary")
                     .setRouting("1")
                     .setQuery(QueryBuilders.matchAllQuery())
                     .execute()
@@ -283,7 +283,7 @@ public class SimpleRoutingIT extends OpenSearchIntegTestCase {
                 equalTo(1L)
             );
             assertThat(
-                client().prepareSearch()
+                client().prepareSearch().setPreference("_primary")
                     .setSize(0)
                     .setRouting(secondRoutingValue)
                     .setQuery(QueryBuilders.matchAllQuery())
@@ -298,7 +298,7 @@ public class SimpleRoutingIT extends OpenSearchIntegTestCase {
         logger.info("--> search with {},{} indexRoutings , should find two", routingValue, "1");
         for (int i = 0; i < 5; i++) {
             assertThat(
-                client().prepareSearch()
+                client().prepareSearch().setPreference("_primary")
                     .setRouting(routingValue, secondRoutingValue)
                     .setQuery(QueryBuilders.matchAllQuery())
                     .execute()
@@ -308,7 +308,7 @@ public class SimpleRoutingIT extends OpenSearchIntegTestCase {
                 equalTo(2L)
             );
             assertThat(
-                client().prepareSearch()
+                client().prepareSearch().setPreference("_primary")
                     .setSize(0)
                     .setRouting(routingValue, secondRoutingValue)
                     .setQuery(QueryBuilders.matchAllQuery())
@@ -323,7 +323,7 @@ public class SimpleRoutingIT extends OpenSearchIntegTestCase {
         logger.info("--> search with {},{},{} indexRoutings , should find two", routingValue, secondRoutingValue, routingValue);
         for (int i = 0; i < 5; i++) {
             assertThat(
-                client().prepareSearch()
+                client().prepareSearch().setPreference("_primary")
                     .setRouting(routingValue, secondRoutingValue, routingValue)
                     .setQuery(QueryBuilders.matchAllQuery())
                     .execute()
@@ -333,7 +333,7 @@ public class SimpleRoutingIT extends OpenSearchIntegTestCase {
                 equalTo(2L)
             );
             assertThat(
-                client().prepareSearch()
+                client().prepareSearch().setPreference("_primary")
                     .setSize(0)
                     .setRouting(routingValue, secondRoutingValue, routingValue)
                     .setQuery(QueryBuilders.matchAllQuery())

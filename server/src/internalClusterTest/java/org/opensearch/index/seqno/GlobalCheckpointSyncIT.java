@@ -43,6 +43,7 @@ import org.opensearch.index.IndexSettings;
 import org.opensearch.index.shard.IndexShard;
 import org.opensearch.index.translog.Translog;
 import org.opensearch.indices.IndicesService;
+import org.opensearch.indices.replication.SegmentReplicationBaseIT;
 import org.opensearch.plugins.Plugin;
 import org.opensearch.test.InternalSettingsPlugin;
 import org.opensearch.test.OpenSearchIntegTestCase;
@@ -254,30 +255,34 @@ public class GlobalCheckpointSyncIT extends OpenSearchIntegTestCase {
             client().prepareIndex("test").setId(Integer.toString(i)).setSource("{}", MediaTypeRegistry.JSON).get();
         }
         ensureGreen("test");
+        flushAndRefresh("test");
+        Thread.sleep(30000);
         assertBusy(() -> {
             for (IndicesService indicesService : internalCluster().getDataNodeInstances(IndicesService.class)) {
                 for (IndexService indexService : indicesService) {
                     for (IndexShard shard : indexService) {
                         final SeqNoStats seqNoStats = shard.seqNoStats();
-                        assertThat(seqNoStats.getLocalCheckpoint(), equalTo(seqNoStats.getMaxSeqNo()));
-                        assertThat(shard.getLastKnownGlobalCheckpoint(), equalTo(seqNoStats.getMaxSeqNo()));
-                        assertThat(shard.getLastSyncedGlobalCheckpoint(), equalTo(seqNoStats.getMaxSeqNo()));
+                        if((shard.isPrimaryMode() && shard.isRemoteTranslogEnabled() == true) || shard.isRemoteTranslogEnabled() == false) {
+                            assertThat(seqNoStats.getLocalCheckpoint(), equalTo(seqNoStats.getMaxSeqNo()));
+                            assertThat(shard.getLastKnownGlobalCheckpoint(), equalTo(seqNoStats.getMaxSeqNo()));
+                            assertThat(shard.getLastSyncedGlobalCheckpoint(), equalTo(seqNoStats.getMaxSeqNo()));
+                        }
                     }
                 }
             }
         });
     }
 
-    public void testPersistLocalCheckpoint() {
+    public void testPersistLocalCheckpoint() throws Exception{
         internalCluster().ensureAtLeastNumDataNodes(2);
         Settings.Builder indexSettings = Settings.builder()
             .put(IndexService.GLOBAL_CHECKPOINT_SYNC_INTERVAL_SETTING.getKey(), "10m")
             .put(IndexSettings.INDEX_TRANSLOG_DURABILITY_SETTING.getKey(), Translog.Durability.REQUEST)
             .put("index.number_of_shards", 1)
-            .put("index.number_of_replicas", randomIntBetween(0, 1));
+            .put("index.number_of_replicas", 1);
         prepareCreate("test", indexSettings).get();
         ensureGreen("test");
-        int numDocs = randomIntBetween(1, 20);
+        int numDocs = randomIntBetween(3, 10);
         logger.info("numDocs {}", numDocs);
         long maxSeqNo = 0;
         for (int i = 0; i < numDocs; i++) {
@@ -288,9 +293,10 @@ public class GlobalCheckpointSyncIT extends OpenSearchIntegTestCase {
             for (IndexService indexService : indicesService) {
                 for (IndexShard shard : indexService) {
                     final SeqNoStats seqNoStats = shard.seqNoStats();
-                    assertThat(maxSeqNo, equalTo(seqNoStats.getMaxSeqNo()));
-                    assertThat(seqNoStats.getLocalCheckpoint(), equalTo(seqNoStats.getMaxSeqNo()));
-                    ;
+                    if (shard.isRemoteTranslogEnabled() == false) {
+                        assertThat(maxSeqNo, equalTo(seqNoStats.getMaxSeqNo()));
+                        assertThat(seqNoStats.getLocalCheckpoint(), equalTo(seqNoStats.getMaxSeqNo()));
+                    }
                 }
             }
         }

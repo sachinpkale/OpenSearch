@@ -98,7 +98,7 @@ public class QueryRescorerIT extends OpenSearchIntegTestCase {
 
         int numShards = getNumShards("test").numPrimaries;
         for (int j = 0; j < iters; j++) {
-            SearchResponse searchResponse = client().prepareSearch()
+            SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
                 .setQuery(QueryBuilders.matchAllQuery())
                 .setRescorer(
                     new QueryRescorerBuilder(
@@ -146,7 +146,7 @@ public class QueryRescorerIT extends OpenSearchIntegTestCase {
             .setSource("field1", "quick huge brown", "field2", "the quick lazy huge brown fox jumps over the tree")
             .get();
         refresh();
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(QueryBuilders.matchQuery("field1", "the quick brown").operator(Operator.OR))
             .setRescorer(
                 new QueryRescorerBuilder(matchPhraseQuery("field1", "quick brown").slop(2).boost(4.0f)).setRescoreQueryWeight(2),
@@ -160,7 +160,7 @@ public class QueryRescorerIT extends OpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getHits()[1].getId(), equalTo("3"));
         assertThat(searchResponse.getHits().getHits()[2].getId(), equalTo("2"));
 
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(QueryBuilders.matchQuery("field1", "the quick brown").operator(Operator.OR))
             .setRescorer(new QueryRescorerBuilder(matchPhraseQuery("field1", "the quick brown").slop(3)), 5)
             .get();
@@ -170,7 +170,7 @@ public class QueryRescorerIT extends OpenSearchIntegTestCase {
         assertSecondHit(searchResponse, hasId("2"));
         assertThirdHit(searchResponse, hasId("3"));
 
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(QueryBuilders.matchQuery("field1", "the quick brown").operator(Operator.OR))
             .setRescorer(new QueryRescorerBuilder(matchPhraseQuery("field1", "the quick brown")), 5)
             .get();
@@ -215,7 +215,7 @@ public class QueryRescorerIT extends OpenSearchIntegTestCase {
         client().prepareIndex("test").setId("11").setSource("field1", "2st street boston massachusetts").get();
         client().prepareIndex("test").setId("12").setSource("field1", "3st street boston massachusetts").get();
         client().admin().indices().prepareRefresh("test").get();
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(QueryBuilders.matchQuery("field1", "lexington avenue massachusetts").operator(Operator.OR))
             .setFrom(0)
             .setSize(5)
@@ -232,7 +232,7 @@ public class QueryRescorerIT extends OpenSearchIntegTestCase {
         assertSecondHit(searchResponse, hasId("6"));
         assertThirdHit(searchResponse, hasId("3"));
 
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(QueryBuilders.matchQuery("field1", "lexington avenue massachusetts").operator(Operator.OR))
             .setFrom(0)
             .setSize(5)
@@ -252,7 +252,7 @@ public class QueryRescorerIT extends OpenSearchIntegTestCase {
         assertThirdHit(searchResponse, hasId("3"));
 
         // Make sure non-zero from works:
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(QueryBuilders.matchQuery("field1", "lexington avenue massachusetts").operator(Operator.OR))
             .setFrom(2)
             .setSize(5)
@@ -295,7 +295,7 @@ public class QueryRescorerIT extends OpenSearchIntegTestCase {
         client().prepareIndex("test").setId("2").setSource("field1", "lexington avenue boston massachusetts road").get();
         client().admin().indices().prepareRefresh("test").get();
 
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(QueryBuilders.matchQuery("field1", "massachusetts"))
             .setFrom(0)
             .setSize(5)
@@ -309,7 +309,7 @@ public class QueryRescorerIT extends OpenSearchIntegTestCase {
         assertFourthHit(searchResponse, hasId("2"));
 
         // Now, rescore only top 2 hits w/ proximity:
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(QueryBuilders.matchQuery("field1", "massachusetts"))
             .setFrom(0)
             .setSize(5)
@@ -329,7 +329,7 @@ public class QueryRescorerIT extends OpenSearchIntegTestCase {
         assertFourthHit(searchResponse, hasId("2"));
 
         // Now, rescore only top 3 hits w/ proximity:
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(QueryBuilders.matchQuery("field1", "massachusetts"))
             .setFrom(0)
             .setSize(5)
@@ -375,7 +375,7 @@ public class QueryRescorerIT extends OpenSearchIntegTestCase {
         client().prepareIndex("test").setId("2").setSource("field1", "lexington avenue boston massachusetts road").get();
         client().admin().indices().prepareRefresh("test").get();
 
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(QueryBuilders.matchQuery("field1", "massachusetts").operator(Operator.OR))
             .setFrom(0)
             .setSize(5)
@@ -389,7 +389,7 @@ public class QueryRescorerIT extends OpenSearchIntegTestCase {
         assertFourthHit(searchResponse, hasId("2"));
 
         // Now, penalizing rescore (nothing matches the rescore query):
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(QueryBuilders.matchQuery("field1", "massachusetts").operator(Operator.OR))
             .setFrom(0)
             .setSize(5)
@@ -458,9 +458,8 @@ public class QueryRescorerIT extends OpenSearchIntegTestCase {
             int rescoreWindow = between(1, 3) * resultSize;
             String intToEnglish = English.intToEnglish(between(0, numDocs - 1));
             String query = intToEnglish.split(" ")[0];
-            SearchResponse rescored = client().prepareSearch()
+            SearchRequestBuilder rescoredRequestBuilder =  client().prepareSearch()
                 .setSearchType(SearchType.QUERY_THEN_FETCH)
-                .setPreference("test") // ensure we hit the same shards for tie-breaking
                 .setQuery(QueryBuilders.matchQuery("field1", query).operator(Operator.OR))
                 .setFrom(0)
                 .setSize(resultSize)
@@ -469,23 +468,33 @@ public class QueryRescorerIT extends OpenSearchIntegTestCase {
                         // no weight - so we basically use the same score as the actual query
                         .setRescoreQueryWeight(0.0f),
                     rescoreWindow
-                )
-                .get();
+                );
+            if (isRemoteStoreEnabled()) {
+                rescoredRequestBuilder.setPreference("_primary");
+            } else {
+                rescoredRequestBuilder.setPreference("test"); // ensure we hit the same shards for tie-breaking
+            }
+            SearchResponse rescored = rescoredRequestBuilder.get();
 
-            SearchResponse plain = client().prepareSearch()
+            SearchRequestBuilder plainRequestBuilder = client().prepareSearch()
                 .setSearchType(SearchType.QUERY_THEN_FETCH)
-                .setPreference("test") // ensure we hit the same shards for tie-breaking
                 .setQuery(QueryBuilders.matchQuery("field1", query).operator(Operator.OR))
                 .setFrom(0)
-                .setSize(resultSize)
-                .get();
+                .setSize(resultSize);
+
+            if (isRemoteStoreEnabled()) {
+                plainRequestBuilder.setPreference("_primary");
+            } else {
+                plainRequestBuilder.setPreference("test"); // ensure we hit the same shards for tie-breaking
+            }
+
+            SearchResponse plain = plainRequestBuilder.get();
 
             // check equivalence
             assertEquivalent(query, plain, rescored);
 
-            rescored = client().prepareSearch()
+            rescoredRequestBuilder = client().prepareSearch()
                 .setSearchType(SearchType.QUERY_THEN_FETCH)
-                .setPreference("test") // ensure we hit the same shards for tie-breaking
                 .setQuery(QueryBuilders.matchQuery("field1", query).operator(Operator.OR))
                 .setFrom(0)
                 .setSize(resultSize)
@@ -494,8 +503,13 @@ public class QueryRescorerIT extends OpenSearchIntegTestCase {
                         1.0f
                     ).setRescoreQueryWeight(1.0f),
                     rescoreWindow
-                )
-                .get();
+                );
+            if (isRemoteStoreEnabled()) {
+                rescoredRequestBuilder.setPreference("_primary");
+            } else {
+                rescoredRequestBuilder.setPreference("test"); // ensure we hit the same shards for tie-breaking
+            }
+            rescored = rescoredRequestBuilder.get();
             // check equivalence
             assertEquivalent(query, plain, rescored);
         }
@@ -524,7 +538,7 @@ public class QueryRescorerIT extends OpenSearchIntegTestCase {
         refresh();
 
         {
-            SearchResponse searchResponse = client().prepareSearch()
+            SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
                 .setSearchType(SearchType.DFS_QUERY_THEN_FETCH)
                 .setQuery(QueryBuilders.matchQuery("field1", "the quick brown").operator(Operator.OR))
                 .setRescorer(
@@ -571,7 +585,7 @@ public class QueryRescorerIT extends OpenSearchIntegTestCase {
                 innerRescoreQuery.setScoreMode(QueryRescoreMode.fromString(scoreModes[innerMode]));
             }
 
-            SearchResponse searchResponse = client().prepareSearch()
+            SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
                 .setSearchType(SearchType.DFS_QUERY_THEN_FETCH)
                 .setQuery(QueryBuilders.matchQuery("field1", "the quick brown").operator(Operator.OR))
                 .setRescorer(innerRescoreQuery, 5)
@@ -595,7 +609,7 @@ public class QueryRescorerIT extends OpenSearchIntegTestCase {
                     outerRescoreQuery.setScoreMode(QueryRescoreMode.fromString(scoreModes[outerMode]));
                 }
 
-                searchResponse = client().prepareSearch()
+                searchResponse = client().prepareSearch().setPreference("_primary")
                     .setSearchType(SearchType.DFS_QUERY_THEN_FETCH)
                     .setQuery(QueryBuilders.matchQuery("field1", "the quick brown").operator(Operator.OR))
                     .addRescorer(innerRescoreQuery, 5)
@@ -650,7 +664,7 @@ public class QueryRescorerIT extends OpenSearchIntegTestCase {
                     rescoreQuery.setScoreMode(QueryRescoreMode.fromString(scoreMode));
                 }
 
-                SearchResponse rescored = client().prepareSearch()
+                SearchResponse rescored = client().prepareSearch().setPreference("_primary")
                     .setPreference("test") // ensure we hit the same shards for tie-breaking
                     .setFrom(0)
                     .setSize(10)
@@ -719,7 +733,7 @@ public class QueryRescorerIT extends OpenSearchIntegTestCase {
         ).setScoreMode(QueryRescoreMode.Total);
 
         // First set the rescore window large enough that both rescores take effect
-        SearchRequestBuilder request = client().prepareSearch();
+        SearchRequestBuilder request = client().prepareSearch().setPreference("_primary");
         request.addRescorer(eightIsGreat, numDocs).addRescorer(sevenIsBetter, numDocs);
         SearchResponse response = request.get();
         assertFirstHit(response, hasId("7"));
@@ -794,7 +808,7 @@ public class QueryRescorerIT extends OpenSearchIntegTestCase {
         }
         refresh();
 
-        SearchRequestBuilder request = client().prepareSearch();
+        SearchRequestBuilder request = client().prepareSearch().setPreference("_primary");
         request.setQuery(QueryBuilders.termQuery("text", "hello"));
         request.setFrom(1);
         request.setSize(4);
@@ -812,7 +826,7 @@ public class QueryRescorerIT extends OpenSearchIntegTestCase {
 
         Exception exc = expectThrows(
             Exception.class,
-            () -> client().prepareSearch()
+            () -> client().prepareSearch().setPreference("_primary")
                 .addSort(SortBuilders.fieldSort("number"))
                 .setTrackScores(true)
                 .addRescorer(new QueryRescorerBuilder(matchAllQuery()), 50)
@@ -823,7 +837,7 @@ public class QueryRescorerIT extends OpenSearchIntegTestCase {
 
         exc = expectThrows(
             Exception.class,
-            () -> client().prepareSearch()
+            () -> client().prepareSearch().setPreference("_primary")
                 .addSort(SortBuilders.fieldSort("number"))
                 .addSort(SortBuilders.scoreSort())
                 .setTrackScores(true)
@@ -833,7 +847,7 @@ public class QueryRescorerIT extends OpenSearchIntegTestCase {
         assertNotNull(exc.getCause());
         assertThat(exc.getCause().getMessage(), containsString("Cannot use [sort] option in conjunction with [rescore]."));
 
-        SearchResponse resp = client().prepareSearch()
+        SearchResponse resp = client().prepareSearch().setPreference("_primary")
             .addSort(SortBuilders.scoreSort())
             .setTrackScores(true)
             .addRescorer(new QueryRescorerBuilder(matchAllQuery()).setRescoreQueryWeight(100.0f), 50)

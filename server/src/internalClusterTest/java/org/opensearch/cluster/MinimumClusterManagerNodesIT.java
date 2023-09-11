@@ -140,7 +140,7 @@ public class MinimumClusterManagerNodesIT extends OpenSearchIntegTestCase {
         logger.info("--> verify we get the data back");
         for (int i = 0; i < 10; i++) {
             assertThat(
-                client().prepareSearch()
+                client().prepareSearch().setPreference("_primary")
                     .setSize(0)
                     .setQuery(QueryBuilders.matchAllQuery())
                     .execute()
@@ -196,7 +196,7 @@ public class MinimumClusterManagerNodesIT extends OpenSearchIntegTestCase {
 
         logger.info("--> verify we get the data back after cluster reform");
         for (int i = 0; i < 10; i++) {
-            assertHitCount(client().prepareSearch().setSize(0).setQuery(QueryBuilders.matchAllQuery()).execute().actionGet(), 100);
+            assertHitCount(client().prepareSearch().setPreference("_primary").setSize(0).setQuery(QueryBuilders.matchAllQuery()).execute().actionGet(), 100);
         }
 
         logger.info("--> clearing voting config exclusions");
@@ -245,7 +245,7 @@ public class MinimumClusterManagerNodesIT extends OpenSearchIntegTestCase {
 
         logger.info("--> verify we the data back");
         for (int i = 0; i < 10; i++) {
-            assertHitCount(client().prepareSearch().setSize(0).setQuery(QueryBuilders.matchAllQuery()).execute().actionGet(), 100);
+            assertHitCount(client().prepareSearch().setPreference("_primary").setSize(0).setQuery(QueryBuilders.matchAllQuery()).execute().actionGet(), 100);
         }
     }
 
@@ -306,7 +306,7 @@ public class MinimumClusterManagerNodesIT extends OpenSearchIntegTestCase {
         refresh();
         logger.info("--> verify we get the data back");
         for (int i = 0; i < 10; i++) {
-            assertHitCount(client().prepareSearch().setSize(0).setQuery(QueryBuilders.matchAllQuery()).execute().actionGet(), 100);
+            assertHitCount(client().prepareSearch().setPreference("_primary").setSize(0).setQuery(QueryBuilders.matchAllQuery()).execute().actionGet(), 100);
         }
 
         List<String> nonClusterManagerNodes = new ArrayList<>(
@@ -338,7 +338,7 @@ public class MinimumClusterManagerNodesIT extends OpenSearchIntegTestCase {
 
         logger.info("--> verify we the data back");
         for (int i = 0; i < 10; i++) {
-            assertHitCount(client().prepareSearch().setSize(0).setQuery(QueryBuilders.matchAllQuery()).execute().actionGet(), 100);
+            assertHitCount(client().prepareSearch().setPreference("_primary").setSize(0).setQuery(QueryBuilders.matchAllQuery()).execute().actionGet(), 100);
         }
     }
 

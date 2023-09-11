@@ -35,11 +35,13 @@ package org.opensearch.search.basic;
 import org.opensearch.OpenSearchException;
 import org.opensearch.action.admin.cluster.health.ClusterHealthResponse;
 import org.opensearch.action.admin.indices.refresh.RefreshResponse;
+import org.opensearch.action.admin.indices.settings.get.GetSettingsRequest;
 import org.opensearch.action.search.SearchPhaseExecutionException;
 import org.opensearch.action.search.SearchResponse;
 import org.opensearch.client.Client;
 import org.opensearch.client.Requests;
 import org.opensearch.cluster.health.ClusterHealthStatus;
+import org.opensearch.cluster.metadata.IndexMetadata;
 import org.opensearch.common.Priority;
 import org.opensearch.core.xcontent.XContentBuilder;
 import org.opensearch.index.query.MatchQueryBuilder;
@@ -47,6 +49,7 @@ import org.opensearch.search.builder.SearchSourceBuilder;
 import org.opensearch.test.OpenSearchIntegTestCase;
 
 import java.io.IOException;
+import java.util.Objects;
 
 import static org.opensearch.client.Requests.clusterHealthRequest;
 import static org.opensearch.client.Requests.refreshRequest;
@@ -113,8 +116,19 @@ public class TransportSearchFailuresIT extends OpenSearchIntegTestCase {
         assertThat(clusterHealth.getActiveShards(), equalTo(test.totalNumShards));
 
         refreshResponse = client().admin().indices().refresh(refreshRequest("test")).actionGet();
-        assertThat(refreshResponse.getTotalShards(), equalTo(test.totalNumShards));
-        assertThat(refreshResponse.getSuccessfulShards(), equalTo(test.totalNumShards));
+
+        GetSettingsRequest getSettingsRequest = new GetSettingsRequest().indices("test");
+        String remoteStoreEnabledStr = client().admin().indices().getSettings(getSettingsRequest).actionGet().getSetting("test", IndexMetadata.SETTING_REMOTE_STORE_ENABLED);
+
+        if(Objects.equals(remoteStoreEnabledStr, "true")) {
+            assertThat(refreshResponse.getTotalShards(), equalTo(test.numPrimaries));
+            assertThat(refreshResponse.getSuccessfulShards(), equalTo(test.numPrimaries));
+        }
+        else
+        {
+            assertThat(refreshResponse.getTotalShards(), equalTo(test.totalNumShards));
+            assertThat(refreshResponse.getSuccessfulShards(), equalTo(test.totalNumShards));
+        }
         assertThat(refreshResponse.getFailedShards(), equalTo(0));
 
         for (int i = 0; i < 5; i++) {

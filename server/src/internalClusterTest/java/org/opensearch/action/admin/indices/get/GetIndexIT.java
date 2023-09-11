@@ -32,6 +32,7 @@
 
 package org.opensearch.action.admin.indices.get;
 
+import org.junit.Before;
 import org.opensearch.action.admin.indices.alias.Alias;
 import org.opensearch.action.admin.indices.get.GetIndexRequest.Feature;
 import org.opensearch.action.support.IndicesOptions;
@@ -58,10 +59,10 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 
-@OpenSearchIntegTestCase.SuiteScopeTestCase
+
 public class GetIndexIT extends OpenSearchIntegTestCase {
-    @Override
-    protected void setupSuiteScopeCluster() throws Exception {
+    @Before
+    protected void setupTest() throws Exception {
         assertAcked(prepareCreate("idx").addAlias(new Alias("alias_idx")).setSettings(Settings.builder().put("number_of_shards", 1)).get());
         ensureSearchable("idx");
         createIndex("empty_idx");

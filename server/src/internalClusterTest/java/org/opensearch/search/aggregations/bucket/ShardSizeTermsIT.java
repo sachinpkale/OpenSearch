@@ -50,7 +50,7 @@ public class ShardSizeTermsIT extends ShardSizeTestCase {
 
         indexData();
 
-        SearchResponse response = client().prepareSearch("idx")
+        SearchResponse response = client().prepareSearch("idx").setPreference("_primary")
             .setQuery(matchAllQuery())
             .addAggregation(
                 terms("keys").field("key").size(3).collectMode(randomFrom(SubAggCollectionMode.values())).order(BucketOrder.count(false))
@@ -74,7 +74,7 @@ public class ShardSizeTermsIT extends ShardSizeTestCase {
 
         indexData();
 
-        SearchResponse response = client().prepareSearch("idx")
+        SearchResponse response = client().prepareSearch("idx").setPreference("_primary")
             .setQuery(matchAllQuery())
             .addAggregation(
                 terms("keys").field("key")
@@ -103,7 +103,7 @@ public class ShardSizeTermsIT extends ShardSizeTestCase {
 
         indexData();
 
-        SearchResponse response = client().prepareSearch("idx")
+        SearchResponse response = client().prepareSearch("idx").setPreference("_primary")
             .setQuery(matchAllQuery())
             .addAggregation(
                 terms("keys").field("key")
@@ -132,7 +132,7 @@ public class ShardSizeTermsIT extends ShardSizeTestCase {
 
         indexData();
 
-        SearchResponse response = client().prepareSearch("idx")
+        SearchResponse response = client().prepareSearch("idx").setPreference("_primary")
             .setRouting(routing1)
             .setQuery(matchAllQuery())
             .addAggregation(
@@ -161,7 +161,7 @@ public class ShardSizeTermsIT extends ShardSizeTestCase {
 
         indexData();
 
-        SearchResponse response = client().prepareSearch("idx")
+        SearchResponse response = client().prepareSearch("idx").setPreference("_primary")
             .setQuery(matchAllQuery())
             .addAggregation(
                 terms("keys").field("key").size(3).collectMode(randomFrom(SubAggCollectionMode.values())).order(BucketOrder.key(true))
@@ -185,7 +185,7 @@ public class ShardSizeTermsIT extends ShardSizeTestCase {
 
         indexData();
 
-        SearchResponse response = client().prepareSearch("idx")
+        SearchResponse response = client().prepareSearch("idx").setPreference("_primary")
             .setQuery(matchAllQuery())
             .addAggregation(
                 terms("keys").field("key").size(3).collectMode(randomFrom(SubAggCollectionMode.values())).order(BucketOrder.count(false))
@@ -209,7 +209,7 @@ public class ShardSizeTermsIT extends ShardSizeTestCase {
 
         indexData();
 
-        SearchResponse response = client().prepareSearch("idx")
+        SearchResponse response = client().prepareSearch("idx").setPreference("_primary")
             .setQuery(matchAllQuery())
             .addAggregation(
                 terms("keys").field("key")
@@ -237,7 +237,7 @@ public class ShardSizeTermsIT extends ShardSizeTestCase {
 
         indexData();
 
-        SearchResponse response = client().prepareSearch("idx")
+        SearchResponse response = client().prepareSearch("idx").setPreference("_primary")
             .setQuery(matchAllQuery())
             .addAggregation(
                 terms("keys").field("key")
@@ -266,7 +266,7 @@ public class ShardSizeTermsIT extends ShardSizeTestCase {
 
         indexData();
 
-        SearchResponse response = client().prepareSearch("idx")
+        SearchResponse response = client().prepareSearch("idx").setPreference("_primary")
             .setRouting(routing1)
             .setQuery(matchAllQuery())
             .addAggregation(
@@ -295,7 +295,7 @@ public class ShardSizeTermsIT extends ShardSizeTestCase {
 
         indexData();
 
-        SearchResponse response = client().prepareSearch("idx")
+        SearchResponse response = client().prepareSearch("idx").setPreference("_primary")
             .setQuery(matchAllQuery())
             .addAggregation(
                 terms("keys").field("key").size(3).collectMode(randomFrom(SubAggCollectionMode.values())).order(BucketOrder.key(true))
@@ -319,7 +319,7 @@ public class ShardSizeTermsIT extends ShardSizeTestCase {
 
         indexData();
 
-        SearchResponse response = client().prepareSearch("idx")
+        SearchResponse response = client().prepareSearch("idx").setPreference("_primary")
             .setQuery(matchAllQuery())
             .addAggregation(
                 terms("keys").field("key").size(3).collectMode(randomFrom(SubAggCollectionMode.values())).order(BucketOrder.count(false))
@@ -343,7 +343,7 @@ public class ShardSizeTermsIT extends ShardSizeTestCase {
 
         indexData();
 
-        SearchResponse response = client().prepareSearch("idx")
+        SearchResponse response = client().prepareSearch("idx").setPreference("_primary")
             .setQuery(matchAllQuery())
             .addAggregation(
                 terms("keys").field("key")
@@ -371,7 +371,7 @@ public class ShardSizeTermsIT extends ShardSizeTestCase {
 
         indexData();
 
-        SearchResponse response = client().prepareSearch("idx")
+        SearchResponse response = client().prepareSearch("idx").setPreference("_primary")
             .setQuery(matchAllQuery())
             .addAggregation(
                 terms("keys").field("key")
@@ -399,7 +399,7 @@ public class ShardSizeTermsIT extends ShardSizeTestCase {
 
         indexData();
 
-        SearchResponse response = client().prepareSearch("idx")
+        SearchResponse response = client().prepareSearch("idx").setPreference("_primary")
             .setRouting(routing1)
             .setQuery(matchAllQuery())
             .addAggregation(
@@ -428,7 +428,7 @@ public class ShardSizeTermsIT extends ShardSizeTestCase {
 
         indexData();
 
-        SearchResponse response = client().prepareSearch("idx")
+        SearchResponse response = client().prepareSearch("idx").setPreference("_primary")
             .setQuery(matchAllQuery())
             .addAggregation(
                 terms("keys").field("key").size(3).collectMode(randomFrom(SubAggCollectionMode.values())).order(BucketOrder.key(true))

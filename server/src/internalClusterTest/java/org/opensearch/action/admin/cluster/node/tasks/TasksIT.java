@@ -43,6 +43,7 @@ import org.opensearch.action.admin.cluster.node.tasks.get.GetTaskResponse;
 import org.opensearch.action.admin.cluster.node.tasks.list.ListTasksAction;
 import org.opensearch.action.admin.cluster.node.tasks.list.ListTasksResponse;
 import org.opensearch.action.admin.indices.refresh.RefreshAction;
+import org.opensearch.action.admin.indices.settings.get.GetSettingsRequest;
 import org.opensearch.action.admin.indices.upgrade.post.UpgradeAction;
 import org.opensearch.action.admin.indices.validate.query.ValidateQueryAction;
 import org.opensearch.action.bulk.BulkAction;
@@ -54,6 +55,7 @@ import org.opensearch.action.search.SearchTransportService;
 import org.opensearch.action.support.WriteRequest;
 import org.opensearch.action.support.replication.ReplicationResponse;
 import org.opensearch.action.support.replication.TransportReplicationActionTests;
+import org.opensearch.cluster.metadata.IndexMetadata;
 import org.opensearch.common.action.ActionFuture;
 import org.opensearch.common.collect.Tuple;
 import org.opensearch.common.regex.Regex;
@@ -77,6 +79,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
@@ -109,7 +112,7 @@ import static org.hamcrest.Matchers.startsWith;
  * <p>
  * We need at least 2 nodes so we have a cluster-manager node a non-cluster-manager node
  */
-@OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.SUITE, minNumDataNodes = 2)
+@OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST, minNumDataNodes = 2)
 public class TasksIT extends AbstractTasksIT {
 
     public void testTaskCounts() {
@@ -249,7 +252,15 @@ public class TasksIT extends AbstractTasksIT {
         }
 
         // we will have as many [s][p] and [s][r] tasks as we have primary and replica shards
-        assertEquals(numberOfShards.totalNumShards, numberOfEvents(RefreshAction.NAME + "[s][*]", Tuple::v1));
+        GetSettingsRequest getSettingsRequest = new GetSettingsRequest().indices("test");
+        String remoteStoreEnabledStr = client().admin().indices().getSettings(getSettingsRequest).actionGet().getSetting("test", IndexMetadata.SETTING_REMOTE_STORE_ENABLED);
+        logger.warn("IndexSettings (" + remoteStoreEnabledStr + ")");
+        if(Objects.equals(remoteStoreEnabledStr, "true")) {
+            assertEquals(numberOfShards.numPrimaries, numberOfEvents(RefreshAction.NAME + "[s][*]", Tuple::v1));
+        }
+        else {
+            assertEquals(numberOfShards.totalNumShards, numberOfEvents(RefreshAction.NAME + "[s][*]", Tuple::v1));
+        }
 
         // we the [s][p] and [s][r] tasks should have a corresponding [s] task on the same node as a parent
         List<TaskInfo> spEvents = findEvents(RefreshAction.NAME + "[s][*]", Tuple::v1);
@@ -329,7 +340,14 @@ public class TasksIT extends AbstractTasksIT {
 
         // we should get as many [s][r] operations as we have replica shards
         // they all should have the same shard task as a parent
-        assertEquals(getNumShards("test").numReplicas, numberOfEvents(BulkAction.NAME + "[s][r]", Tuple::v1));
+        GetSettingsRequest getSettingsRequest = new GetSettingsRequest().indices("test");
+        String remoteStoreEnabledStr = client().admin().indices().getSettings(getSettingsRequest).actionGet().getSetting("test", IndexMetadata.SETTING_REMOTE_STORE_ENABLED);
+        logger.warn("IndexSettings (" + remoteStoreEnabledStr + ")");
+        if(Objects.equals(remoteStoreEnabledStr, "true")) {
+                assertEquals(0, numberOfEvents(BulkAction.NAME + "[s][r]", Tuple::v1));
+        } else {
+            assertEquals(getNumShards("test").numReplicas, numberOfEvents(BulkAction.NAME + "[s][r]", Tuple::v1));
+        }
         assertParentTask(findEvents(BulkAction.NAME + "[s][r]", Tuple::v1), shardTask);
     }
 

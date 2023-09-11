@@ -55,6 +55,7 @@ import org.opensearch.threadpool.ThreadPool;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Random;
 
 import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertAcked;
 import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertRequestBuilderThrows;
@@ -69,11 +70,14 @@ public class RepositoriesIT extends AbstractSnapshotIntegTestCase {
 
         Path location = randomRepoPath();
 
-        createRepository("test-repo-1", "fs", location);
+        String repo1 = "test" + randomAlphaOfLength(10);
+        String repo2 = "test" + randomAlphaOfLength(10);
+
+        createRepository(repo1, "fs", location);
 
         logger.info("--> verify the repository");
         int numberOfFiles = FileSystemUtils.files(location).length;
-        VerifyRepositoryResponse verifyRepositoryResponse = client.admin().cluster().prepareVerifyRepository("test-repo-1").get();
+        VerifyRepositoryResponse verifyRepositoryResponse = client.admin().cluster().prepareVerifyRepository(repo1).get();
         assertThat(verifyRepositoryResponse.getNodes().size(), equalTo(cluster().numDataAndClusterManagerNodes()));
 
         logger.info("--> verify that we didn't leave any files as a result of verification");
@@ -84,38 +88,38 @@ public class RepositoriesIT extends AbstractSnapshotIntegTestCase {
         Metadata metadata = clusterStateResponse.getState().getMetadata();
         RepositoriesMetadata repositoriesMetadata = metadata.custom(RepositoriesMetadata.TYPE);
         assertThat(repositoriesMetadata, notNullValue());
-        assertThat(repositoriesMetadata.repository("test-repo-1"), notNullValue());
-        assertThat(repositoriesMetadata.repository("test-repo-1").type(), equalTo("fs"));
+        assertThat(repositoriesMetadata.repository(repo1), notNullValue());
+        assertThat(repositoriesMetadata.repository(repo1).type(), equalTo("fs"));
 
         logger.info("-->  creating another repository");
-        createRepository("test-repo-2", "fs");
+        createRepository(repo2, "fs");
 
         logger.info("--> check that both repositories are in cluster state");
         clusterStateResponse = client.admin().cluster().prepareState().clear().setMetadata(true).get();
         metadata = clusterStateResponse.getState().getMetadata();
         repositoriesMetadata = metadata.custom(RepositoriesMetadata.TYPE);
         assertThat(repositoriesMetadata, notNullValue());
-        assertThat(repositoriesMetadata.repositories().size(), equalTo(2));
-        assertThat(repositoriesMetadata.repository("test-repo-1"), notNullValue());
-        assertThat(repositoriesMetadata.repository("test-repo-1").type(), equalTo("fs"));
-        assertThat(repositoriesMetadata.repository("test-repo-2"), notNullValue());
-        assertThat(repositoriesMetadata.repository("test-repo-2").type(), equalTo("fs"));
+        assertThat(repositoriesMetadata.repositories().size(), equalTo(4));
+        assertThat(repositoriesMetadata.repository(repo1), notNullValue());
+        assertThat(repositoriesMetadata.repository(repo1).type(), equalTo("fs"));
+        assertThat(repositoriesMetadata.repository(repo2), notNullValue());
+        assertThat(repositoriesMetadata.repository(repo2).type(), equalTo("fs"));
 
         logger.info("--> check that both repositories can be retrieved by getRepositories query");
         GetRepositoriesResponse repositoriesResponse = client.admin()
             .cluster()
-            .prepareGetRepositories(randomFrom("_all", "*", "test-repo-*"))
+            .prepareGetRepositories(randomFrom("_all", "*", "test*"))
             .get();
-        assertThat(repositoriesResponse.repositories().size(), equalTo(2));
-        assertThat(findRepository(repositoriesResponse.repositories(), "test-repo-1"), notNullValue());
-        assertThat(findRepository(repositoriesResponse.repositories(), "test-repo-2"), notNullValue());
+        assertThat(repositoriesResponse.repositories().size(), equalTo(4));
+        assertThat(findRepository(repositoriesResponse.repositories(), repo1), notNullValue());
+        assertThat(findRepository(repositoriesResponse.repositories(), repo2), notNullValue());
 
         logger.info("--> check that trying to create a repository with the same settings repeatedly does not update cluster state");
         String beforeStateUuid = clusterStateResponse.getState().stateUUID();
         assertThat(
             client.admin()
                 .cluster()
-                .preparePutRepository("test-repo-1")
+                .preparePutRepository(repo1)
                 .setType("fs")
                 .setSettings(Settings.builder().put("location", location))
                 .get()
@@ -125,15 +129,15 @@ public class RepositoriesIT extends AbstractSnapshotIntegTestCase {
         assertEquals(beforeStateUuid, client.admin().cluster().prepareState().clear().get().getState().stateUUID());
 
         logger.info("--> delete repository test-repo-1");
-        client.admin().cluster().prepareDeleteRepository("test-repo-1").get();
+        client.admin().cluster().prepareDeleteRepository(repo1).get();
         repositoriesResponse = client.admin().cluster().prepareGetRepositories().get();
-        assertThat(repositoriesResponse.repositories().size(), equalTo(1));
-        assertThat(findRepository(repositoriesResponse.repositories(), "test-repo-2"), notNullValue());
+        assertThat(repositoriesResponse.repositories().size(), equalTo(3));
+        assertThat(findRepository(repositoriesResponse.repositories(), repo2), notNullValue());
 
         logger.info("--> delete repository test-repo-2");
-        client.admin().cluster().prepareDeleteRepository("test-repo-2").get();
+        client.admin().cluster().prepareDeleteRepository(repo2).get();
         repositoriesResponse = client.admin().cluster().prepareGetRepositories().get();
-        assertThat(repositoriesResponse.repositories().size(), equalTo(0));
+        assertThat(repositoriesResponse.repositories().size(), equalTo(2));
     }
 
     public void testResidualStaleIndicesAreDeletedByConsecutiveDelete() throws Exception {

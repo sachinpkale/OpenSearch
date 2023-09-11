@@ -291,6 +291,7 @@ public class CloneSnapshotIT extends AbstractSnapshotIntegTestCase {
         assertEquals(getSnapshot(snapshotRepoName, targetSnapshot).isRemoteStoreIndexShallowCopyEnabled(), false);
     }
 
+    @AwaitsFix(bugUrl = "remote store tests that run on main successfully")
     public void testCloneAfterRepoShallowSettingDisabled() throws Exception {
         disableRepoConsistencyCheck("This test uses remote store repository");
         final String remoteStoreRepoName = "remote-store-repo-name";

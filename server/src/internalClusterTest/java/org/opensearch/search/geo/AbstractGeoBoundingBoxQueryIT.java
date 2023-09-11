@@ -125,7 +125,7 @@ abstract class AbstractGeoBoundingBoxQueryIT extends OpenSearchIntegTestCase {
 
         client().admin().indices().prepareRefresh().get();
 
-        SearchResponse searchResponse = client().prepareSearch() // from NY
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary") // from NY
             .setQuery(geoBoundingBoxQuery("location").setCorners(40.73, -74.1, 40.717, -73.99))
             .get();
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(2L));
@@ -134,7 +134,7 @@ abstract class AbstractGeoBoundingBoxQueryIT extends OpenSearchIntegTestCase {
             assertThat(hit.getId(), anyOf(equalTo("1"), equalTo("3"), equalTo("5")));
         }
 
-        searchResponse = client().prepareSearch() // from NY
+        searchResponse = client().prepareSearch().setPreference("_primary") // from NY
             .setQuery(geoBoundingBoxQuery("location").setCorners(40.73, -74.1, 40.717, -73.99).type("indexed"))
             .get();
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(2L));
@@ -175,14 +175,14 @@ abstract class AbstractGeoBoundingBoxQueryIT extends OpenSearchIntegTestCase {
             .setRefreshPolicy(IMMEDIATE)
             .get();
 
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(
                 boolQuery().must(termQuery("userid", 880))
                     .filter(geoBoundingBoxQuery("location").setCorners(74.579421999999994, 143.5, -66.668903999999998, 113.96875))
             )
             .get();
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(1L));
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(
                 boolQuery().must(termQuery("userid", 880))
                     .filter(
@@ -193,14 +193,14 @@ abstract class AbstractGeoBoundingBoxQueryIT extends OpenSearchIntegTestCase {
             .get();
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(1L));
 
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(
                 boolQuery().must(termQuery("userid", 534))
                     .filter(geoBoundingBoxQuery("location").setCorners(74.579421999999994, 143.5, -66.668903999999998, 113.96875))
             )
             .get();
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(1L));
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(
                 boolQuery().must(termQuery("userid", 534))
                     .filter(
@@ -243,11 +243,11 @@ abstract class AbstractGeoBoundingBoxQueryIT extends OpenSearchIntegTestCase {
             .setRefreshPolicy(IMMEDIATE)
             .get();
 
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(geoBoundingBoxQuery("location").setValidationMethod(GeoValidationMethod.COERCE).setCorners(50, -180, -50, 180))
             .get();
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(1L));
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(
                 geoBoundingBoxQuery("location").setValidationMethod(GeoValidationMethod.COERCE)
                     .setCorners(50, -180, -50, 180)
@@ -255,11 +255,11 @@ abstract class AbstractGeoBoundingBoxQueryIT extends OpenSearchIntegTestCase {
             )
             .get();
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(1L));
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(geoBoundingBoxQuery("location").setValidationMethod(GeoValidationMethod.COERCE).setCorners(90, -180, -90, 180))
             .get();
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(2L));
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(
                 geoBoundingBoxQuery("location").setValidationMethod(GeoValidationMethod.COERCE)
                     .setCorners(90, -180, -90, 180)
@@ -268,21 +268,21 @@ abstract class AbstractGeoBoundingBoxQueryIT extends OpenSearchIntegTestCase {
             .get();
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(2L));
 
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(geoBoundingBoxQuery("location").setValidationMethod(GeoValidationMethod.COERCE).setCorners(50, 0, -50, 360))
             .get();
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(1L));
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(
                 geoBoundingBoxQuery("location").setValidationMethod(GeoValidationMethod.COERCE).setCorners(50, 0, -50, 360).type("indexed")
             )
             .get();
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(1L));
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(geoBoundingBoxQuery("location").setValidationMethod(GeoValidationMethod.COERCE).setCorners(90, 0, -90, 360))
             .get();
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(2L));
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(
                 geoBoundingBoxQuery("location").setValidationMethod(GeoValidationMethod.COERCE).setCorners(90, 0, -90, 360).type("indexed")
             )

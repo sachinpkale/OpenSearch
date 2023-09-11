@@ -135,7 +135,7 @@ public class HotThreadsIT extends OpenSearchIntegTestCase {
             ensureSearchable();
             while (latch.getCount() > 0) {
                 assertHitCount(
-                    client().prepareSearch()
+                    client().prepareSearch().setPreference("_primary")
                         .setQuery(matchAllQuery())
                         .setPostFilter(
                             boolQuery().must(matchAllQuery())

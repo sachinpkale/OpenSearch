@@ -31,6 +31,7 @@
 
 package org.opensearch.search.aggregations.bucket;
 
+import org.junit.Before;
 import org.opensearch.OpenSearchException;
 import org.opensearch.action.index.IndexRequestBuilder;
 import org.opensearch.action.search.SearchPhaseExecutionException;
@@ -84,7 +85,7 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.core.IsNull.notNullValue;
 
-@OpenSearchIntegTestCase.SuiteScopeTestCase
+
 public class HistogramIT extends OpenSearchIntegTestCase {
 
     private static final String SINGLE_VALUED_FIELD_NAME = "l_value";
@@ -135,8 +136,8 @@ public class HistogramIT extends OpenSearchIntegTestCase {
         }
     }
 
-    @Override
-    public void setupSuiteScopeCluster() throws Exception {
+    @Before
+    public void setupTest() throws Exception {
         createIndex("idx");
         createIndex("idx_unmapped");
 

@@ -579,7 +579,7 @@ public abstract class AbstractClient implements Client {
 
     @Override
     public GetRequestBuilder prepareGet(String index, String id) {
-        return prepareGet().setIndex(index).setId(id);
+        return prepareGet().setIndex(index).setId(id).setPreference("_primary");
     }
 
     @Override
@@ -609,7 +609,7 @@ public abstract class AbstractClient implements Client {
 
     @Override
     public SearchRequestBuilder prepareSearch(String... indices) {
-        return new SearchRequestBuilder(this, SearchAction.INSTANCE).setIndices(indices);
+        return new SearchRequestBuilder(this, SearchAction.INSTANCE).setIndices(indices).setPreference("_primary");
     }
 
     @Override
@@ -664,6 +664,7 @@ public abstract class AbstractClient implements Client {
 
     @Override
     public ActionFuture<TermVectorsResponse> termVectors(final TermVectorsRequest request) {
+        request.preference("_primary");
         return execute(TermVectorsAction.INSTANCE, request);
     }
 
@@ -674,12 +675,12 @@ public abstract class AbstractClient implements Client {
 
     @Override
     public TermVectorsRequestBuilder prepareTermVectors() {
-        return new TermVectorsRequestBuilder(this, TermVectorsAction.INSTANCE);
+        return new TermVectorsRequestBuilder(this, TermVectorsAction.INSTANCE).setPreference("_primary");
     }
 
     @Override
     public TermVectorsRequestBuilder prepareTermVectors(String index, String id) {
-        return new TermVectorsRequestBuilder(this, TermVectorsAction.INSTANCE, index, id);
+        return new TermVectorsRequestBuilder(this, TermVectorsAction.INSTANCE, index, id).setPreference("_primary");
     }
 
     @Override

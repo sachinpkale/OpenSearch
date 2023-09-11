@@ -386,7 +386,7 @@ public class RecoveryWhileUnderLoadIT extends OpenSearchIntegTestCase {
         SearchResponse[] iterationResults = new SearchResponse[iterations];
         boolean error = false;
         for (int i = 0; i < iterations; i++) {
-            SearchResponse searchResponse = client().prepareSearch()
+            SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
                 .setSize((int) numberOfDocs)
                 .setQuery(matchAllQuery())
                 .setTrackTotalHits(true)
@@ -435,7 +435,7 @@ public class RecoveryWhileUnderLoadIT extends OpenSearchIntegTestCase {
             assertBusy(() -> {
                 boolean errorOccurred = false;
                 for (int i = 0; i < iterations; i++) {
-                    SearchResponse searchResponse = client().prepareSearch()
+                    SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
                         .setTrackTotalHits(true)
                         .setSize(0)
                         .setQuery(matchAllQuery())

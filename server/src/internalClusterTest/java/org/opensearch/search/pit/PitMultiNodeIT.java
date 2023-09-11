@@ -32,6 +32,7 @@ import org.opensearch.core.action.ActionListener;
 import org.opensearch.search.builder.PointInTimeBuilder;
 import org.opensearch.test.InternalTestCluster;
 import org.opensearch.test.OpenSearchIntegTestCase;
+import org.opensearch.test.junit.annotations.TestIssueLogging;
 import org.opensearch.threadpool.TestThreadPool;
 import org.opensearch.threadpool.ThreadPool;
 import org.junit.After;
@@ -57,7 +58,7 @@ import static org.hamcrest.Matchers.containsString;
 /**
  * Multi node integration tests for PIT creation and search operation with PIT ID.
  */
-@OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.SUITE, numDataNodes = 2)
+@OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST, numDataNodes = 2)
 public class PitMultiNodeIT extends OpenSearchIntegTestCase {
 
     @Before
@@ -127,6 +128,7 @@ public class PitMultiNodeIT extends OpenSearchIntegTestCase {
         });
     }
 
+    @TestIssueLogging(value = "_root:DEBUG", issueUrl = "https://github.com/opensearch-project/OpenSearch/issues/7923")
     public void testPitSearchWithNodeDrop() throws Exception {
         CreatePitRequest request = new CreatePitRequest(TimeValue.timeValueDays(1), true);
         request.setIndices(new String[] { "index" });
@@ -135,7 +137,7 @@ public class PitMultiNodeIT extends OpenSearchIntegTestCase {
         internalCluster().restartRandomDataNode(new InternalTestCluster.RestartCallback() {
             @Override
             public Settings onNodeStopped(String nodeName) throws Exception {
-                SearchResponse searchResponse = client().prepareSearch()
+                SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
                     .setSize(2)
                     .setPointInTime(new PointInTimeBuilder(pitResponse.getId()).setKeepAlive(TimeValue.timeValueDays(1)))
                     .get();
@@ -158,7 +160,7 @@ public class PitMultiNodeIT extends OpenSearchIntegTestCase {
         internalCluster().restartRandomDataNode(new InternalTestCluster.RestartCallback() {
             @Override
             public Settings onNodeStopped(String nodeName) throws Exception {
-                ActionFuture<SearchResponse> execute = client().prepareSearch()
+                ActionFuture<SearchResponse> execute = client().prepareSearch().setPreference("_primary")
                     .setSize(2)
                     .setPointInTime(new PointInTimeBuilder(pitResponse.getId()).setKeepAlive(TimeValue.timeValueDays(1)))
                     .setAllowPartialSearchResults(false)

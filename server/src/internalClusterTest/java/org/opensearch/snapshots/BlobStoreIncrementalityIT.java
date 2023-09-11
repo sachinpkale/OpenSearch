@@ -45,20 +45,26 @@ import org.opensearch.action.index.IndexRequest;
 import org.opensearch.cluster.metadata.IndexMetadata;
 import org.opensearch.cluster.routing.UnassignedInfo;
 import org.opensearch.common.settings.Settings;
+import org.opensearch.index.IndexService;
+import org.opensearch.index.seqno.SeqNoStats;
+import org.opensearch.index.shard.IndexShard;
+import org.opensearch.indices.IndicesService;
 import org.opensearch.test.OpenSearchIntegTestCase;
+import org.opensearch.test.junit.annotations.TestIssueLogging;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
-import static org.hamcrest.Matchers.greaterThan;
-import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.equalTo;
 
 @OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST, numDataNodes = 0)
 public class BlobStoreIncrementalityIT extends AbstractSnapshotIntegTestCase {
 
-    public void testIncrementalBehaviorOnPrimaryFailover() throws InterruptedException, ExecutionException, IOException {
+    public void testIncrementalBehaviorOnPrimaryFailover() throws Exception {
         internalCluster().startClusterManagerOnlyNode();
         final String primaryNode = internalCluster().startDataOnlyNode();
         final String indexName = "test-index";
@@ -103,6 +109,17 @@ public class BlobStoreIncrementalityIT extends AbstractSnapshotIntegTestCase {
         stopNode(primaryNode);
 
         ensureYellow(indexName);
+
+        assertBusy(() -> {
+            for (IndicesService indicesService : internalCluster().getDataNodeInstances(IndicesService.class)) {
+                for (IndexService indexService : indicesService) {
+                    for (IndexShard shard : indexService) {
+                        assertTrue(shard.isPrimaryMode());
+                    }
+                }
+            }
+        }, 30, TimeUnit.SECONDS);
+
         final String snapshot2 = "snap-2";
         logger.info("--> creating snapshot 2");
         client().admin().cluster().prepareCreateSnapshot(repo, snapshot2).setIndices(indexName).setWaitForCompletion(true).get();
@@ -132,6 +149,16 @@ public class BlobStoreIncrementalityIT extends AbstractSnapshotIntegTestCase {
         logger.info("--> Shutting down new primary node [{}]", newPrimary);
         stopNode(newPrimary);
         ensureYellow(indexName);
+
+        assertBusy(() -> {
+            for (IndicesService indicesService : internalCluster().getDataNodeInstances(IndicesService.class)) {
+                for (IndexService indexService : indicesService) {
+                    for (IndexShard shard : indexService) {
+                        assertTrue(shard.isPrimaryMode());
+                    }
+                }
+            }
+        }, 30, TimeUnit.SECONDS);
 
         final String snapshot4 = "snap-4";
         logger.info("--> creating snapshot 4");

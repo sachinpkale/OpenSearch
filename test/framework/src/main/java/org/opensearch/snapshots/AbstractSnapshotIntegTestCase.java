@@ -159,6 +159,9 @@ public abstract class AbstractSnapshotIntegTestCase extends OpenSearchIntegTestC
                 .repositories()
                 .stream()
                 .filter(repositoryMetadata -> !repositoryMetadata.name().endsWith(TEST_REMOTE_STORE_REPO_SUFFIX))
+                .filter(repositoryMetadata -> !repositoryMetadata.name().endsWith(REPOSITORY_NAME))
+                .filter(repositoryMetadata -> !repositoryMetadata.name().endsWith(REPOSITORY_2_NAME))
+                .filter(repositoryMetadata -> !repositoryMetadata.name().endsWith(REPOSITORY_3_NAME))
                 .forEach(repositoryMetadata -> {
                     final String name = repositoryMetadata.name();
                     if (repositoryMetadata.settings().getAsBoolean("readonly", false) == false) {
@@ -521,6 +524,11 @@ public abstract class AbstractSnapshotIntegTestCase extends OpenSearchIntegTestC
         }
         indexRandom(true, builders);
         flushAndRefresh(index);
+//        try {
+//            waitForCurrentReplicas();
+//        } catch (Throwable t) {
+//            // Ignore for now.
+//        }
         assertDocCount(index, numdocs);
     }
 
@@ -544,7 +552,7 @@ public abstract class AbstractSnapshotIntegTestCase extends OpenSearchIntegTestC
 
     protected long getCountForIndex(String indexName) {
         return client().search(
-            new SearchRequest(new SearchRequest(indexName).source(new SearchSourceBuilder().size(0).trackTotalHits(true)))
+            new SearchRequest(new SearchRequest(indexName).preference("_primary").source(new SearchSourceBuilder().size(0).trackTotalHits(true)))
         ).actionGet().getHits().getTotalHits().value;
     }
 

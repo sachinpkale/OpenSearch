@@ -47,7 +47,6 @@ import static org.hamcrest.Matchers.closeTo;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 
-@OpenSearchIntegTestCase.SuiteScopeTestCase
 public class GeoCentroidITTestCase extends AbstractGeoAggregatorModulePluginTestCase {
     private static final String aggName = "geoCentroid";
 

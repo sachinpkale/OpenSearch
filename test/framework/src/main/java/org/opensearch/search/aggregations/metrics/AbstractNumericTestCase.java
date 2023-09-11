@@ -31,6 +31,7 @@
 
 package org.opensearch.search.aggregations.metrics;
 
+import org.junit.Before;
 import org.opensearch.action.index.IndexRequestBuilder;
 import org.opensearch.test.OpenSearchIntegTestCase;
 
@@ -39,12 +40,11 @@ import java.util.List;
 
 import static org.opensearch.common.xcontent.XContentFactory.jsonBuilder;
 
-@OpenSearchIntegTestCase.SuiteScopeTestCase
 public abstract class AbstractNumericTestCase extends OpenSearchIntegTestCase {
     protected static long minValue, maxValue, minValues, maxValues;
 
-    @Override
-    public void setupSuiteScopeCluster() throws Exception {
+    @Before
+    public void setupTest() throws Exception {
         createIndex("idx");
         createIndex("idx_unmapped");
 

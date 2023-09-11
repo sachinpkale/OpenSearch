@@ -224,7 +224,7 @@ public class SimpleSortIT extends ParameterizedOpenSearchIntegTestCase {
 
         Script script = new Script(ScriptType.INLINE, CustomScriptPlugin.NAME, "doc['str_value'].value", Collections.emptyMap());
 
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .setSize(size)
             .addSort(new ScriptSortBuilder(script, ScriptSortType.STRING))
@@ -241,7 +241,7 @@ public class SimpleSortIT extends ParameterizedOpenSearchIntegTestCase {
         }
 
         size = 1 + random.nextInt(10);
-        searchResponse = client().prepareSearch().setQuery(matchAllQuery()).setSize(size).addSort("str_value", SortOrder.DESC).get();
+        searchResponse = client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).setSize(size).addSort("str_value", SortOrder.DESC).get();
 
         assertHitCount(searchResponse, 10);
         assertThat(searchResponse.getHits().getHits().length, equalTo(size));
@@ -303,7 +303,7 @@ public class SimpleSortIT extends ParameterizedOpenSearchIntegTestCase {
         client().admin().indices().prepareRefresh("test").get();
 
         // test the long values
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addScriptField("min", new Script(ScriptType.INLINE, CustomScriptPlugin.NAME, "get min long", Collections.emptyMap()))
             .addSort(SortBuilders.fieldSort("ord").order(SortOrder.ASC).unmappedType("long"))
@@ -319,7 +319,7 @@ public class SimpleSortIT extends ParameterizedOpenSearchIntegTestCase {
         }
 
         // test the double values
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addScriptField("min", new Script(ScriptType.INLINE, CustomScriptPlugin.NAME, "get min double", Collections.emptyMap()))
             .addSort(SortBuilders.fieldSort("ord").order(SortOrder.ASC).unmappedType("long"))
@@ -335,7 +335,7 @@ public class SimpleSortIT extends ParameterizedOpenSearchIntegTestCase {
         }
 
         // test the string values
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addScriptField("min", new Script(ScriptType.INLINE, CustomScriptPlugin.NAME, "get min string", Collections.emptyMap()))
             .addSort(SortBuilders.fieldSort("ord").order(SortOrder.ASC).unmappedType("long"))
@@ -351,7 +351,7 @@ public class SimpleSortIT extends ParameterizedOpenSearchIntegTestCase {
         }
 
         // test the geopoint values
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addScriptField("min", new Script(ScriptType.INLINE, CustomScriptPlugin.NAME, "get min geopoint lon", Collections.emptyMap()))
             .addSort(SortBuilders.fieldSort("ord").order(SortOrder.ASC).unmappedType("long"))
@@ -396,7 +396,7 @@ public class SimpleSortIT extends ParameterizedOpenSearchIntegTestCase {
 
         Script scripField = new Script(ScriptType.INLINE, CustomScriptPlugin.NAME, "doc['id'].value", Collections.emptyMap());
 
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addScriptField("id", scripField)
             .addSort("svalue", SortOrder.ASC)
@@ -409,7 +409,7 @@ public class SimpleSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(1).field("id").getValue(), equalTo("3"));
         assertThat(searchResponse.getHits().getAt(2).field("id").getValue(), equalTo("2"));
 
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addScriptField("id", new Script(ScriptType.INLINE, CustomScriptPlugin.NAME, "doc['id'][0]", Collections.emptyMap()))
             .addSort("svalue", SortOrder.ASC)
@@ -422,7 +422,7 @@ public class SimpleSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(1).field("id").getValue(), equalTo("3"));
         assertThat(searchResponse.getHits().getAt(2).field("id").getValue(), equalTo("2"));
 
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addScriptField("id", scripField)
             .addSort("svalue", SortOrder.DESC)
@@ -442,7 +442,7 @@ public class SimpleSortIT extends ParameterizedOpenSearchIntegTestCase {
         assertThat(searchResponse.getHits().getAt(2).field("id").getValue(), equalTo("2"));
 
         // a query with docs just with null values
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(termQuery("id", "2"))
             .addScriptField("id", scripField)
             .addSort("svalue", SortOrder.DESC)
@@ -482,7 +482,7 @@ public class SimpleSortIT extends ParameterizedOpenSearchIntegTestCase {
         refresh();
 
         Script sortScript = new Script(ScriptType.INLINE, CustomScriptPlugin.NAME, "\u0027\u0027", Collections.emptyMap());
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(scriptSort(sortScript, ScriptSortType.STRING))
             .setSize(10)

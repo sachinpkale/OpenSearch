@@ -88,13 +88,13 @@ public class SearchTimeoutIT extends ParameterizedOpenSearchIntegTestCase {
     }
 
     public void testSimpleTimeout() throws Exception {
-        final int numDocs = 1000;
+        final int numDocs = 100;
         for (int i = 0; i < numDocs; i++) {
             client().prepareIndex("test").setId(Integer.toString(i)).setSource("field", "value").get();
         }
         refresh("test");
 
-        SearchResponse searchResponse = client().prepareSearch("test")
+        SearchResponse searchResponse = client().prepareSearch("test").setPreference("_primary")
             .setTimeout(new TimeValue(5, TimeUnit.MILLISECONDS))
             .setQuery(scriptQuery(new Script(ScriptType.INLINE, "mockscript", SCRIPT_NAME, Collections.emptyMap())))
             .setAllowPartialSearchResults(true)

@@ -32,6 +32,7 @@
 
 package org.opensearch.search.profile.aggregation;
 
+import org.junit.Before;
 import org.opensearch.action.index.IndexRequestBuilder;
 import org.opensearch.action.search.SearchResponse;
 import org.opensearch.search.aggregations.Aggregator.SubAggCollectionMode;
@@ -74,7 +75,7 @@ import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.sameInstance;
 
-@OpenSearchIntegTestCase.SuiteScopeTestCase
+
 public class AggregationProfilerIT extends OpenSearchIntegTestCase {
     private static final String BUILD_LEAF_COLLECTOR = AggregationTimingType.BUILD_LEAF_COLLECTOR.toString();
     private static final String COLLECT = AggregationTimingType.COLLECT.toString();
@@ -162,8 +163,9 @@ public class AggregationProfilerIT extends OpenSearchIntegTestCase {
         return 1;
     }
 
-    @Override
-    protected void setupSuiteScopeCluster() throws Exception {
+
+    @Before
+    public void setUpTest() throws Exception {
         assertAcked(
             client().admin()
                 .indices()
@@ -196,7 +198,7 @@ public class AggregationProfilerIT extends OpenSearchIntegTestCase {
         createIndex("idx_unmapped");
     }
 
-    public void testSimpleProfile() {
+    public void testSimpleProfile()  {
         SearchResponse response = client().prepareSearch("idx")
             .setProfile(true)
             .addAggregation(histogram("histo").field(NUMBER_FIELD).interval(1L))
@@ -244,6 +246,7 @@ public class AggregationProfilerIT extends OpenSearchIntegTestCase {
     }
 
     public void testMultiLevelProfile() {
+
         SearchResponse response = client().prepareSearch("idx")
             .setProfile(true)
             .addAggregation(

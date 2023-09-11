@@ -460,7 +460,7 @@ public class UnsafeBootstrapAndDetachCommandIT extends OpenSearchIntegTestCase {
         );
 
         logger.info("--> verify 1 doc in the index");
-        assertHitCount(client().prepareSearch().setQuery(matchAllQuery()).get(), 1L);
+        assertHitCount(client().prepareSearch().setPreference("_primary").setQuery(matchAllQuery()).get(), 1L);
         assertThat(client().prepareGet("test", "1").execute().actionGet().isExists(), equalTo(true));
 
         logger.info("--> stop data-only node and detach it from the old cluster");

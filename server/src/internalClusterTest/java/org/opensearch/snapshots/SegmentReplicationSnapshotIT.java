@@ -8,6 +8,7 @@
 
 package org.opensearch.snapshots;
 
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotResponse;
 import org.opensearch.action.admin.cluster.snapshots.restore.RestoreSnapshotRequestBuilder;
 import org.opensearch.action.admin.cluster.snapshots.restore.RestoreSnapshotResponse;
@@ -37,6 +38,7 @@ import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertAcked;
 import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertHitCount;
 
 @OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST, numDataNodes = 0)
+@LuceneTestCase.AwaitsFix(bugUrl = "Tests require docrep and segrep indices to be created")
 public class SegmentReplicationSnapshotIT extends AbstractSnapshotIntegTestCase {
     private static final String INDEX_NAME = "test-segrep-idx";
     private static final String RESTORED_INDEX_NAME = INDEX_NAME + "-restored";

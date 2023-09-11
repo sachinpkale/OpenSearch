@@ -108,7 +108,7 @@ public class GeoDistanceSortBuilderIT extends OpenSearchIntegTestCase {
             q[0] = new GeoPoint(2, 1);
         }
 
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(new GeoDistanceSortBuilder(LOCATION_FIELD, q).sortMode(SortMode.MIN).order(SortOrder.ASC))
             .get();
@@ -122,7 +122,7 @@ public class GeoDistanceSortBuilderIT extends OpenSearchIntegTestCase {
             closeTo(GeoDistance.ARC.calculate(2, 1, 5, 1, DistanceUnit.METERS), 10d)
         );
 
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(new GeoDistanceSortBuilder(LOCATION_FIELD, q).sortMode(SortMode.MIN).order(SortOrder.DESC))
             .get();
@@ -136,7 +136,7 @@ public class GeoDistanceSortBuilderIT extends OpenSearchIntegTestCase {
             closeTo(GeoDistance.ARC.calculate(2, 2, 3, 2, DistanceUnit.METERS), 10d)
         );
 
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(new GeoDistanceSortBuilder(LOCATION_FIELD, q).sortMode(SortMode.MAX).order(SortOrder.ASC))
             .get();
@@ -150,7 +150,7 @@ public class GeoDistanceSortBuilderIT extends OpenSearchIntegTestCase {
             closeTo(GeoDistance.ARC.calculate(2, 1, 6, 2, DistanceUnit.METERS), 10d)
         );
 
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(new GeoDistanceSortBuilder(LOCATION_FIELD, q).sortMode(SortMode.MAX).order(SortOrder.DESC))
             .get();
@@ -192,7 +192,7 @@ public class GeoDistanceSortBuilderIT extends OpenSearchIntegTestCase {
         );
         GeoPoint q = new GeoPoint(0, 0);
 
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(new GeoDistanceSortBuilder(LOCATION_FIELD, q).sortMode(SortMode.AVG).order(SortOrder.ASC))
             .get();
@@ -206,7 +206,7 @@ public class GeoDistanceSortBuilderIT extends OpenSearchIntegTestCase {
             closeTo(GeoDistance.ARC.calculate(0, 0, 0, 5, DistanceUnit.METERS), 10d)
         );
 
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(new GeoDistanceSortBuilder(LOCATION_FIELD, q).sortMode(SortMode.MEDIAN).order(SortOrder.ASC))
             .get();
@@ -275,7 +275,7 @@ public class GeoDistanceSortBuilderIT extends OpenSearchIntegTestCase {
             }
         }
 
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(geoDistanceSortBuilder.sortMode(SortMode.MIN).order(SortOrder.ASC))
             .get();
@@ -289,7 +289,7 @@ public class GeoDistanceSortBuilderIT extends OpenSearchIntegTestCase {
             closeTo(GeoDistance.ARC.calculate(4.5, 1, 2, 1, DistanceUnit.METERS), 1.e-1)
         );
 
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(geoDistanceSortBuilder.sortMode(SortMode.MAX).order(SortOrder.ASC))
             .get();
@@ -321,7 +321,7 @@ public class GeoDistanceSortBuilderIT extends OpenSearchIntegTestCase {
 
         GeoDistanceSortBuilder geoDistanceSortBuilder = new GeoDistanceSortBuilder(LOCATION_FIELD, hashPoint);
 
-        SearchResponse searchResponse = client().prepareSearch()
+        SearchResponse searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(geoDistanceSortBuilder.sortMode(SortMode.MIN).order(SortOrder.ASC))
             .get();
@@ -329,7 +329,7 @@ public class GeoDistanceSortBuilderIT extends OpenSearchIntegTestCase {
 
         geoDistanceSortBuilder = new GeoDistanceSortBuilder(LOCATION_FIELD, new GeoPoint(2, 2));
 
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(geoDistanceSortBuilder.sortMode(SortMode.MIN).order(SortOrder.ASC))
             .get();
@@ -337,28 +337,28 @@ public class GeoDistanceSortBuilderIT extends OpenSearchIntegTestCase {
 
         geoDistanceSortBuilder = new GeoDistanceSortBuilder(LOCATION_FIELD, 2, 2);
 
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setQuery(matchAllQuery())
             .addSort(geoDistanceSortBuilder.sortMode(SortMode.MIN).order(SortOrder.ASC))
             .get();
         checkCorrectSortOrderForGeoSort(searchResponse);
 
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setSource(new SearchSourceBuilder().sort(SortBuilders.geoDistanceSort(LOCATION_FIELD, 2.0, 2.0)))
             .get();
         checkCorrectSortOrderForGeoSort(searchResponse);
 
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setSource(new SearchSourceBuilder().sort(SortBuilders.geoDistanceSort(LOCATION_FIELD, "s037ms06g7h0")))
             .get();
         checkCorrectSortOrderForGeoSort(searchResponse);
 
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setSource(new SearchSourceBuilder().sort(SortBuilders.geoDistanceSort(LOCATION_FIELD, 2.0, 2.0)))
             .get();
         checkCorrectSortOrderForGeoSort(searchResponse);
 
-        searchResponse = client().prepareSearch()
+        searchResponse = client().prepareSearch().setPreference("_primary")
             .setSource(
                 new SearchSourceBuilder().sort(
                     SortBuilders.geoDistanceSort(LOCATION_FIELD, 2.0, 2.0).validation(GeoValidationMethod.COERCE)

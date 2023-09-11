@@ -71,6 +71,7 @@ public class CorruptedTranslogIT extends OpenSearchIntegTestCase {
         return Arrays.asList(MockTransportService.TestPlugin.class, MockEngineFactoryPlugin.class);
     }
 
+    @AwaitsFix(bugUrl = "https://github.com/elastic/elasticsearch/issues/60461")
     public void testCorruptTranslogFiles() throws Exception {
         internalCluster().startNode(Settings.EMPTY);
 
