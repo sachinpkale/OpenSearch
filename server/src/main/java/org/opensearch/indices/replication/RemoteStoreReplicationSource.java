@@ -64,11 +64,10 @@ public class RemoteStoreReplicationSource implements SegmentReplicationSource {
             RemoteSegmentMetadata mdFile = remoteDirectory.init();
             // During initial recovery flow, the remote store might not
             // have metadata as primary hasn't uploaded anything yet.
-            if (mdFile == null && indexShard.state().equals(IndexShardState.STARTED) == false) {
+            if (mdFile == null) {
                 listener.onResponse(new CheckpointInfoResponse(checkpoint, Collections.emptyMap(), null));
                 return;
             }
-            assert mdFile != null : "Remote metadata file can't be null if shard is active " + indexShard.state();
             metadataMap = mdFile.getMetadata()
                 .entrySet()
                 .stream()
