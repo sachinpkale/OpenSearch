@@ -56,6 +56,11 @@ public class IndexPrimaryRelocationIT extends OpenSearchIntegTestCase {
 
     private static final int RELOCATION_COUNT = 15;
 
+    @Override
+    protected boolean addMockInternalEngine() {
+        return false;
+    }
+
     public Settings indexSettings() {
         return Settings.builder().put("index.number_of_shards", 1).put("index.number_of_replicas", 0).build();
     }
