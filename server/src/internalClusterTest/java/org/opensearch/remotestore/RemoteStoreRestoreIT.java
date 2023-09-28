@@ -13,6 +13,7 @@ import org.opensearch.action.admin.cluster.remotestore.restore.RestoreRemoteStor
 import org.opensearch.action.support.PlainActionFuture;
 import org.opensearch.cluster.health.ClusterHealthStatus;
 import org.opensearch.common.unit.TimeValue;
+import org.opensearch.core.action.ActionListener;
 import org.opensearch.repositories.RepositoriesService;
 import org.opensearch.test.InternalTestCluster;
 import org.opensearch.test.OpenSearchIntegTestCase;
@@ -29,6 +30,30 @@ import static org.hamcrest.Matchers.greaterThan;
 
 @OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.SUITE, numDataNodes = 0)
 public class RemoteStoreRestoreIT extends BaseRemoteStoreRestoreIT {
+
+    public void testWaitForCompletion() throws IOException, ExecutionException, InterruptedException {
+        prepareCluster(1, 3, INDEX_NAME, 0, 1);
+        Map<String, Long> indexStats = indexData(2, true, INDEX_NAME);
+
+        assertHitCount(client().prepareSearch(INDEX_NAME).setSize(0).get(), indexStats.get(REFRESHED_OR_FLUSHED_OPERATIONS));
+
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(primaryNodeName(INDEX_NAME)));
+        ensureRed(INDEX_NAME);
+
+        PlainActionFuture<RestoreRemoteStoreResponse> listener = PlainActionFuture.newFuture();
+        client().admin()
+            .cluster()
+            .restoreRemoteStore(
+                new RestoreRemoteStoreRequest().indices(INDEX_NAME).waitForCompletion(true),
+                listener
+            );
+        RestoreRemoteStoreResponse restoreRemoteStoreResponse = listener.get();
+
+        assertEquals(1, restoreRemoteStoreResponse.getRestoreInfo().successfulShards());
+        assertEquals(0, restoreRemoteStoreResponse.getRestoreInfo().failedShards());
+        assertHitCount(client().prepareSearch(INDEX_NAME).setSize(0).get(), indexStats.get(TOTAL_OPERATIONS));
+        logger.info("--> Successful");
+    }
 
     /**
      * Simulates all data restored using Remote Translog Store.
