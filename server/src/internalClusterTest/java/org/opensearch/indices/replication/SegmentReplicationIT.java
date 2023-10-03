@@ -81,6 +81,7 @@ import org.opensearch.search.sort.SortOrder;
 import org.opensearch.test.BackgroundIndexer;
 import org.opensearch.test.InternalTestCluster;
 import org.opensearch.test.OpenSearchIntegTestCase;
+import org.opensearch.test.junit.annotations.TestIssueLogging;
 import org.opensearch.test.transport.MockTransportService;
 import org.opensearch.transport.TransportService;
 import org.junit.Before;
@@ -124,6 +125,26 @@ public class SegmentReplicationIT extends SegmentReplicationBaseIT {
 
     private static String indexOrAlias() {
         return randomBoolean() ? INDEX_NAME : "alias";
+    }
+
+    @TestIssueLogging(value = "_root:TRACE", issueUrl = "issue debug")
+    public void testSimpleIndexingFlow() {
+        String primaryNode = internalCluster().startDataOnlyNode();
+        createIndex(INDEX_NAME, Settings.builder()
+            .put(IndexMetadata.SETTING_NUMBER_OF_SHARDS, 1)
+            .put(IndexMetadata.SETTING_NUMBER_OF_REPLICAS, 0)
+            .put(IndexMetadata.SETTING_REPLICATION_TYPE, ReplicationType.SEGMENT)
+            .build());
+        ensureYellowAndNoInitializingShards(INDEX_NAME);
+        ensureGreen(INDEX_NAME);
+
+        int numDocs = randomIntBetween(10, 20);
+        for (int i = 0; i < numDocs; i++) {
+            String id = Integer.toString(i);
+            client(primaryNode).prepareIndex(INDEX_NAME).setId(id).setSource("text", "sometext").get();
+        }
+
+        client(primaryNode).admin().indices().prepareFlush(INDEX_NAME).setForce(true).execute().actionGet();
     }
 
     public void testPrimaryStopped_ReplicaPromoted() throws Exception {

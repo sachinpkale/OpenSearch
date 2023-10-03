@@ -1856,8 +1856,8 @@ public class InternalEngine extends Engine {
                     || force
                     || shouldPeriodicallyFlush
                     || getProcessedLocalCheckpoint() > Long.parseLong(
-                        lastCommittedSegmentInfos.userData.get(SequenceNumbers.LOCAL_CHECKPOINT_KEY)
-                    )) {
+                    lastCommittedSegmentInfos.userData.get(SequenceNumbers.LOCAL_CHECKPOINT_KEY)
+                )) {
                     translogManager.ensureCanFlush();
                     try {
                         translogManager.rollTranslogGeneration();
@@ -1887,6 +1887,18 @@ public class InternalEngine extends Engine {
                             latestCommit.close();
                         }
 
+                        try (GatedCloseable<IndexCommit> latestCommit2 = acquireLastIndexCommit(false)) {
+                            SegmentInfos directoryInfos = store.readLastCommittedSegmentsInfo();
+                            if (latestCommit2.get().getGeneration() == directoryInfos.getGeneration()) {
+                                logger.info("--> Same generations");
+                            }
+                            assert latestCommit2.get().getGeneration() == directoryInfos.getGeneration() : "Different generations";
+                        } catch (Throwable t) {
+                            if (t instanceof AssertionError) {
+                                throw (AssertionError) t;
+                            }
+                        }
+
                         translogManager.trimUnreferencedReaders();
                     } catch (AlreadyClosedException e) {
                         failOnTragicEvent(e);
@@ -1909,6 +1921,7 @@ public class InternalEngine extends Engine {
         if (engineConfig.isEnableGcDeletes()) {
             pruneDeletedTombstones();
         }
+
     }
 
     private void refreshLastCommittedSegmentInfos() {
