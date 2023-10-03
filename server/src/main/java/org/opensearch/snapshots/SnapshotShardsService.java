@@ -36,6 +36,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.apache.lucene.index.IndexCommit;
+import org.apache.lucene.index.SegmentInfos;
 import org.opensearch.Version;
 import org.opensearch.cluster.ClusterChangedEvent;
 import org.opensearch.cluster.ClusterStateListener;
@@ -73,6 +74,7 @@ import org.opensearch.transport.TransportResponseHandler;
 import org.opensearch.transport.TransportService;
 
 import java.io.IOException;
+import java.nio.file.NoSuchFileException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -406,7 +408,39 @@ public class SnapshotShardsService extends AbstractLifecycleComponent implements
                     long primaryTerm = indexShard.getOperationPrimaryTerm();
                     final IndexCommit snapshotIndexCommit = wrappedSnapshot.get();
                     long commitGeneration = snapshotIndexCommit.getGeneration();
-                    indexShard.acquireLockOnCommitData(snapshot.getSnapshotId().getUUID(), primaryTerm, commitGeneration);
+                    try {
+                        indexShard.acquireLockOnCommitData(snapshot.getSnapshotId().getUUID(), primaryTerm, commitGeneration);
+                    } catch (NoSuchFileException e) {
+                        // If we have 2 refresh flows executing concurrently (one for scheduled refresh, another as part of
+                        // flush), there is a race condition where the scheduled refresh uploads the new segments, new segments_N
+                        // is created with flush and the refresh that is part of flush becomes a no-op as it does not find
+                        // any new segments that are not part of the reader. In this scenario, the metadata file corresponding to
+                        // commit generation on disk is not uploaded to remote store and results in NoSuchFileException.
+                        // Here, we check if the files referenced by reader's segmentInfos and committed segmentInfos are same.
+                        try (GatedCloseable<SegmentInfos> segmentInfosGatedCloseable = indexShard.getSegmentInfosSnapshot()) {
+                            SegmentInfos segmentInfos = segmentInfosGatedCloseable.get();
+                            if (segmentInfos.getGeneration() != commitGeneration) {
+                                SegmentInfos lastCommittedSegmentInfos = indexShard.store().readLastCommittedSegmentsInfo();
+                                if (lastCommittedSegmentInfos.getGeneration() == commitGeneration && segmentInfos.files(false).equals(lastCommittedSegmentInfos.files(false))) {
+                                    logger.info(
+                                        "Different generations for lastIndexCommit = {} and segmentInfosSnapshot = {}. As referred files are same, using generation from segmentInfosSnapshot",
+                                        commitGeneration,
+                                        segmentInfos.getGeneration()
+                                    );
+                                    indexShard.acquireLockOnCommitData(
+                                        snapshot.getSnapshotId().getUUID(),
+                                        primaryTerm,
+                                        segmentInfos.getGeneration()
+                                    );
+                                } else {
+                                    throw (e);
+                                }
+                            } else {
+                                logger.warn("Same generation for lastIndexCommit = {} and segmentInfosSnapshot = {}. Metdata should exist in remote store", commitGeneration, segmentInfos.getGeneration());
+                                throw(e);
+                            }
+                        }
+                    }
                     try {
                         repository.snapshotRemoteStoreIndexShard(
                             indexShard.store(),

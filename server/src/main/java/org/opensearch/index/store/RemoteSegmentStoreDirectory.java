@@ -641,6 +641,7 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory implement
                 }
                 storeDirectory.sync(Collections.singleton(metadataFilename));
                 remoteMetadataDirectory.copyFrom(storeDirectory, metadataFilename, metadataFilename, IOContext.DEFAULT);
+                logger.debug("Uploaded metadata file: " + metadataFilename);
             } finally {
                 tryAndDeleteLocalFile(metadataFilename, storeDirectory);
             }
