@@ -184,6 +184,12 @@ public class MockNode extends Node {
         );
     }
 
+    // @Override
+    // protected SegmentReplicationTargetService newSegmentReplicationTargetService(ThreadPool threadPool, ClusterService clusterService,
+    // IndicesService indicesService, TransportService transportService, RecoverySettings recoverySettings) {
+    // return new MockSegmentReplicationTargetService
+    // }
+
     @Override
     protected ScriptService newScriptService(Settings settings, Map<String, ScriptEngine> engines, Map<String, ScriptContext<?>> contexts) {
         if (getPluginsService().filterPlugins(MockScriptService.TestPlugin.class).isEmpty()) {

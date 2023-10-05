@@ -1024,7 +1024,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
                 UNASSIGNED_SEQ_NO,
                 0
             );
-            return getEngine().index(index);
+            return index(engine, index);
         }
         assert opPrimaryTerm <= getOperationPrimaryTerm() : "op term [ "
             + opPrimaryTerm
@@ -1582,6 +1582,12 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
         } else {
             return Optional.empty();
         }
+    }
+
+    public Optional<NRTReplicationEngine> getReplicationEngineForTests() {
+        return Optional.ofNullable(getEngineOrNull())
+            .filter((engine) -> engine instanceof NRTReplicationEngine)
+            .map((engine) -> (NRTReplicationEngine) engine);
     }
 
     public void finalizeReplication(SegmentInfos infos) throws IOException {
@@ -4432,7 +4438,8 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
      * Returns true if this shard has some scheduled refresh that is pending because of search-idle.
      */
     public final boolean hasRefreshPending() {
-        return pendingRefreshLocation.get() != null;
+        final Boolean nrtPending = getReplicationEngine().map(NRTReplicationEngine::hasRefreshPending).orElse(false);
+        return pendingRefreshLocation.get() != null || nrtPending;
     }
 
     private void setRefreshPending(Engine engine) {
@@ -4489,7 +4496,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
                 listener.accept(true);
             });
         } else {
-            listener.accept(false);
+            getReplicationEngine().ifPresentOrElse((engine) -> { engine.awaitCurrent(listener); }, () -> listener.accept(false));
         }
     }
 
@@ -4513,8 +4520,12 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
             }
         }
         // NRT Replicas will not accept refresh listeners.
-        if (readAllowed && isSegmentReplicationAllowed() == false) {
-            refreshListeners.addOrNotify(location, listener);
+        if (readAllowed) {
+            if (isSegmentReplicationAllowed() == false) {
+                refreshListeners.addOrNotify(location, listener);
+            } else {
+                getReplicationEngine().ifPresent(engine -> { engine.awaitCurrent(listener); });
+            }
         } else {
             // we're not yet ready fo ready for reads, just ignore refresh cycles
             listener.accept(false);
