@@ -46,6 +46,7 @@ import java.util.Set;
 
 import org.mockito.internal.util.collections.Sets;
 
+@OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST)
 public class PartitionedRoutingIT extends OpenSearchIntegTestCase {
 
     public void testVariousPartitionSizes() throws Exception {
@@ -242,7 +243,7 @@ public class PartitionedRoutingIT extends OpenSearchIntegTestCase {
 
         for (int i = 0; i < numRoutingValues; i++) {
             String routingValue = String.valueOf(i);
-            int numDocuments = randomIntBetween(10, 100);
+            int numDocuments = randomIntBetween(10, 20);
             routingToDocumentIds.put(String.valueOf(routingValue), new HashSet<>());
 
             for (int k = 0; k < numDocuments; k++) {

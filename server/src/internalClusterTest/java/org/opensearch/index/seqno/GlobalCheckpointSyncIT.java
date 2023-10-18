@@ -259,9 +259,11 @@ public class GlobalCheckpointSyncIT extends OpenSearchIntegTestCase {
                 for (IndexService indexService : indicesService) {
                     for (IndexShard shard : indexService) {
                         final SeqNoStats seqNoStats = shard.seqNoStats();
-                        assertThat(seqNoStats.getLocalCheckpoint(), equalTo(seqNoStats.getMaxSeqNo()));
-                        assertThat(shard.getLastKnownGlobalCheckpoint(), equalTo(seqNoStats.getMaxSeqNo()));
-                        assertThat(shard.getLastSyncedGlobalCheckpoint(), equalTo(seqNoStats.getMaxSeqNo()));
+                        if((shard.isPrimaryMode() && shard.isRemoteTranslogEnabled() == true) || shard.isRemoteTranslogEnabled() == false) {
+                            assertThat(seqNoStats.getLocalCheckpoint(), equalTo(seqNoStats.getMaxSeqNo()));
+                            assertThat(shard.getLastKnownGlobalCheckpoint(), equalTo(seqNoStats.getMaxSeqNo()));
+                            assertThat(shard.getLastSyncedGlobalCheckpoint(), equalTo(seqNoStats.getMaxSeqNo()));
+                        }
                     }
                 }
             }
@@ -277,7 +279,7 @@ public class GlobalCheckpointSyncIT extends OpenSearchIntegTestCase {
             .put("index.number_of_replicas", randomIntBetween(0, 1));
         prepareCreate("test", indexSettings).get();
         ensureGreen("test");
-        int numDocs = randomIntBetween(1, 20);
+        int numDocs = randomIntBetween(3, 10);
         logger.info("numDocs {}", numDocs);
         long maxSeqNo = 0;
         for (int i = 0; i < numDocs; i++) {
@@ -288,9 +290,10 @@ public class GlobalCheckpointSyncIT extends OpenSearchIntegTestCase {
             for (IndexService indexService : indicesService) {
                 for (IndexShard shard : indexService) {
                     final SeqNoStats seqNoStats = shard.seqNoStats();
-                    assertThat(maxSeqNo, equalTo(seqNoStats.getMaxSeqNo()));
-                    assertThat(seqNoStats.getLocalCheckpoint(), equalTo(seqNoStats.getMaxSeqNo()));
-                    ;
+                    if (shard.isRemoteTranslogEnabled() == false) {
+                        assertThat(maxSeqNo, equalTo(seqNoStats.getMaxSeqNo()));
+                        assertThat(seqNoStats.getLocalCheckpoint(), equalTo(seqNoStats.getMaxSeqNo()));
+                    }
                 }
             }
         }

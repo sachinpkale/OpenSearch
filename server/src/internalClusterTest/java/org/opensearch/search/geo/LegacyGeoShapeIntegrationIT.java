@@ -50,6 +50,7 @@ import org.opensearch.index.IndexService;
 import org.opensearch.index.mapper.LegacyGeoShapeFieldMapper;
 import org.opensearch.index.mapper.MappedFieldType;
 import org.opensearch.indices.IndicesService;
+import org.opensearch.test.OpenSearchIntegTestCase;
 import org.opensearch.test.ParameterizedOpenSearchIntegTestCase;
 
 import java.io.IOException;
@@ -63,6 +64,7 @@ import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertAcked;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.instanceOf;
 
+@OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST)
 public class LegacyGeoShapeIntegrationIT extends ParameterizedOpenSearchIntegTestCase {
 
     public LegacyGeoShapeIntegrationIT(Settings dynamicSettings) {

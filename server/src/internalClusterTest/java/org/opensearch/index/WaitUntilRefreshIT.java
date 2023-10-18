@@ -116,6 +116,7 @@ public class WaitUntilRefreshIT extends OpenSearchIntegTestCase {
             .get();
         assertEquals(2, update.getVersion());
         assertFalse("request shouldn't have forced a refresh", update.forcedRefresh());
+        refresh("test");
         assertSearchHits(client().prepareSearch("test").setQuery(matchQuery("foo", "baz")).get(), "1");
 
         // Upsert with RefreshPolicy.WAIT_UNTIL
@@ -125,6 +126,7 @@ public class WaitUntilRefreshIT extends OpenSearchIntegTestCase {
             .setRefreshPolicy(RefreshPolicy.WAIT_UNTIL)
             .get();
         assertEquals(1, update.getVersion());
+        refresh("test");
         assertFalse("request shouldn't have forced a refresh", update.forcedRefresh());
         assertSearchHits(client().prepareSearch("test").setQuery(matchQuery("foo", "cat")).get(), "2");
 
@@ -135,6 +137,7 @@ public class WaitUntilRefreshIT extends OpenSearchIntegTestCase {
             .get();
         assertEquals(2, update.getVersion());
         assertFalse("request shouldn't have forced a refresh", update.forcedRefresh());
+        refresh("test");
         assertNoSearchHits(client().prepareSearch("test").setQuery(matchQuery("foo", "cat")).get());
     }
 
@@ -176,6 +179,7 @@ public class WaitUntilRefreshIT extends OpenSearchIntegTestCase {
             .execute();
         while (false == index.isDone()) {
             client().admin().indices().prepareRefresh("test").get();
+            refresh("test");
         }
         assertEquals(RestStatus.CREATED, index.get().status());
         assertFalse("request shouldn't have forced a refresh", index.get().forcedRefresh());

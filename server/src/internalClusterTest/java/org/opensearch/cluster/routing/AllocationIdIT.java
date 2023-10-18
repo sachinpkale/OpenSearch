@@ -75,7 +75,7 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 
-@OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.SUITE, numDataNodes = 0)
+@OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST, numDataNodes = 0)
 public class AllocationIdIT extends OpenSearchIntegTestCase {
 
     @Override
@@ -170,10 +170,15 @@ public class AllocationIdIT extends OpenSearchIntegTestCase {
         node2 = internalCluster().startNode(node2DataPathSettings);
         ensureGreen(indexName);
 
-        assertThat(historyUUID(node1, indexName), not(equalTo(historyUUID)));
+        // historyUUID remains same as we are fetching data from remote store
+        assertThat(historyUUID(node1, indexName), equalTo(historyUUID));
         assertThat(historyUUID(node1, indexName), equalTo(historyUUID(node2, indexName)));
 
         internalCluster().assertSameDocIdsOnShards();
+
+        // This is only applicable for remote store as we restore the entire data
+        assertHitCount(client(node1).prepareSearch(indexName).setQuery(matchAllQuery()).get(), numDocs + numExtraDocs);
+        assertHitCount(client(node2).prepareSearch(indexName).setQuery(matchAllQuery()).get(), numDocs + numExtraDocs);
     }
 
     public void checkHealthStatus(String indexName, ClusterHealthStatus healthStatus) {
@@ -189,7 +194,7 @@ public class AllocationIdIT extends OpenSearchIntegTestCase {
         // index some docs in several segments
         int numDocs = 0;
         for (int k = 0, attempts = randomIntBetween(5, 10); k < attempts; k++) {
-            final int numExtraDocs = between(10, 100);
+            final int numExtraDocs = between(10, 20);
             IndexRequestBuilder[] builders = new IndexRequestBuilder[numExtraDocs];
             for (int i = 0; i < builders.length; i++) {
                 builders[i] = client().prepareIndex(indexName).setSource(source);

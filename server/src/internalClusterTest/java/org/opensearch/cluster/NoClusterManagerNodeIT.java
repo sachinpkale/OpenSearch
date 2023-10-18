@@ -263,6 +263,7 @@ public class NoClusterManagerNodeIT extends OpenSearchIntegTestCase {
         }
     }
 
+    @AwaitsFix(bugUrl = "https://quip-amazon.com/WmWbAWnrpxuq/Tests-Exclude-with-SegRep#temp:C:YSJ2bed09f5cc2b490c80f76e023")
     public void testNoClusterManagerActionsWriteClusterManagerBlock() throws Exception {
         Settings settings = Settings.builder()
             .put(AutoCreateIndex.AUTO_CREATE_INDEX_SETTING.getKey(), false)

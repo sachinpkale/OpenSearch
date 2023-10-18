@@ -45,6 +45,7 @@ import org.opensearch.common.xcontent.json.JsonXContent;
 import org.opensearch.core.xcontent.XContentBuilder;
 import org.opensearch.geometry.utils.Geohash;
 import org.opensearch.index.query.QueryBuilders;
+import org.opensearch.test.OpenSearchIntegTestCase;
 import org.opensearch.test.ParameterizedOpenSearchIntegTestCase;
 import org.opensearch.test.VersionUtils;
 
@@ -66,6 +67,7 @@ import static org.hamcrest.Matchers.closeTo;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
 
+@OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST)
 public class GeoDistanceIT extends ParameterizedOpenSearchIntegTestCase {
 
     public GeoDistanceIT(Settings dynamicSettings) {
@@ -191,7 +193,7 @@ public class GeoDistanceIT extends ParameterizedOpenSearchIntegTestCase {
             )
             .get();
 
-        client().admin().indices().prepareRefresh().get();
+        refresh("test");
 
         // Order: Asc
         SearchResponse searchResponse = client().prepareSearch("test")

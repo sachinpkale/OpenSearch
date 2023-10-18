@@ -144,7 +144,7 @@ public class TransportSearchIT extends OpenSearchIntegTestCase {
         indexRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.WAIT_UNTIL);
         IndexResponse indexResponse = client().index(indexRequest).actionGet();
         assertEquals(RestStatus.CREATED, indexResponse.status());
-
+        refresh();
         {
             SearchRequest searchRequest = SearchRequest.subSearchRequest(
                 new SearchRequest(),
@@ -198,6 +198,7 @@ public class TransportSearchIT extends OpenSearchIntegTestCase {
             IndexResponse indexResponse = client().index(indexRequest).actionGet();
             assertEquals(RestStatus.CREATED, indexResponse.status());
         }
+        refresh();
         {
             SearchRequest searchRequest = new SearchRequest();
             SearchResponse searchResponse = client().search(searchRequest).actionGet();
@@ -251,7 +252,8 @@ public class TransportSearchIT extends OpenSearchIntegTestCase {
             IndexResponse indexResponse = client().index(indexRequest).actionGet();
             assertEquals(RestStatus.CREATED, indexResponse.status());
         }
-        client().admin().indices().prepareRefresh("test").get();
+        //client().admin().indices().prepareRefresh("test").get();
+        refresh("test");
 
         SearchRequest originalRequest = new SearchRequest();
         SearchSourceBuilder source = new SearchSourceBuilder();
@@ -498,6 +500,7 @@ public class TransportSearchIT extends OpenSearchIntegTestCase {
         int numShards = randomIntBetween(1, 10);
         int numDocs = numShards * 10;
         indexSomeDocs("boom", numShards, numDocs);
+        refresh("boom");
 
         final AtomicArray<Exception> exceptions = new AtomicArray<>(10);
         final CountDownLatch latch = new CountDownLatch(10);
@@ -536,7 +539,7 @@ public class TransportSearchIT extends OpenSearchIntegTestCase {
             IndexResponse indexResponse = client().prepareIndex(indexName).setSource("number", randomInt()).get();
             assertEquals(RestStatus.CREATED, indexResponse.status());
         }
-        client().admin().indices().prepareRefresh(indexName).get();
+        refresh(indexName);
     }
 
     private long requestBreakerUsed() {

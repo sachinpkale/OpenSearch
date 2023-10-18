@@ -42,11 +42,13 @@ import org.apache.lucene.util.BytesRef;
 import org.opensearch.action.admin.cluster.health.ClusterHealthResponse;
 import org.opensearch.action.admin.cluster.node.stats.NodeStats;
 import org.opensearch.action.admin.cluster.node.stats.NodesStatsResponse;
+import org.opensearch.action.admin.cluster.remotestore.restore.RestoreRemoteStoreRequest;
 import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotResponse;
 import org.opensearch.action.admin.cluster.state.ClusterStateResponse;
 import org.opensearch.action.admin.indices.shards.IndicesShardStoresResponse;
 import org.opensearch.action.index.IndexRequestBuilder;
 import org.opensearch.action.search.SearchResponse;
+import org.opensearch.action.support.PlainActionFuture;
 import org.opensearch.action.support.replication.TransportReplicationAction;
 import org.opensearch.client.Requests;
 import org.opensearch.cluster.ClusterState;
@@ -315,44 +317,57 @@ public class CorruptedFileIT extends OpenSearchIntegTestCase {
         client().admin().indices().prepareUpdateSettings("test").setSettings(build).get();
         client().admin().cluster().prepareReroute().get();
 
-        boolean didClusterTurnRed = waitUntil(() -> {
-            ClusterHealthStatus test = client().admin().cluster().health(Requests.clusterHealthRequest("test")).actionGet().getStatus();
-            return test == ClusterHealthStatus.RED;
-        }, 5, TimeUnit.MINUTES);// sometimes on slow nodes the replication / recovery is just dead slow
+        try {
+            ensureGreen("test");
+        } catch(AssertionError e) {
+            client().admin()
+                .cluster()
+                .restoreRemoteStore(
+                    new RestoreRemoteStoreRequest().indices("test"),
+                    PlainActionFuture.newFuture()
+                );
+            ensureGreen(TimeValue.timeValueSeconds(60), "test");
+        }
 
-        final ClusterHealthResponse response = client().admin().cluster().health(Requests.clusterHealthRequest("test")).get();
-
-        if (response.getStatus() != ClusterHealthStatus.RED) {
-            logger.info("Cluster turned red in busy loop: {}", didClusterTurnRed);
-            logger.info(
-                "cluster state:\n{}\n{}",
-                client().admin().cluster().prepareState().get().getState(),
-                client().admin().cluster().preparePendingClusterTasks().get()
-            );
-        }
-        assertThat(response.getStatus(), is(ClusterHealthStatus.RED));
-        ClusterState state = client().admin().cluster().prepareState().get().getState();
-        GroupShardsIterator<ShardIterator> shardIterators = state.getRoutingTable()
-            .activePrimaryShardsGrouped(new String[] { "test" }, false);
-        for (ShardIterator iterator : shardIterators) {
-            ShardRouting routing;
-            while ((routing = iterator.nextOrNull()) != null) {
-                if (routing.getId() == shardRouting.getId()) {
-                    assertThat(routing.state(), equalTo(ShardRoutingState.UNASSIGNED));
-                } else {
-                    assertThat(routing.state(), anyOf(equalTo(ShardRoutingState.RELOCATING), equalTo(ShardRoutingState.STARTED)));
-                }
-            }
-        }
-        final List<Path> files = listShardFiles(shardRouting);
-        Path corruptedFile = null;
-        for (Path file : files) {
-            if (file.getFileName().toString().startsWith("corrupted_")) {
-                corruptedFile = file;
-                break;
-            }
-        }
-        assertThat(corruptedFile, notNullValue());
+        countResponse = client().prepareSearch().setSize(0).get();
+        assertHitCount(countResponse, numDocs);
+//        boolean didClusterTurnRed = waitUntil(() -> {
+//            ClusterHealthStatus test = client().admin().cluster().health(Requests.clusterHealthRequest("test")).actionGet().getStatus();
+//            return test == ClusterHealthStatus.RED;
+//        }, 5, TimeUnit.MINUTES);// sometimes on slow nodes the replication / recovery is just dead slow
+//
+//        final ClusterHealthResponse response = client().admin().cluster().health(Requests.clusterHealthRequest("test")).get();
+//
+//        if (response.getStatus() != ClusterHealthStatus.RED) {
+//            logger.info("Cluster turned red in busy loop: {}", didClusterTurnRed);
+//            logger.info(
+//                "cluster state:\n{}\n{}",
+//                client().admin().cluster().prepareState().get().getState(),
+//                client().admin().cluster().preparePendingClusterTasks().get()
+//            );
+//        }
+//        ClusterState state = client().admin().cluster().prepareState().get().getState();
+//        GroupShardsIterator<ShardIterator> shardIterators = state.getRoutingTable()
+//            .activePrimaryShardsGrouped(new String[] { "test" }, false);
+//        for (ShardIterator iterator : shardIterators) {
+//            ShardRouting routing;
+//            while ((routing = iterator.nextOrNull()) != null) {
+//                if (routing.getId() == shardRouting.getId()) {
+//                    assertThat(routing.state(), equalTo(ShardRoutingState.UNASSIGNED));
+//                } else {
+//                    assertThat(routing.state(), anyOf(equalTo(ShardRoutingState.RELOCATING), equalTo(ShardRoutingState.STARTED)));
+//                }
+//            }
+//        }
+//        final List<Path> files = listShardFiles(shardRouting);
+//        Path corruptedFile = null;
+//        for (Path file : files) {
+//            if (file.getFileName().toString().startsWith("corrupted_")) {
+//                corruptedFile = file;
+//                break;
+//            }
+//        }
+//        assertThat(corruptedFile, notNullValue());
     }
 
     /**

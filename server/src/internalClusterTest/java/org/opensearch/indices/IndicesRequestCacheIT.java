@@ -34,6 +34,7 @@ package org.opensearch.indices;
 
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.opensearch.action.admin.indices.alias.Alias;
 import org.opensearch.action.admin.indices.forcemerge.ForceMergeResponse;
 import org.opensearch.action.search.SearchResponse;
@@ -69,6 +70,7 @@ import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertSearchResp
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
 
+@LuceneTestCase.AwaitsFix(bugUrl = "Test passes when we comment out waitForReplicasToCatchUp call in OpenSearchIntegTestCase.indexRandom")
 public class IndicesRequestCacheIT extends ParameterizedOpenSearchIntegTestCase {
     public IndicesRequestCacheIT(Settings settings) {
         super(settings);

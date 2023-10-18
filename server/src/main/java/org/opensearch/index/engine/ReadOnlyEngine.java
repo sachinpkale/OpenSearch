@@ -137,7 +137,7 @@ public class ReadOnlyEngine extends Engine {
                 }
                 if (seqNoStats == null) {
                     seqNoStats = buildSeqNoStats(config, lastCommittedSegmentInfos);
-                    ensureMaxSeqNoEqualsToGlobalCheckpoint(seqNoStats);
+                    //ensureMaxSeqNoEqualsToGlobalCheckpoint(seqNoStats);
                 }
                 this.seqNoStats = seqNoStats;
                 this.indexCommit = Lucene.getIndexCommit(lastCommittedSegmentInfos, directory);

@@ -36,6 +36,7 @@ import org.opensearch.action.admin.indices.cache.clear.ClearIndicesCacheResponse
 import org.opensearch.action.admin.indices.flush.FlushResponse;
 import org.opensearch.action.admin.indices.forcemerge.ForceMergeResponse;
 import org.opensearch.action.admin.indices.refresh.RefreshResponse;
+import org.opensearch.action.admin.indices.settings.get.GetSettingsRequest;
 import org.opensearch.action.bulk.BulkResponse;
 import org.opensearch.action.delete.DeleteResponse;
 import org.opensearch.action.get.GetResponse;
@@ -43,6 +44,7 @@ import org.opensearch.action.index.IndexResponse;
 import org.opensearch.action.search.SearchResponse;
 import org.opensearch.action.support.WriteRequest.RefreshPolicy;
 import org.opensearch.cluster.health.ClusterHealthStatus;
+import org.opensearch.cluster.metadata.IndexMetadata;
 import org.opensearch.common.xcontent.XContentFactory;
 import org.opensearch.core.xcontent.MediaTypeRegistry;
 import org.opensearch.core.xcontent.XContentBuilder;
@@ -50,6 +52,7 @@ import org.opensearch.test.OpenSearchIntegTestCase;
 import org.opensearch.test.hamcrest.OpenSearchAssertions;
 
 import java.io.IOException;
+import java.util.Objects;
 
 import static org.opensearch.action.DocWriteRequest.OpType;
 import static org.opensearch.client.Requests.clearIndicesCacheRequest;
@@ -76,8 +79,15 @@ public class DocumentActionsIT extends OpenSearchIntegTestCase {
     public void testIndexActions() throws Exception {
         createIndex();
         NumShards numShards = getNumShards(getConcreteIndexName());
-        logger.info("Running Cluster Health");
+        logger.info("ConcreteIndexName Running Cluster Health" + getConcreteIndexName());
         ensureGreen();
+
+        GetSettingsRequest getSettingsRequest = new GetSettingsRequest().indices(getConcreteIndexName());
+        client().admin().indices().getSettings(getSettingsRequest).actionGet().getIndexToSettings();
+        String remoteStoreEnabledStr = client().admin().indices().getSettings(getSettingsRequest).actionGet().getSetting(getConcreteIndexName(), IndexMetadata.SETTING_REMOTE_STORE_ENABLED);
+        logger.warn("MyIndexSettings (" + remoteStoreEnabledStr + ")");
+        logger.warn("MyFullSettings ( " + client().admin().indices().getSettings(getSettingsRequest).actionGet().getIndexToSettings() + ")");
+
         logger.info("Indexing [type1/1]");
         IndexResponse indexResponse = client().prepareIndex()
             .setIndex("test")
@@ -89,7 +99,12 @@ public class DocumentActionsIT extends OpenSearchIntegTestCase {
         assertThat(indexResponse.getId(), equalTo("1"));
         logger.info("Refreshing");
         RefreshResponse refreshResponse = refresh();
-        assertThat(refreshResponse.getSuccessfulShards(), equalTo(numShards.totalNumShards));
+
+        if(Objects.equals(remoteStoreEnabledStr, "true")) {
+            assertThat(refreshResponse.getSuccessfulShards(), equalTo(numShards.numPrimaries));
+        } else {
+            assertThat(refreshResponse.getSuccessfulShards(), equalTo(numShards.totalNumShards));
+        }
 
         logger.info("--> index exists?");
         assertThat(indexExists(getConcreteIndexName()), equalTo(true));
@@ -157,7 +172,12 @@ public class DocumentActionsIT extends OpenSearchIntegTestCase {
 
         logger.info("Flushing");
         FlushResponse flushResult = client().admin().indices().prepareFlush("test").execute().actionGet();
-        assertThat(flushResult.getSuccessfulShards(), equalTo(numShards.totalNumShards));
+        if(Objects.equals(remoteStoreEnabledStr, "true")) {
+            assertThat(flushResult.getSuccessfulShards(), equalTo(numShards.numPrimaries));
+        }
+        else {
+            assertThat(flushResult.getSuccessfulShards(), equalTo(numShards.totalNumShards));
+        }
         assertThat(flushResult.getFailedShards(), equalTo(0));
         logger.info("Refreshing");
         client().admin().indices().refresh(refreshRequest("test")).actionGet();
@@ -202,6 +222,9 @@ public class DocumentActionsIT extends OpenSearchIntegTestCase {
         NumShards numShards = getNumShards(getConcreteIndexName());
         logger.info("-> running Cluster Health");
         ensureGreen();
+        GetSettingsRequest getSettingsRequest = new GetSettingsRequest().indices(getConcreteIndexName());
+        String remoteStoreEnabledStr = client().admin().indices().getSettings(getSettingsRequest).actionGet().getSetting(getConcreteIndexName(), IndexMetadata.SETTING_REMOTE_STORE_ENABLED);
+        logger.warn("MyIndexSettings (" + remoteStoreEnabledStr + ")");
 
         BulkResponse bulkResponse = client().prepareBulk()
             .add(client().prepareIndex().setIndex("test").setId("1").setSource(source("1", "test")))
@@ -248,7 +271,12 @@ public class DocumentActionsIT extends OpenSearchIntegTestCase {
         waitForRelocation(ClusterHealthStatus.GREEN);
         RefreshResponse refreshResponse = client().admin().indices().prepareRefresh("test").execute().actionGet();
         assertNoFailures(refreshResponse);
-        assertThat(refreshResponse.getSuccessfulShards(), equalTo(numShards.totalNumShards));
+
+        if(Objects.equals(remoteStoreEnabledStr, "true")) {
+            assertThat(refreshResponse.getSuccessfulShards(), equalTo(numShards.numPrimaries));
+        } else {
+            assertThat(refreshResponse.getSuccessfulShards(), equalTo(numShards.totalNumShards));
+        }
 
         for (int i = 0; i < 5; i++) {
             GetResponse getResult = client().get(getRequest("test").id("1")).actionGet();

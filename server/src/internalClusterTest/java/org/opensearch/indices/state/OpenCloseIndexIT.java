@@ -71,6 +71,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 
+@OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST)
 public class OpenCloseIndexIT extends OpenSearchIntegTestCase {
     public void testSimpleCloseOpen() {
         Client client = client();
@@ -386,6 +387,7 @@ public class OpenCloseIndexIT extends OpenSearchIntegTestCase {
         }
     }
 
+    @AwaitsFix(bugUrl = "Translog stats need to be changed for remote store")
     public void testTranslogStats() throws Exception {
         final String indexName = "test";
         createIndex(indexName, Settings.builder().put(IndexMetadata.SETTING_NUMBER_OF_REPLICAS, 0).build());

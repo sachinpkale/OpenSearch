@@ -53,6 +53,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 
+@OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST)
 public class DateMathIndexExpressionsIntegrationIT extends OpenSearchIntegTestCase {
 
     public void testIndexNameDateMathExpressions() {

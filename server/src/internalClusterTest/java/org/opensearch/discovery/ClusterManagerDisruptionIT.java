@@ -297,6 +297,7 @@ public class ClusterManagerDisruptionIT extends AbstractDisruptionTestCase {
 
     }
 
+    @AwaitsFix(bugUrl = "Test asserts on local and global checkpoint which ")
     public void testMappingTimeout() throws Exception {
         startCluster(3);
         createIndex(

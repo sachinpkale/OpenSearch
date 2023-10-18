@@ -253,7 +253,7 @@ public class SegmentReplicationBaseIT extends OpenSearchIntegTestCase {
             ));
             mockTargetTransportService.addSendBehavior((connection, requestId, action, request, options) -> {
                 String actionToWaitFor = SegmentReplicationSourceService.Actions.GET_SEGMENT_FILES;
-                if (segmentReplicationWithRemoteEnabled()) {
+                if (useRemoteStore()) {
                     actionToWaitFor = SegmentReplicationSourceService.Actions.UPDATE_VISIBLE_CHECKPOINT;
                 }
                 if (action.equals(actionToWaitFor)) {

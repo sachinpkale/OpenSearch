@@ -58,6 +58,7 @@ import org.opensearch.search.fetch.subphase.highlight.HighlightBuilder;
 import org.opensearch.search.sort.FieldSortBuilder;
 import org.opensearch.search.sort.SortOrder;
 import org.opensearch.test.InternalSettingsPlugin;
+import org.opensearch.test.OpenSearchIntegTestCase;
 import org.opensearch.test.ParameterizedOpenSearchIntegTestCase;
 
 import java.util.ArrayList;
@@ -88,6 +89,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 
+@OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST)
 public class InnerHitsIT extends ParameterizedOpenSearchIntegTestCase {
 
     public InnerHitsIT(Settings dynamicSettings) {
@@ -1019,6 +1021,7 @@ public class InnerHitsIT extends ParameterizedOpenSearchIntegTestCase {
             )
             .setRefreshPolicy(IMMEDIATE)
             .get();
+        refresh("index2");
         SearchResponse response = client().prepareSearch("index2")
             .setQuery(
                 nestedQuery("nested", matchQuery("nested.field", "value1"), ScoreMode.Avg).innerHit(

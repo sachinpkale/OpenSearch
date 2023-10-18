@@ -64,6 +64,7 @@ import static org.opensearch.search.SearchService.CLUSTER_CONCURRENT_SEGMENT_SEA
 import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertHitCount;
 import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertNoFailures;
 
+@OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST)
 public class SearchWithRandomIOExceptionsIT extends ParameterizedOpenSearchIntegTestCase {
 
     public SearchWithRandomIOExceptionsIT(Settings dynamicSettings) {

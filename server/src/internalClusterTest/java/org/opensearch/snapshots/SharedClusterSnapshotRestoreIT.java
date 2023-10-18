@@ -82,6 +82,7 @@ import org.opensearch.repositories.RepositoryData;
 import org.opensearch.repositories.RepositoryException;
 import org.opensearch.repositories.blobstore.BlobStoreRepository;
 import org.opensearch.snapshots.mockstore.MockRepository;
+import org.opensearch.test.OpenSearchIntegTestCase;
 import org.opensearch.threadpool.ThreadPool;
 
 import java.nio.channels.SeekableByteChannel;
@@ -123,6 +124,7 @@ import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 
+@OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST)
 public class SharedClusterSnapshotRestoreIT extends AbstractSnapshotIntegTestCase {
 
     @Override
@@ -1011,7 +1013,7 @@ public class SharedClusterSnapshotRestoreIT extends AbstractSnapshotIntegTestCas
             fail("shouldn't be able to delete in-use repository");
         } catch (Exception ex) {
             logger.info("--> in-use repository deletion failed");
-            assertThat(ex.getMessage(), containsString("trying to modify or unregister repository that is currently used"));
+            assertTrue(ex.getMessage().contains("trying to modify or unregister repository that is currently used") || ex.getMessage().contains("cannot delete a system repository"));
         }
 
         logger.info("--> trying to move repository to another location");

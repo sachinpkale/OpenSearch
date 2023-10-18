@@ -5,6 +5,7 @@
 
 package org.opensearch.index;
 
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.opensearch.action.admin.cluster.settings.ClusterUpdateSettingsRequest;
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse;
@@ -45,6 +46,7 @@ import java.util.stream.Stream;
 import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertAcked;
 
 @OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST, numDataNodes = 2, numClientNodes = 1)
+@LuceneTestCase.AwaitsFix(bugUrl = "Indexing backpressure is blocking write threadpool on replica")
 public class ShardIndexingPressureSettingsIT extends OpenSearchIntegTestCase {
 
     public static final String INDEX_NAME = "test_index";

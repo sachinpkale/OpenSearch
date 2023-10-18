@@ -59,6 +59,7 @@ public class ForceMergeIT extends OpenSearchIntegTestCase {
         return false;
     }
 
+    @AwaitsFix(bugUrl = "https://quip-amazon.com/WmWbAWnrpxuq/Tests-Exclude-with-SegRep#temp:C:YSJ8bd40ae5586c46d494366fc3a")
     public void testForceMergeUUIDConsistent() throws Exception {
         internalCluster().ensureAtLeastNumDataNodes(2);
         final String index = "test-index";

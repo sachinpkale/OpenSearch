@@ -305,6 +305,8 @@ public class GatewayIndexStateIT extends OpenSearchIntegTestCase {
             .actionGet();
         assertThat(health.isTimedOut(), equalTo(false));
 
+        refresh("test");
+
         logger.info("--> verify 1 doc in the index");
         for (int i = 0; i < 10; i++) {
             assertHitCount(client().prepareSearch().setQuery(matchAllQuery()).get(), 1L);
@@ -330,6 +332,8 @@ public class GatewayIndexStateIT extends OpenSearchIntegTestCase {
             .execute()
             .actionGet();
         assertThat(health.isTimedOut(), equalTo(false));
+
+        refresh("test");
 
         logger.info("--> verify 1 doc in the index");
         assertHitCount(client().prepareSearch().setQuery(matchAllQuery()).get(), 1L);

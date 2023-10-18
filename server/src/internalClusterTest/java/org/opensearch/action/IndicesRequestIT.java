@@ -32,6 +32,7 @@
 
 package org.opensearch.action;
 
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.opensearch.action.admin.indices.alias.Alias;
 import org.opensearch.action.admin.indices.analyze.AnalyzeAction;
 import org.opensearch.action.admin.indices.cache.clear.ClearIndicesCacheAction;
@@ -133,6 +134,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasItem;
 
+@LuceneTestCase.AwaitsFix(bugUrl = "https://github.com/skip_as_test_checks_replication_transport_calls")
 @ClusterScope(scope = Scope.SUITE, numClientNodes = 1, minNumDataNodes = 2)
 public class IndicesRequestIT extends OpenSearchIntegTestCase {
 

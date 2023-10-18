@@ -159,6 +159,9 @@ public abstract class AbstractSnapshotIntegTestCase extends OpenSearchIntegTestC
                 .repositories()
                 .stream()
                 .filter(repositoryMetadata -> !repositoryMetadata.name().endsWith(TEST_REMOTE_STORE_REPO_SUFFIX))
+                .filter(repositoryMetadata -> !repositoryMetadata.name().equals(REPOSITORY_NAME))
+                .filter(repositoryMetadata -> !repositoryMetadata.name().equals(REPOSITORY_2_NAME))
+                .filter(repositoryMetadata -> !repositoryMetadata.name().equals(REPOSITORY_3_NAME))
                 .forEach(repositoryMetadata -> {
                     final String name = repositoryMetadata.name();
                     if (repositoryMetadata.settings().getAsBoolean("readonly", false) == false) {
@@ -549,7 +552,12 @@ public abstract class AbstractSnapshotIntegTestCase extends OpenSearchIntegTestC
     }
 
     protected void assertDocCount(String index, long count) {
-        assertEquals(getCountForIndex(index), count);
+        try {
+            assertBusy(() -> assertEquals(count, getCountForIndex(index)));
+        } catch (Exception e) {
+            logger.error("Exception in assertDocCount");
+            throw new RuntimeException(e);
+        }
     }
 
     protected String[] getLockFilesInRemoteStore(String remoteStoreIndex, String remoteStoreRepositoryName) throws IOException {

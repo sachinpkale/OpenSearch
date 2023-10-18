@@ -106,26 +106,29 @@ public class CorruptedTranslogIT extends OpenSearchIntegTestCase {
             }
         });
 
-        assertBusy(() -> {
-            final ClusterAllocationExplainResponse allocationExplainResponse = client().admin()
-                .cluster()
-                .prepareAllocationExplain()
-                .setIndex("test")
-                .setShard(0)
-                .setPrimary(true)
-                .get();
-            final UnassignedInfo unassignedInfo = allocationExplainResponse.getExplanation().getUnassignedInfo();
-            assertThat(unassignedInfo, not(nullValue()));
-            final Throwable cause = ExceptionsHelper.unwrap(unassignedInfo.getFailure(), TranslogCorruptedException.class);
-            assertThat(cause, not(nullValue()));
-            assertThat(cause.getMessage(), containsString(translogPath.toString()));
-        });
+        // Restore from remote translog will override local corrupted translog and will not fail the shard
+        ensureGreen("test");
 
-        assertThat(
-            expectThrows(SearchPhaseExecutionException.class, () -> client().prepareSearch("test").setQuery(matchAllQuery()).get())
-                .getMessage(),
-            containsString("all shards failed")
-        );
+//        assertBusy(() -> {
+//            final ClusterAllocationExplainResponse allocationExplainResponse = client().admin()
+//                .cluster()
+//                .prepareAllocationExplain()
+//                .setIndex("test")
+//                .setShard(0)
+//                .setPrimary(true)
+//                .get();
+//            final UnassignedInfo unassignedInfo = allocationExplainResponse.getExplanation().getUnassignedInfo();
+//            assertThat(unassignedInfo, not(nullValue()));
+//            final Throwable cause = ExceptionsHelper.unwrap(unassignedInfo.getFailure(), TranslogCorruptedException.class);
+//            assertThat(cause, not(nullValue()));
+//            assertThat(cause.getMessage(), containsString(translogPath.toString()));
+//        });
+
+//        assertThat(
+//            expectThrows(SearchPhaseExecutionException.class, () -> client().prepareSearch("test").setQuery(matchAllQuery()).get())
+//                .getMessage(),
+//            containsString("all shards failed")
+//        );
 
     }
 

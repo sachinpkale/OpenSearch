@@ -48,6 +48,7 @@ import org.opensearch.index.IndexService;
 import org.opensearch.index.mapper.GeoShapeFieldMapper;
 import org.opensearch.index.mapper.MappedFieldType;
 import org.opensearch.indices.IndicesService;
+import org.opensearch.test.OpenSearchIntegTestCase;
 import org.opensearch.test.ParameterizedOpenSearchIntegTestCase;
 
 import java.util.Arrays;
@@ -61,6 +62,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.instanceOf;
 
+@OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST)
 public class GeoShapeIntegrationIT extends ParameterizedOpenSearchIntegTestCase {
 
     public GeoShapeIntegrationIT(Settings dynamicSettings) {

@@ -49,6 +49,7 @@ import org.opensearch.script.ScriptType;
 import org.opensearch.search.SearchHit;
 import org.opensearch.search.sort.ScriptSortBuilder.ScriptSortType;
 import org.opensearch.test.InternalSettingsPlugin;
+import org.opensearch.test.OpenSearchIntegTestCase;
 import org.opensearch.test.ParameterizedOpenSearchIntegTestCase;
 
 import java.io.IOException;
@@ -75,6 +76,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.not;
 
+@OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST)
 public class SimpleSortIT extends ParameterizedOpenSearchIntegTestCase {
 
     private static final String DOUBLE_APOSTROPHE = "\u0027\u0027";
@@ -300,7 +302,7 @@ public class SimpleSortIT extends ParameterizedOpenSearchIntegTestCase {
         for (int i = 10; i < 20; i++) { // add some docs that don't have values in those fields
             client().prepareIndex("test").setId("" + i).setSource(jsonBuilder().startObject().field("ord", i).endObject()).get();
         }
-        client().admin().indices().prepareRefresh("test").get();
+        refresh("test");
 
         // test the long values
         SearchResponse searchResponse = client().prepareSearch()

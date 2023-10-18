@@ -225,19 +225,19 @@ public class QueryRescorerIT extends ParameterizedOpenSearchIntegTestCase {
         client().prepareIndex("test").setId("1").setSource("field1", "massachusetts avenue boston massachusetts").get();
         client().prepareIndex("test").setId("2").setSource("field1", "lexington avenue boston massachusetts").get();
         client().prepareIndex("test").setId("3").setSource("field1", "boston avenue lexington massachusetts").get();
-        client().admin().indices().prepareRefresh("test").get();
+        refresh("test");
         client().prepareIndex("test").setId("4").setSource("field1", "boston road lexington massachusetts").get();
         client().prepareIndex("test").setId("5").setSource("field1", "lexington street lexington massachusetts").get();
         client().prepareIndex("test").setId("6").setSource("field1", "massachusetts avenue lexington massachusetts").get();
         client().prepareIndex("test").setId("7").setSource("field1", "bosten street san franciso california").get();
-        client().admin().indices().prepareRefresh("test").get();
+        refresh("test");
         client().prepareIndex("test").setId("8").setSource("field1", "hollywood boulevard los angeles california").get();
         client().prepareIndex("test").setId("9").setSource("field1", "1st street boston massachussetts").get();
         client().prepareIndex("test").setId("10").setSource("field1", "1st street boston massachusetts").get();
-        client().admin().indices().prepareRefresh("test").get();
+        refresh("test");
         client().prepareIndex("test").setId("11").setSource("field1", "2st street boston massachusetts").get();
         client().prepareIndex("test").setId("12").setSource("field1", "3st street boston massachusetts").get();
-        client().admin().indices().prepareRefresh("test").get();
+        refresh("test");
         SearchResponse searchResponse = client().prepareSearch()
             .setQuery(QueryBuilders.matchQuery("field1", "lexington avenue massachusetts").operator(Operator.OR))
             .setFrom(0)
@@ -313,10 +313,10 @@ public class QueryRescorerIT extends ParameterizedOpenSearchIntegTestCase {
 
         client().prepareIndex("test").setId("3").setSource("field1", "massachusetts").get();
         client().prepareIndex("test").setId("6").setSource("field1", "massachusetts avenue lexington massachusetts").get();
-        client().admin().indices().prepareRefresh("test").get();
+        refresh("test");
         client().prepareIndex("test").setId("1").setSource("field1", "lexington massachusetts avenue").get();
         client().prepareIndex("test").setId("2").setSource("field1", "lexington avenue boston massachusetts road").get();
-        client().admin().indices().prepareRefresh("test").get();
+        refresh("test");
 
         SearchResponse searchResponse = client().prepareSearch()
             .setQuery(QueryBuilders.matchQuery("field1", "massachusetts"))
@@ -393,10 +393,10 @@ public class QueryRescorerIT extends ParameterizedOpenSearchIntegTestCase {
 
         client().prepareIndex("test").setId("3").setSource("field1", "massachusetts").get();
         client().prepareIndex("test").setId("6").setSource("field1", "massachusetts avenue lexington massachusetts").get();
-        client().admin().indices().prepareRefresh("test").get();
+        refresh("test");
         client().prepareIndex("test").setId("1").setSource("field1", "lexington massachusetts avenue").get();
         client().prepareIndex("test").setId("2").setSource("field1", "lexington avenue boston massachusetts road").get();
-        client().admin().indices().prepareRefresh("test").get();
+        refresh("test");
 
         SearchResponse searchResponse = client().prepareSearch()
             .setQuery(QueryBuilders.matchQuery("field1", "massachusetts").operator(Operator.OR))

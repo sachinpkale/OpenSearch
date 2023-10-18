@@ -64,6 +64,7 @@ import org.opensearch.core.xcontent.MediaTypeRegistry;
 import org.opensearch.core.xcontent.XContentBuilder;
 import org.opensearch.index.query.QueryBuilders;
 import org.opensearch.search.SearchHit;
+import org.opensearch.test.OpenSearchIntegTestCase;
 import org.opensearch.test.ParameterizedOpenSearchIntegTestCase;
 import org.opensearch.test.VersionUtils;
 import org.junit.BeforeClass;
@@ -99,6 +100,7 @@ import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 
+@OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST)
 public class GeoFilterIT extends ParameterizedOpenSearchIntegTestCase {
 
     public GeoFilterIT(Settings dynamicSettings) {
@@ -265,7 +267,7 @@ public class GeoFilterIT extends ParameterizedOpenSearchIntegTestCase {
         BytesReference data = BytesReference.bytes(jsonBuilder().startObject().field("area", polygon).endObject());
 
         client().prepareIndex("shapes").setId("1").setSource(data, MediaTypeRegistry.JSON).get();
-        client().admin().indices().prepareRefresh().get();
+        refresh();
 
         // Point in polygon
         SearchResponse result = client().prepareSearch()
@@ -328,7 +330,7 @@ public class GeoFilterIT extends ParameterizedOpenSearchIntegTestCase {
 
         data = BytesReference.bytes(jsonBuilder().startObject().field("area", inverse).endObject());
         client().prepareIndex("shapes").setId("2").setSource(data, MediaTypeRegistry.JSON).get();
-        client().admin().indices().prepareRefresh().get();
+        refresh();
 
         // re-check point on polygon hole
         result = client().prepareSearch()
@@ -367,7 +369,7 @@ public class GeoFilterIT extends ParameterizedOpenSearchIntegTestCase {
 
         data = BytesReference.bytes(jsonBuilder().startObject().field("area", builder).endObject());
         client().prepareIndex("shapes").setId("1").setSource(data, MediaTypeRegistry.JSON).get();
-        client().admin().indices().prepareRefresh().get();
+        refresh();
 
         // Create a polygon crossing longitude 180 with hole.
         builder = new PolygonBuilder(
@@ -380,7 +382,7 @@ public class GeoFilterIT extends ParameterizedOpenSearchIntegTestCase {
 
         data = BytesReference.bytes(jsonBuilder().startObject().field("area", builder).endObject());
         client().prepareIndex("shapes").setId("1").setSource(data, MediaTypeRegistry.JSON).get();
-        client().admin().indices().prepareRefresh().get();
+        refresh();
 
         result = client().prepareSearch()
             .setQuery(matchAllQuery())
@@ -432,7 +434,7 @@ public class GeoFilterIT extends ParameterizedOpenSearchIntegTestCase {
             assertFalse("unable to index data", item.isFailed());
         }
 
-        client().admin().indices().prepareRefresh().get();
+        refresh();
         String key = "DE";
 
         SearchResponse searchResponse = client().prepareSearch().setQuery(matchQuery("_id", key)).get();

@@ -250,7 +250,7 @@ public class SearchFieldsIT extends ParameterizedOpenSearchIntegTestCase {
             )
             .get();
 
-        client().admin().indices().prepareRefresh().get();
+        refresh();
 
         SearchResponse searchResponse = client().prepareSearch().setQuery(matchAllQuery()).addStoredField("field1").get();
         assertThat(searchResponse.getHits().getTotalHits().value, equalTo(1L));
@@ -357,7 +357,7 @@ public class SearchFieldsIT extends ParameterizedOpenSearchIntegTestCase {
                 jsonBuilder().startObject().field("test", "value beck").field("num1", 3.0f).field("date", "1970-01-01T00:02:00").endObject()
             )
             .get();
-        client().admin().indices().refresh(refreshRequest()).actionGet();
+        refresh();
 
         logger.info("running doc['num1'].value");
         SearchResponse response = client().prepareSearch()
@@ -457,7 +457,7 @@ public class SearchFieldsIT extends ParameterizedOpenSearchIntegTestCase {
                     .endObject()
             )
             .get();
-        client().admin().indices().refresh(refreshRequest()).actionGet();
+        refresh();
 
         SearchResponse response = client().prepareSearch()
             .setQuery(matchAllQuery())
@@ -631,7 +631,7 @@ public class SearchFieldsIT extends ParameterizedOpenSearchIntegTestCase {
                     .endObject()
             )
             .get();
-        client().admin().indices().refresh(refreshRequest()).actionGet();
+        refresh();
 
         SearchResponse response = client().prepareSearch()
             .setQuery(matchAllQuery())
@@ -715,7 +715,7 @@ public class SearchFieldsIT extends ParameterizedOpenSearchIntegTestCase {
             )
             .get();
 
-        client().admin().indices().prepareRefresh().get();
+        refresh();
     }
 
     public void testStoredFieldsWithoutSource() throws Exception {
@@ -794,7 +794,7 @@ public class SearchFieldsIT extends ParameterizedOpenSearchIntegTestCase {
             )
             .get();
 
-        client().admin().indices().prepareRefresh().get();
+        refresh();
 
         SearchResponse searchResponse = client().prepareSearch()
             .setQuery(matchAllQuery())
@@ -866,6 +866,8 @@ public class SearchFieldsIT extends ParameterizedOpenSearchIntegTestCase {
             .setSource(jsonBuilder().startObject().startObject("field1").field("field2", "value1").endObject().endObject())
             .setRefreshPolicy(IMMEDIATE)
             .get();
+
+        refresh();
 
         assertFailures(
             client().prepareSearch("my-index").addStoredField("field1"),
@@ -1038,7 +1040,7 @@ public class SearchFieldsIT extends ParameterizedOpenSearchIntegTestCase {
             )
             .get();
 
-        client().admin().indices().prepareRefresh().get();
+        refresh();
 
         SearchRequestBuilder builder = client().prepareSearch()
             .setQuery(matchAllQuery())

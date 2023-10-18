@@ -5,6 +5,7 @@
 
 package org.opensearch.index;
 
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse;
 import org.opensearch.action.admin.indices.stats.ShardStats;
@@ -45,6 +46,8 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.instanceOf;
 
 @OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST, numDataNodes = 2, numClientNodes = 1)
+@LuceneTestCase.AwaitsFix(bugUrl = "The tests blocks write threadpool on replica to mimic replication getting stuck. Since primary term validation is pretty light-weight we use transport_worker instead and the backpressure" +
+    " for segrep is dealt with differently hence skipping")
 public class ShardIndexingPressureIT extends OpenSearchIntegTestCase {
 
     public static final String INDEX_NAME = "test_index";

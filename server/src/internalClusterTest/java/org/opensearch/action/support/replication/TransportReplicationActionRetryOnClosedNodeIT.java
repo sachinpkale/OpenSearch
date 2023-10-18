@@ -34,6 +34,7 @@ package org.opensearch.action.support.replication;
 
 import org.opensearch.action.ActionRequest;
 import org.opensearch.action.ActionType;
+import org.opensearch.action.admin.indices.settings.get.GetSettingsRequest;
 import org.opensearch.action.support.ActionFilters;
 import org.opensearch.cluster.action.shard.ShardStateAction;
 import org.opensearch.cluster.metadata.IndexMetadata;
@@ -69,6 +70,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -219,7 +221,14 @@ public class TransportReplicationActionRetryOnClosedNodeIT extends OpenSearchInt
 
         TestPlugin primaryTestPlugin = getTestPlugin(primary);
         // this test only provoked an issue for the primary action, but for completeness, we pick the action randomly
-        primaryTestPlugin.testActionName = TestAction.ACTION_NAME + (randomBoolean() ? "[p]" : "[r]");
+        GetSettingsRequest getSettingsRequest = new GetSettingsRequest().indices("test");
+        String remoteStoreEnabledStr = client().admin().indices().getSettings(getSettingsRequest).actionGet().getSetting("test", IndexMetadata.SETTING_REMOTE_STORE_ENABLED);
+        logger.warn("IndexSettings (" + remoteStoreEnabledStr + ")");
+        if(Objects.equals(remoteStoreEnabledStr, "true")) {
+            primaryTestPlugin.testActionName = TestAction.ACTION_NAME + (randomBoolean() ? "[p]" : "[p]");
+        } else {
+            primaryTestPlugin.testActionName = TestAction.ACTION_NAME + (randomBoolean() ? "[p]" : "[r]");
+        }
         logger.info("--> Test action {}, primary {}, replica {}", primaryTestPlugin.testActionName, primary, replica);
 
         AtomicReference<Object> response = new AtomicReference<>();

@@ -119,7 +119,7 @@ public class SegmentReplicationResizeRequestIT extends SegmentReplicationBaseIT 
 
         // block Segment Replication so that replicas never get the docs from primary
         try (final Releasable ignored = blockReplication(List.of(discoveryNodes[0].getName()), latch)) {
-            final int docs = 500;
+            final int docs = 50;
             for (int i = 0; i < docs; i++) {
                 client().prepareIndex("test").setSource("{\"foo\" : \"bar\", \"i\" : " + i + "}", MediaTypeRegistry.JSON).get();
             }

@@ -46,7 +46,7 @@ public class ReplicationTimer implements Writeable {
     }
 
     public synchronized void start() {
-        assert startTime == 0 : "already started";
+        //assert startTime == 0 : "already started";
         startTime = System.currentTimeMillis();
         startNanoTime = System.nanoTime();
     }

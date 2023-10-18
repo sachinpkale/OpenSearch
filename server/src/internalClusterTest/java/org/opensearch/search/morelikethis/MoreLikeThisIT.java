@@ -50,6 +50,7 @@ import org.opensearch.index.query.QueryBuilder;
 import org.opensearch.index.query.QueryBuilders;
 import org.opensearch.plugins.Plugin;
 import org.opensearch.test.InternalSettingsPlugin;
+import org.opensearch.test.OpenSearchIntegTestCase;
 import org.opensearch.test.ParameterizedOpenSearchIntegTestCase;
 
 import java.io.IOException;
@@ -79,6 +80,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.notNullValue;
 
+@OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST)
 public class MoreLikeThisIT extends ParameterizedOpenSearchIntegTestCase {
 
     public MoreLikeThisIT(Settings dynamicSettings) {
@@ -125,6 +127,7 @@ public class MoreLikeThisIT extends ParameterizedOpenSearchIntegTestCase {
         client().index(indexRequest("test").id("2").source(jsonBuilder().startObject().field("text", "lucene release").endObject()))
             .actionGet();
         client().admin().indices().refresh(refreshRequest()).actionGet();
+        refresh("test");
 
         logger.info("Running moreLikeThis");
         SearchResponse response = client().prepareSearch()
@@ -155,6 +158,7 @@ public class MoreLikeThisIT extends ParameterizedOpenSearchIntegTestCase {
         client().index(indexRequest("test").id("2").source(jsonBuilder().startObject().field("text", "lucene release").endObject()))
             .actionGet();
         client().admin().indices().refresh(refreshRequest()).actionGet();
+        refresh("test");
 
         logger.info("Running moreLikeThis");
         SearchResponse response = client().prepareSearch()
@@ -190,6 +194,7 @@ public class MoreLikeThisIT extends ParameterizedOpenSearchIntegTestCase {
         ).actionGet();
 
         client().admin().indices().refresh(refreshRequest()).actionGet();
+        refresh("test");
 
         SearchResponse searchResponse = client().prepareSearch()
             .setQuery(
@@ -214,6 +219,7 @@ public class MoreLikeThisIT extends ParameterizedOpenSearchIntegTestCase {
         client().index(indexRequest("test").id("3").source(jsonBuilder().startObject().field("some_long", -666).endObject())).actionGet();
 
         client().admin().indices().refresh(refreshRequest()).actionGet();
+        refresh("test");
 
         logger.info("Running moreLikeThis");
         SearchResponse response = client().prepareSearch()
@@ -256,6 +262,7 @@ public class MoreLikeThisIT extends ParameterizedOpenSearchIntegTestCase {
         client().index(indexRequest("test").id("4").source(jsonBuilder().startObject().field("text", "opensearch release").endObject()))
             .actionGet();
         client().admin().indices().refresh(refreshRequest()).actionGet();
+        refresh("test");
 
         logger.info("Running moreLikeThis on index");
         SearchResponse response = client().prepareSearch()
@@ -320,6 +327,7 @@ public class MoreLikeThisIT extends ParameterizedOpenSearchIntegTestCase {
             .setSource(jsonBuilder().startObject().startObject("foo").field("bar", "boz").endObject().endObject())
             .get();
         client().admin().indices().prepareRefresh("foo").get();
+        refresh("foo");
         assertThat(ensureGreen(), equalTo(ClusterHealthStatus.GREEN));
 
         SearchResponse response = client().prepareSearch()
@@ -344,6 +352,7 @@ public class MoreLikeThisIT extends ParameterizedOpenSearchIntegTestCase {
             .setRouting("2")
             .get();
         client().admin().indices().prepareRefresh("foo").get();
+        refresh("foo");
 
         SearchResponse response = client().prepareSearch()
             .setQuery(new MoreLikeThisQueryBuilder(null, new Item[] { new Item("foo", "1").routing("2") }))
@@ -368,6 +377,7 @@ public class MoreLikeThisIT extends ParameterizedOpenSearchIntegTestCase {
             .setRouting("4000")
             .get();
         client().admin().indices().prepareRefresh("foo").get();
+        refresh("foo");
         SearchResponse response = client().prepareSearch()
             .setQuery(new MoreLikeThisQueryBuilder(null, new Item[] { new Item("foo", "1").routing("4000") }))
             .get();
@@ -400,7 +410,7 @@ public class MoreLikeThisIT extends ParameterizedOpenSearchIntegTestCase {
             .setSource(jsonBuilder().startObject().field("string_value", "opensearch index").field("int_value", 42).endObject())
             .get();
 
-        refresh();
+        refresh("test");
 
         // Implicit list of fields -> ignore numeric fields
         SearchResponse searchResponse = client().prepareSearch()
@@ -507,7 +517,7 @@ public class MoreLikeThisIT extends ParameterizedOpenSearchIntegTestCase {
 
         index("test", "_doc", "1", "text", "lucene");
         index("test", "_doc", "2", "text", "lucene release");
-        refresh();
+        refresh("test");
 
         Item item = new Item("test", "1");
         QueryBuilder query = QueryBuilders.moreLikeThisQuery(new String[] { "alias" }, null, new Item[] { item })
@@ -548,6 +558,7 @@ public class MoreLikeThisIT extends ParameterizedOpenSearchIntegTestCase {
                 .source(jsonBuilder().startObject().field("text", "Lucene has been ported to other programming languages").endObject())
         ).actionGet();
         client().admin().indices().refresh(refreshRequest()).actionGet();
+        refresh("test");
 
         logger.info("Running More Like This with include true");
         SearchResponse response = client().prepareSearch()

@@ -40,11 +40,7 @@ public class SegmentReplicationAllocationIT extends SegmentReplicationBaseIT {
             .put(IndexMetadata.SETTING_NUMBER_OF_SHARDS, shardCount)
             .put(IndexModule.INDEX_QUERY_CACHE_ENABLED_SETTING.getKey(), false)
             .put(IndexMetadata.SETTING_NUMBER_OF_REPLICAS, replicaCount);
-        if (isSegRep) {
-            builder = builder.put(IndexMetadata.SETTING_REPLICATION_TYPE, ReplicationType.SEGMENT);
-        } else {
-            builder = builder.put(IndexMetadata.SETTING_REPLICATION_TYPE, ReplicationType.DOCUMENT);
-        }
+        builder = builder.put(IndexMetadata.SETTING_REPLICATION_TYPE, ReplicationType.SEGMENT);
         prepareCreate(idxName, builder).get();
     }
 

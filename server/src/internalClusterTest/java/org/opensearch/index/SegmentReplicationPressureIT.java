@@ -5,6 +5,7 @@
 
 package org.opensearch.index;
 
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.opensearch.action.admin.indices.replication.SegmentReplicationStatsResponse;
 import org.opensearch.action.bulk.BulkItemResponse;
 import org.opensearch.action.bulk.BulkRequest;
@@ -44,6 +45,7 @@ import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertAcked;
 import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertHitCount;
 
 @OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST, numDataNodes = 0)
+@LuceneTestCase.AwaitsFix(bugUrl = "SegmentReplicationWithRemoteStorePressureIT is already running in main, skipping")
 public class SegmentReplicationPressureIT extends SegmentReplicationBaseIT {
 
     private static final int MAX_CHECKPOINTS_BEHIND = 2;

@@ -40,6 +40,7 @@ import org.opensearch.common.lucene.search.function.FieldValueFactorFunction;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.common.util.FeatureFlags;
 import org.opensearch.search.SearchHit;
+import org.opensearch.test.OpenSearchIntegTestCase;
 import org.opensearch.test.ParameterizedOpenSearchIntegTestCase;
 
 import java.io.IOException;
@@ -61,6 +62,7 @@ import static org.hamcrest.Matchers.containsString;
 /**
  * Tests for the {@code field_value_factor} function in a function_score query.
  */
+@OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST)
 public class FunctionScoreFieldValueIT extends ParameterizedOpenSearchIntegTestCase {
 
     public FunctionScoreFieldValueIT(Settings dynamicSettings) {
@@ -100,7 +102,7 @@ public class FunctionScoreFieldValueIT extends ParameterizedOpenSearchIntegTestC
         client().prepareIndex("test").setId("2").setSource("test", 17, "body", "foo").get();
         client().prepareIndex("test").setId("3").setSource("body", "bar").get();
 
-        refresh();
+        refresh("test");
 
         // document 2 scores higher because 17 > 5
         SearchResponse response = client().prepareSearch("test")
@@ -169,7 +171,7 @@ public class FunctionScoreFieldValueIT extends ParameterizedOpenSearchIntegTestC
         assertEquals(response.getHits().getAt(0).getScore(), response.getHits().getAt(2).getScore(), 0);
 
         client().prepareIndex("test").setId("2").setSource("test", -1, "body", "foo").get();
-        refresh();
+        refresh("test");
 
         // -1 divided by 0 is infinity, which should provoke an exception.
         try {
@@ -209,7 +211,7 @@ public class FunctionScoreFieldValueIT extends ParameterizedOpenSearchIntegTestC
         client().prepareIndex("test").setId("2").setSource("test", 17, "body", "foo").get();
         client().prepareIndex("test").setId("3").setSource("body", "bar").get();
 
-        refresh();
+        refresh("test");
 
         // document 2 scores higher because 17 > 5
         final String functionName = "func1";

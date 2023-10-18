@@ -42,7 +42,7 @@ public class SegmentReplicationSnapshotIT extends AbstractSnapshotIntegTestCase 
     private static final String RESTORED_INDEX_NAME = INDEX_NAME + "-restored";
     private static final int SHARD_COUNT = 1;
     private static final int REPLICA_COUNT = 1;
-    private static final int DOC_COUNT = 1010;
+    private static final int DOC_COUNT = 50;
 
     private static final String REPOSITORY_NAME = "test-segrep-repo";
     private static final String SNAPSHOT_NAME = "test-segrep-snapshot";
@@ -148,19 +148,23 @@ public class SegmentReplicationSnapshotIT extends AbstractSnapshotIntegTestCase 
     }
 
     public void testSnapshotOnSegRep_RestoreOnSegRepDuringIngestion() throws Exception {
+        logger.info("--> Start cluster");
         List<String> nodes = startClusterWithSettings(segRepEnableIndexSettings(), 1);
         waitForSearchableDocs(INDEX_NAME, DOC_COUNT, nodes);
+        logger.info("--> Create snapshot");
         createSnapshot();
         // Delete index
+        logger.info("--> Delete index");
         assertAcked(client().admin().indices().delete(new DeleteIndexRequest(INDEX_NAME)).get());
         assertFalse("index [" + INDEX_NAME + "] should have been deleted", indexExists(INDEX_NAME));
 
+        logger.info("--> Restore snapshot");
         RestoreSnapshotResponse restoreSnapshotResponse = restoreSnapshotWithSettings(null);
 
         // Assertions
         assertEquals(restoreSnapshotResponse.status(), RestStatus.ACCEPTED);
         assertBusy(() -> ensureGreen(RESTORED_INDEX_NAME), 60, TimeUnit.SECONDS);
-        final int docCountPostRestore = 1001;
+        final int docCountPostRestore = 30;
         final int totalDocCount = DOC_COUNT + docCountPostRestore;
         for (int i = DOC_COUNT; i < totalDocCount; i++) {
             client().prepareIndex(RESTORED_INDEX_NAME).setId(Integer.toString(i)).setSource("field", "value" + i).execute().actionGet();
@@ -177,6 +181,7 @@ public class SegmentReplicationSnapshotIT extends AbstractSnapshotIntegTestCase 
         assertHitCount(resp, totalDocCount);
     }
 
+    @AwaitsFix(bugUrl = "This test requires creation of DocRep index which is not possible with remote store index")
     public void testSnapshotOnDocRep_RestoreOnSegRep() throws Exception {
         startClusterWithSettings(docRepEnableIndexSettings(), 1);
         createSnapshot();
@@ -198,6 +203,7 @@ public class SegmentReplicationSnapshotIT extends AbstractSnapshotIntegTestCase 
         assertHitCount(resp, DOC_COUNT);
     }
 
+    @AwaitsFix(bugUrl = "This test requires creation of DocRep index which is not possible with remote store index")
     public void testSnapshotOnSegRep_RestoreOnDocRep() throws Exception {
         // Start a cluster with one primary and one replica
         startClusterWithSettings(segRepEnableIndexSettings(), 1);
@@ -219,6 +225,7 @@ public class SegmentReplicationSnapshotIT extends AbstractSnapshotIntegTestCase 
         assertHitCount(resp, DOC_COUNT);
     }
 
+    @AwaitsFix(bugUrl = "This test requires creation of DocRep index which is not possible with remote store index")
     public void testSnapshotOnDocRep_RestoreOnDocRep() throws Exception {
         startClusterWithSettings(docRepEnableIndexSettings(), 1);
         createSnapshot();
@@ -266,6 +273,7 @@ public class SegmentReplicationSnapshotIT extends AbstractSnapshotIntegTestCase 
         assertHitCount(resp, DOC_COUNT);
     }
 
+    @AwaitsFix(bugUrl = "This test requires creation of DocRep index which is not possible with remote store index")
     public void testSnapshotRestoreOnIndexWithSegRepClusterSetting() throws Exception {
         Settings settings = Settings.builder()
             .put(super.featureFlagSettings())

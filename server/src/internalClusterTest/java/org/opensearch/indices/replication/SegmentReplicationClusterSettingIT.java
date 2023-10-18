@@ -8,6 +8,7 @@
 
 package org.opensearch.indices.replication;
 
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.opensearch.action.admin.indices.settings.get.GetSettingsRequest;
 import org.opensearch.action.admin.indices.settings.get.GetSettingsResponse;
 import org.opensearch.cluster.metadata.IndexMetadata;
@@ -21,6 +22,7 @@ import org.opensearch.test.OpenSearchIntegTestCase;
 import static org.opensearch.cluster.metadata.IndexMetadata.SETTING_REPLICATION_TYPE;
 import static org.opensearch.indices.IndicesService.CLUSTER_SETTING_REPLICATION_TYPE;
 
+@LuceneTestCase.AwaitsFix(bugUrl = "Expected behaviour - To enable index.remote_store.enabled, index.replication.type should be set to SEGMENT")
 @OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST, numDataNodes = 0)
 public class SegmentReplicationClusterSettingIT extends OpenSearchIntegTestCase {
 

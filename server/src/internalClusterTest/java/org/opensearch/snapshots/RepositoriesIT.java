@@ -55,6 +55,8 @@ import org.opensearch.threadpool.ThreadPool;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertAcked;
 import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertRequestBuilderThrows;
@@ -62,7 +64,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 
-@OpenSearchIntegTestCase.ClusterScope(minNumDataNodes = 2)
+@OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST, minNumDataNodes = 2)
 public class RepositoriesIT extends AbstractSnapshotIntegTestCase {
     public void testRepositoryCreation() throws Exception {
         Client client = client();
@@ -95,7 +97,7 @@ public class RepositoriesIT extends AbstractSnapshotIntegTestCase {
         metadata = clusterStateResponse.getState().getMetadata();
         repositoriesMetadata = metadata.custom(RepositoriesMetadata.TYPE);
         assertThat(repositoriesMetadata, notNullValue());
-        assertThat(repositoriesMetadata.repositories().size(), equalTo(2));
+        assertThat((int) repositoriesMetadata.repositories().stream().filter(r -> !Set.of(REPOSITORY_NAME, REPOSITORY_2_NAME, REPOSITORY_3_NAME).contains(r.name())).count(), equalTo(2));
         assertThat(repositoriesMetadata.repository("test-repo-1"), notNullValue());
         assertThat(repositoriesMetadata.repository("test-repo-1").type(), equalTo("fs"));
         assertThat(repositoriesMetadata.repository("test-repo-2"), notNullValue());
@@ -106,7 +108,7 @@ public class RepositoriesIT extends AbstractSnapshotIntegTestCase {
             .cluster()
             .prepareGetRepositories(randomFrom("_all", "*", "test-repo-*"))
             .get();
-        assertThat(repositoriesResponse.repositories().size(), equalTo(2));
+        assertThat((int) repositoriesResponse.repositories().stream().filter(r -> !Set.of(REPOSITORY_NAME, REPOSITORY_2_NAME, REPOSITORY_3_NAME).contains(r.name())).count(), equalTo(2));
         assertThat(findRepository(repositoriesResponse.repositories(), "test-repo-1"), notNullValue());
         assertThat(findRepository(repositoriesResponse.repositories(), "test-repo-2"), notNullValue());
 
@@ -127,13 +129,13 @@ public class RepositoriesIT extends AbstractSnapshotIntegTestCase {
         logger.info("--> delete repository test-repo-1");
         client.admin().cluster().prepareDeleteRepository("test-repo-1").get();
         repositoriesResponse = client.admin().cluster().prepareGetRepositories().get();
-        assertThat(repositoriesResponse.repositories().size(), equalTo(1));
+        assertThat((int) repositoriesResponse.repositories().stream().filter(r -> !Set.of(REPOSITORY_NAME, REPOSITORY_2_NAME, REPOSITORY_3_NAME).contains(r.name())).count(), equalTo(1));
         assertThat(findRepository(repositoriesResponse.repositories(), "test-repo-2"), notNullValue());
 
         logger.info("--> delete repository test-repo-2");
         client.admin().cluster().prepareDeleteRepository("test-repo-2").get();
         repositoriesResponse = client.admin().cluster().prepareGetRepositories().get();
-        assertThat(repositoriesResponse.repositories().size(), equalTo(0));
+        assertThat((int) repositoriesResponse.repositories().stream().filter(r -> !Set.of(REPOSITORY_NAME, REPOSITORY_2_NAME, REPOSITORY_3_NAME).contains(r.name())).count(), equalTo(0));
     }
 
     public void testResidualStaleIndicesAreDeletedByConsecutiveDelete() throws Exception {

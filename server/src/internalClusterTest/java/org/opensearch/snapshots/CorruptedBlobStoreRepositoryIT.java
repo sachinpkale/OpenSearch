@@ -49,6 +49,7 @@ import org.opensearch.repositories.Repository;
 import org.opensearch.repositories.RepositoryData;
 import org.opensearch.repositories.RepositoryException;
 import org.opensearch.repositories.blobstore.BlobStoreRepository;
+import org.opensearch.test.OpenSearchIntegTestCase;
 
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
@@ -66,6 +67,7 @@ import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 
+@OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST)
 public class CorruptedBlobStoreRepositoryIT extends AbstractSnapshotIntegTestCase {
 
     public void testConcurrentlyChangeRepositoryContents() throws Exception {

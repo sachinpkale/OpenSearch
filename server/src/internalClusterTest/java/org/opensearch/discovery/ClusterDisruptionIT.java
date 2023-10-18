@@ -120,10 +120,7 @@ public class ClusterDisruptionIT extends AbstractDisruptionTestCase {
      * <p>
      * This test is a superset of tests run in the Jepsen test suite, with the exception of versioned updates
      */
-    @TestIssueLogging(value = "_root:DEBUG,org.opensearch.action.bulk:TRACE,org.opensearch.action.get:TRACE,"
-        + "org.opensearch.discovery:TRACE,org.opensearch.action.support.replication:TRACE,"
-        + "org.opensearch.cluster.service:TRACE,org.opensearch.indices.recovery:TRACE,"
-        + "org.opensearch.indices.cluster:TRACE,org.opensearch.index.shard:TRACE", issueUrl = "https://github.com/elastic/elasticsearch/issues/41068")
+    @AwaitsFix(bugUrl = "Test asserts on local and global checkpoint")
     public void testAckedIndexing() throws Exception {
 
         final int seconds = !(TEST_NIGHTLY && rarely()) ? 1 : 5;
@@ -296,6 +293,7 @@ public class ClusterDisruptionIT extends AbstractDisruptionTestCase {
      * Test that a document which is indexed on the majority side of a partition, is available from the minority side,
      * once the partition is healed
      */
+    @AwaitsFix(bugUrl = "Test asserts on local and global checkpoint")
     public void testRejoinDocumentExistsInAllShardCopies() throws Exception {
         List<String> nodes = startCluster(3);
 
@@ -502,6 +500,7 @@ public class ClusterDisruptionIT extends AbstractDisruptionTestCase {
         assertFalse(client().admin().indices().prepareExists(idxName).get().isExists());
     }
 
+    @AwaitsFix(bugUrl = "Test asserts on local and global checkpoint")
     public void testRestartNodeWhileIndexing() throws Exception {
         startCluster(3);
         String index = "restart_while_indexing";

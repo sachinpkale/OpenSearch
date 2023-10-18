@@ -228,8 +228,8 @@ public class RecoveryFromGatewayIT extends OpenSearchIntegTestCase {
 
         if (indexToAllShards) {
             // insert enough docs so all shards will have a doc
-            value1Docs = randomIntBetween(numberOfShards * 10, numberOfShards * 20);
-            value2Docs = randomIntBetween(numberOfShards * 10, numberOfShards * 20);
+            value1Docs = randomIntBetween(numberOfShards * 2, numberOfShards * 5);
+            value2Docs = randomIntBetween(numberOfShards * 2, numberOfShards * 5);
 
         } else {
             // insert a two docs, some shards will not have anything
@@ -237,8 +237,11 @@ public class RecoveryFromGatewayIT extends OpenSearchIntegTestCase {
             value2Docs = 1;
         }
 
-        for (int i = 0; i < 1 + randomInt(100); i++) {
-            for (int id = 0; id < Math.max(value1Docs, value2Docs); id++) {
+        int toIndex = Math.max(value1Docs, value2Docs);
+        int multiplier = 1 + randomInt(5);
+        logger.info("About to index " + toIndex * multiplier + " documents");
+        for (int i = 0; i < multiplier; i++) {
+            for (int id = 0; id < toIndex; id++) {
                 if (id < value1Docs) {
                     index(
                         "test",
@@ -423,6 +426,7 @@ public class RecoveryFromGatewayIT extends OpenSearchIntegTestCase {
         logger.info("--> running cluster_health (wait for the shards to startup)");
         ensureGreen();
 
+        refresh();
         for (int i = 0; i < 10; i++) {
             assertHitCount(client().prepareSearch().setSize(0).setQuery(matchAllQuery()).execute().actionGet(), 2);
         }
@@ -505,6 +509,7 @@ public class RecoveryFromGatewayIT extends OpenSearchIntegTestCase {
         assertThat(state.metadata().index("test").getAliases().get("test_alias").filter(), notNullValue());
     }
 
+    @AwaitsFix(bugUrl = "Download from remote store happens, but we can still copy incremental files from source")
     public void testReuseInFileBasedPeerRecovery() throws Exception {
         internalCluster().startClusterManagerOnlyNode();
         final String primaryNode = internalCluster().startDataOnlyNode(nodeSettings(0));

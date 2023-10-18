@@ -79,6 +79,7 @@ import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 
+@OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST)
 public class BulkWithUpdatesIT extends OpenSearchIntegTestCase {
 
     @Override
@@ -661,6 +662,7 @@ public class BulkWithUpdatesIT extends OpenSearchIntegTestCase {
             .setRefreshPolicy(RefreshPolicy.IMMEDIATE);
 
         client().bulk(bulkRequest).get();
+        refresh();
         SearchResponse searchResponse = client().prepareSearch("bulkindex*").get();
         assertHitCount(searchResponse, 3);
 
