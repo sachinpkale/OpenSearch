@@ -386,6 +386,7 @@ public final class RemoteStoreRefreshListener extends CloseableRetryableRefreshL
         GroupedActionListener<Void> batchUploadListener = new GroupedActionListener<>(mappedListener, filteredFiles.size());
 
         for (String src : filteredFiles) {
+            logger.info("Sending file:{} for upload", src);
             // Initializing listener here to ensure that the stats increment operations are thread-safe
             UploadListener statsListener = createUploadListener();
             ActionListener<Void> aggregatedListener = ActionListener.wrap(resp -> {

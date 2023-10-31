@@ -170,7 +170,7 @@ final class S3ClientSettings {
     static final Setting.AffixSetting<TimeValue> READ_TIMEOUT_SETTING = Setting.affixKeySetting(
         PREFIX,
         "read_timeout",
-        key -> Setting.timeSetting(key, TimeValue.timeValueMillis(50_000), Property.NodeScope)
+        key -> Setting.timeSetting(key, TimeValue.timeValueMillis(500), Property.NodeScope)
     );
 
     /** The request timeout for connecting to s3. */

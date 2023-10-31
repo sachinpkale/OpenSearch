@@ -207,8 +207,10 @@ class S3BlobContainer extends AbstractBlobContainer implements AsyncMultiStreamB
                     .uploadObject(s3AsyncClient, uploadRequest, streamContext, blobStore.getStatsMetricPublisher());
                 completableFuture.whenComplete((response, throwable) -> {
                     if (throwable == null) {
+                        logger.info("Upload successful for file: {} with size: {}", writeContext.getFileName(), writeContext.getFileSize());
                         completionListener.onResponse(response);
                     } else {
+                        logger.info("Upload failed for file: {} with size: {}", writeContext.getFileName(), writeContext.getFileSize());
                         Exception ex = throwable instanceof Error ? new Exception(throwable) : (Exception) throwable;
                         completionListener.onFailure(ex);
                     }
