@@ -53,4 +53,9 @@ public class RemoteIndexPrimaryRelocationIT extends IndexPrimaryRelocationIT {
         internalCluster().startClusterManagerOnlyNode();
         super.testPrimaryRelocationWhileIndexing();
     }
+
+    public void testPrimaryRelocationWithoutIndexing() throws Exception {
+        internalCluster().startClusterManagerOnlyNode();
+        super.testPrimaryRelocationWithoutIndexing();
+    }
 }

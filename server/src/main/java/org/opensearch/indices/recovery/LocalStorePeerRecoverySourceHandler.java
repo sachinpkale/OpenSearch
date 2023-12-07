@@ -59,6 +59,9 @@ public class LocalStorePeerRecoverySourceHandler extends RecoverySourceHandler {
     protected void innerRecoveryToTarget(ActionListener<RecoveryResponse> listener, Consumer<Exception> onFailure) throws IOException {
         final SetOnce<RetentionLease> retentionLeaseRef = new SetOnce<>();
 
+        // Sachin ToDo
+        // What does RunUnderPrimaryPermit do?
+        // When do we want to run a particular block of code under RunUnderPrimaryPermit?
         RunUnderPrimaryPermit.run(() -> {
             final IndexShardRoutingTable routingTable = shard.getReplicationGroup().getRoutingTable();
             ShardRouting targetShardRouting = routingTable.getByAllocationId(request.targetAllocationId());
@@ -76,6 +79,10 @@ public class LocalStorePeerRecoverySourceHandler extends RecoverySourceHandler {
         final Closeable retentionLock = shard.acquireHistoryRetentionLock();
         resources.add(retentionLock);
         final long startingSeqNo;
+        // Sachin ToDo
+        // Check in what scenarios isSequenceNumberBasedRecovery is set to true
+        // For remote index, isSequenceNumberBasedRecovery will always be false as request.startingSeqNo() == SequenceNumbers.UNASSIGNED_SEQ_NO will always be true
+        // This would be the case due to TranslogCorruption exception thrown at IndexShard.recoverLocallyUpToGlobalCheckpoint while calling Translog.readGlobalCheckpoint
         final boolean isSequenceNumberBasedRecovery = request.startingSeqNo() != SequenceNumbers.UNASSIGNED_SEQ_NO
             && isTargetSameHistory()
             && shard.hasCompleteHistoryOperations(PEER_RECOVERY_NAME, request.startingSeqNo())
