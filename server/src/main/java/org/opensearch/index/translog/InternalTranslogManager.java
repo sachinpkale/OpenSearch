@@ -61,6 +61,7 @@ public class InternalTranslogManager implements TranslogManager, Closeable {
         TranslogFactory translogFactory,
         BooleanSupplier startedPrimarySupplier
     ) throws IOException {
+        this.logger = Loggers.getLogger(getClass(), shardId);
         this.shardId = shardId;
         this.readLock = readLock;
         this.engineLifeCycleAware = engineLifeCycleAware;
@@ -70,6 +71,12 @@ public class InternalTranslogManager implements TranslogManager, Closeable {
             final LocalCheckpointTracker tracker = localCheckpointTrackerSupplier.get();
             assert tracker != null || getTranslog(true).isOpen() == false;
             if (tracker != null) {
+                logger.info("Marking sequence number as persisted from InternalTranslogManager ctor: {}", seqNo);
+                if(this instanceof WriteOnlyTranslogManager) {
+                    for (StackTraceElement element : Thread.currentThread().getStackTrace()) {
+                        logger.info(element);
+                    }
+                }
                 tracker.markSeqNoAsPersisted(seqNo);
             }
         }, translogUUID, translogFactory, startedPrimarySupplier);
@@ -78,7 +85,6 @@ public class InternalTranslogManager implements TranslogManager, Closeable {
         assert pendingTranslogRecovery.get() == false : "translog recovery can't be pending before we set it";
         // don't allow commits until we are done with recovering
         pendingTranslogRecovery.set(true);
-        this.logger = Loggers.getLogger(getClass(), shardId);
     }
 
     /**

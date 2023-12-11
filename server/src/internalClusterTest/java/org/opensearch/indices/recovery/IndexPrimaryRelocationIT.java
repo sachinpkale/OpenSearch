@@ -65,6 +65,14 @@ public class IndexPrimaryRelocationIT extends OpenSearchIntegTestCase {
         client().admin().indices().prepareCreate("test").setSettings(indexSettings()).setMapping("field", "type=text").get();
         ensureGreen("test");
         AtomicInteger numAutoGenDocs = new AtomicInteger();
+        for(int i = 0; i < 10; i++) {
+            IndexResponse indexResponse = client().prepareIndex("test").setId("id").setSource("field", "value").get();
+            assertEquals(DocWriteResponse.Result.CREATED, indexResponse.getResult());
+            DeleteResponse deleteResponse = client().prepareDelete("test", "id").get();
+            assertEquals(DocWriteResponse.Result.DELETED, deleteResponse.getResult());
+            client().prepareIndex("test").setSource("auto", true).get();
+            numAutoGenDocs.incrementAndGet();
+        }
         final AtomicBoolean finished = new AtomicBoolean(false);
         Thread indexingThread = new Thread() {
             @Override

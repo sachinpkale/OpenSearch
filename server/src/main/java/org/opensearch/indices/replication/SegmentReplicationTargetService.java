@@ -573,7 +573,7 @@ public class SegmentReplicationTargetService extends AbstractLifecycleComponent 
         target.startReplication(new ActionListener<>() {
             @Override
             public void onResponse(Void o) {
-                logger.debug(() -> new ParameterizedMessage("Finished replicating {} marking as done.", target.description()));
+                logger.info(() -> new ParameterizedMessage("Finished replicating {} marking as done.", target.description()));
                 onGoingReplications.markAsDone(replicationId);
                 if (target.state().getIndex().recoveredFileCount() != 0 && target.state().getIndex().recoveredBytes() != 0) {
                     completedReplications.put(target.shardId(), target.state());
@@ -648,6 +648,7 @@ public class SegmentReplicationTargetService extends AbstractLifecycleComponent 
             listener.onResponse(TransportResponse.Empty.INSTANCE);
         } else {
             // We are skipping any validation for an incoming checkpoint, use the shard's latest checkpoint in the target.
+            logger.info("In forceReplication, before startReplication");
             startReplication(
                 indexShard,
                 indexShard.getLatestReplicationCheckpoint(),
@@ -667,6 +668,7 @@ public class SegmentReplicationTargetService extends AbstractLifecycleComponent 
                             // Promote engine type for primary target
                             if (indexShard.recoveryState().getPrimary() == true) {
                                 indexShard.resetToWriteableEngine();
+                                logger.info("ResetToWriteableEngine completed");
                             } else {
                                 // Update the replica's checkpoint on primary's replication tracker.
                                 updateVisibleCheckpoint(state.getReplicationId(), indexShard);

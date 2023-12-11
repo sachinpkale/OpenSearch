@@ -46,6 +46,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiFunction;
 
 import static org.opensearch.index.seqno.SequenceNumbers.MAX_SEQ_NO;
+import static org.opensearch.index.seqno.SequenceNumbers.max;
 
 /**
  * This is an {@link Engine} implementation intended for replica shards when Segment Replication
@@ -171,11 +172,14 @@ public class NRTReplicationEngine extends Engine {
             // a lower gen from a newly elected primary shard that is behind this shard's last commit gen.
             // In that case we still commit into the next local generation.
             if (incomingGeneration != this.lastReceivedPrimaryGen) {
+                logger.info("Flushing and RollTranslogGeneration started from updateSegments");
                 flush(false, true);
                 translogManager.getDeletionPolicy().setLocalCheckpointOfSafeCommit(maxSeqNo);
                 translogManager.rollTranslogGeneration();
+                logger.info("Flushing and RollTranslogGeneration started from updateSegments");
             }
             this.lastReceivedPrimaryGen = incomingGeneration;
+            logger.info("localCheckpointTracker.fastForwardProcessedSeqNo to seqNo = {}", maxSeqNo);
             localCheckpointTracker.fastForwardProcessedSeqNo(maxSeqNo);
         }
     }

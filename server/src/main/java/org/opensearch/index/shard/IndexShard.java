@@ -854,6 +854,10 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
         // The below list of releasable ensures that if the relocation does not happen, we undo the activity of close and
         // acquire all permits. This will ensure that the remote store uploads can still be done by the existing primary shard.
         List<Releasable> releasablesOnHandoffFailures = new ArrayList<>(2);
+        logger.info("##############################################################################");
+        logger.info(routingEntry().allocationId().getId());
+        logger.info(replicationTracker.getCheckpointStates());
+        Thread.sleep(1000);
         try (Releasable forceRefreshes = refreshListeners.forceRefreshes()) {
             indexShardOperationPermits.blockOperations(30, TimeUnit.MINUTES, () -> {
                 forceRefreshes.close();
@@ -873,12 +877,16 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
                     }
                 }
 
+                logger.info(replicationTracker.getCheckpointStates());
+
                 // Ensure all in-flight remote store translog upload drains, before we perform the performSegRep.
                 releasablesOnHandoffFailures.add(getEngine().translogManager().drainSync());
 
                 // no shard operation permits are being held here, move state from started to relocated
                 assert indexShardOperationPermits.getActiveOperationsCount() == OPERATIONS_BLOCKED
                     : "in-flight operations in progress while moving shard state to relocated";
+
+                logger.info(replicationTracker.getCheckpointStates());
 
                 performSegRep.run();
                 /*
@@ -888,6 +896,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
                 verifyRelocatingState();
                 final ReplicationTracker.PrimaryContext primaryContext = replicationTracker.startRelocationHandoff(targetAllocationId);
                 try {
+                    logger.info(replicationTracker.getCheckpointStates());
                     consumer.accept(primaryContext);
                     synchronized (mutex) {
                         verifyRelocatingState();
@@ -1621,6 +1630,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
 
     public void finalizeReplication(SegmentInfos infos) throws IOException {
         if (getReplicationEngine().isPresent()) {
+            logger.info("IN indexShard.finalizeReplication");
             getReplicationEngine().get().updateSegments(infos);
         }
     }
@@ -3426,6 +3436,10 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
      * @param primaryContext the sequence number context
      */
     public void activateWithPrimaryContext(final ReplicationTracker.PrimaryContext primaryContext) {
+        logger.info("============================================================");
+        logger.info(primaryContext.getCheckpointStates());
+        //logger.info(routingEntry().allocationId().getId());
+        logger.info("============================================================");
         assert shardRouting.primary() && shardRouting.isRelocationTarget()
             : "only primary relocation target can update allocation IDs from primary context: " + shardRouting;
         assert primaryContext.getCheckpointStates().containsKey(routingEntry().allocationId().getId()) : "primary context ["
@@ -3433,7 +3447,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
             + "] does not contain relocation target ["
             + routingEntry()
             + "]";
-        assert getLocalCheckpoint() == primaryContext.getCheckpointStates().get(routingEntry().allocationId().getId()).getLocalCheckpoint()
+        assert getLocalCheckpoint()  == primaryContext.getCheckpointStates().get(routingEntry().allocationId().getId()).getLocalCheckpoint()
             || indexSettings().getTranslogDurability() == Durability.ASYNC : "local checkpoint ["
                 + getLocalCheckpoint()
                 + "] does not match checkpoint from primary context ["
@@ -4772,14 +4786,18 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
                     IOUtils.close(super::close, newEngine);
                 }
             };
+            logger.info("In resetEngineToGlobalCheckpoint. currentEngineReference = {}", currentEngineReference.get());
             IOUtils.close(currentEngineReference.getAndSet(readOnlyEngine));
             if (indexSettings.isRemoteStoreEnabled()) {
                 syncSegmentsFromRemoteSegmentStore(false);
             }
+            logger.info("In resetEngineToGlobalCheckpoint. Post syncSegmentsFromRemoteSegmentStore");
             if (indexSettings.isRemoteTranslogStoreEnabled() && shardRouting.primary()) {
                 syncRemoteTranslogAndUpdateGlobalCheckpoint();
             }
+            logger.info("In resetEngineToGlobalCheckpoint. Post syncRemoteTranslogAndUpdateGlobalCheckpoint");
             newEngineReference.set(engineFactory.newReadWriteEngine(newEngineConfig(replicationTracker)));
+            logger.info("In resetEngineToGlobalCheckpoint. Post engineFactory.newReadWriteEngine. newEngineReference = {}, currentEngineReference = {}", newEngineReference.get(), currentEngineReference.get());
             onNewEngine(newEngineReference.get());
         }
         final TranslogRecoveryRunner translogRunner = (snapshot) -> runTranslogRecovery(

@@ -253,14 +253,17 @@ public class ReplicationOperation<
         final ReplicaRequest replicaRequest = replicationProxyRequest.getReplicaRequest();
         final PendingReplicationActions pendingReplicationActions = replicationProxyRequest.getPendingReplicationActions();
 
-        if (logger.isTraceEnabled()) {
-            logger.trace("[{}] sending op [{}] to replica {} for request [{}]", shard.shardId(), opType, shard, replicaRequest);
-        }
+        //if (logger.isTraceEnabled()) {
+            logger.info("[{}] sending op [{}] to replica {} for request [{}]", shard.shardId(), opType, shard, replicaRequest);
+        //}
         totalShards.incrementAndGet();
         pendingActions.incrementAndGet();
         final ActionListener<ReplicaResponse> replicationListener = new ActionListener<ReplicaResponse>() {
             @Override
             public void onResponse(ReplicaResponse response) {
+                logger.info("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                logger.info("ReplicaResponse: Local = {}, Global = {}", response.localCheckpoint(), response.globalCheckpoint());
+                logger.info("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
                 successfulShards.incrementAndGet();
                 try {
                     updateCheckPoints(shard, response::localCheckpoint, response::globalCheckpoint);

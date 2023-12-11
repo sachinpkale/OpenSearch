@@ -1644,6 +1644,9 @@ public class ReplicationTracker extends AbstractIndexShardComponent implements L
      * @param localCheckpoint the local checkpoint for the shard
      */
     public synchronized void updateLocalCheckpoint(final String allocationId, final long localCheckpoint) {
+        logger.info("######################################################################");
+        logger.info("Updating local checkpoint: allocationId = {}, localCheckpoint = {}", allocationId, localCheckpoint);
+        logger.info("######################################################################");
         assert invariant();
         assert primaryMode;
         assert handoffInProgress == false;
@@ -1876,6 +1879,10 @@ public class ReplicationTracker extends AbstractIndexShardComponent implements L
     public synchronized CheckpointState getTrackedLocalCheckpointForShard(String allocationId) {
         assert primaryMode;
         return checkpoints.get(allocationId);
+    }
+
+    public Map<String, CheckpointState> getCheckpointStates() {
+        return checkpoints;
     }
 
     /**

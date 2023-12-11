@@ -958,6 +958,7 @@ public class InternalEngine extends Engine {
                 if (indexResult.getTranslogLocation() == null) {
                     // the op is coming from the translog (and is hence persisted already) or it does not have a sequence number
                     assert index.origin().isFromTranslog() || indexResult.getSeqNo() == SequenceNumbers.UNASSIGNED_SEQ_NO;
+                    logger.info("Marking sequence number as persisted from InternalEnginer.index: {}", indexResult.getSeqNo());
                     localCheckpointTracker.markSeqNoAsPersisted(indexResult.getSeqNo());
                 }
                 indexResult.setTook(System.nanoTime() - index.startTime());
@@ -1387,6 +1388,7 @@ public class InternalEngine extends Engine {
             if (deleteResult.getTranslogLocation() == null) {
                 // the op is coming from the translog (and is hence persisted already) or does not have a sequence number (version conflict)
                 assert delete.origin().isFromTranslog() || deleteResult.getSeqNo() == SequenceNumbers.UNASSIGNED_SEQ_NO;
+                logger.info("Marking sequence number as persisted from InternalEnginer.delete: {}", deleteResult.getSeqNo());
                 localCheckpointTracker.markSeqNoAsPersisted(deleteResult.getSeqNo());
             }
             deleteResult.setTook(System.nanoTime() - delete.startTime());
@@ -1727,6 +1729,7 @@ public class InternalEngine extends Engine {
             if (noOpResult.getTranslogLocation() == null) {
                 // the op is coming from the translog (and is hence persisted already) or it does not have a sequence number
                 assert noOp.origin().isFromTranslog() || noOpResult.getSeqNo() == SequenceNumbers.UNASSIGNED_SEQ_NO;
+                logger.info("Marking sequence number as persisted from InternalEngine.noop: {}", noOpResult.getSeqNo());
                 localCheckpointTracker.markSeqNoAsPersisted(noOpResult.getSeqNo());
             }
             noOpResult.setTook(System.nanoTime() - noOp.startTime());
@@ -2921,6 +2924,7 @@ public class InternalEngine extends Engine {
                 final long primaryTerm = dv.docPrimaryTerm(docId);
                 final long seqNo = dv.docSeqNo(docId);
                 localCheckpointTracker.markSeqNoAsProcessed(seqNo);
+                logger.info("Marking sequence number as persisted from InternalEnginer.restoreVersionMapAndCheckpointTracker: {}", seqNo);
                 localCheckpointTracker.markSeqNoAsPersisted(seqNo);
                 idFieldVisitor.reset();
                 storedFields.document(docId, idFieldVisitor);
