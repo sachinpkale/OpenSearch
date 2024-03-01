@@ -699,7 +699,6 @@ public abstract class IndexShardTestCase extends OpenSearchTestCase {
                 breakerService,
                 translogFactorySupplier,
                 checkpointPublisher,
-                remoteStore,
                 remoteStoreStatsTrackerFactory,
                 () -> IndexSettings.DEFAULT_REMOTE_TRANSLOG_BUFFER_INTERVAL,
                 "dummy-node",

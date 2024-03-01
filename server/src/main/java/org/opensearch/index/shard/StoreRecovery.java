@@ -544,7 +544,7 @@ final class StoreRecovery {
     }
 
     private void recoverFromRemoteStore(IndexShard indexShard) throws IndexShardRecoveryException {
-        final Store remoteStore = indexShard.remoteStore();
+        final Store remoteStore = null;
         if (remoteStore == null) {
             throw new IndexShardRecoveryException(
                 indexShard.shardId(),

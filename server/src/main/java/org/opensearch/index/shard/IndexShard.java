@@ -35,26 +35,9 @@ package org.opensearch.index.shard;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.index.CheckIndex;
-import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.FilterDirectoryReader;
-import org.apache.lucene.index.IndexCommit;
-import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.SegmentInfos;
-import org.apache.lucene.index.Term;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.QueryCachingPolicy;
-import org.apache.lucene.search.ReferenceManager;
-import org.apache.lucene.search.Sort;
-import org.apache.lucene.search.UsageTrackingQueryCachingPolicy;
-import org.apache.lucene.store.AlreadyClosedException;
-import org.apache.lucene.store.BufferedChecksumIndexInput;
-import org.apache.lucene.store.ChecksumIndexInput;
-import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.FilterDirectory;
-import org.apache.lucene.store.IOContext;
-import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.index.*;
+import org.apache.lucene.search.*;
+import org.apache.lucene.store.*;
 import org.apache.lucene.util.ThreadInterruptedException;
 import org.opensearch.ExceptionsHelper;
 import org.opensearch.OpenSearchException;
@@ -72,12 +55,7 @@ import org.opensearch.cluster.routing.RecoverySource;
 import org.opensearch.cluster.routing.RecoverySource.SnapshotRecoverySource;
 import org.opensearch.cluster.routing.ShardRouting;
 import org.opensearch.cluster.routing.ShardRoutingState;
-import org.opensearch.common.Booleans;
-import org.opensearch.common.CheckedConsumer;
-import org.opensearch.common.CheckedFunction;
-import org.opensearch.common.CheckedRunnable;
-import org.opensearch.common.Nullable;
-import org.opensearch.common.SetOnce;
+import org.opensearch.common.*;
 import org.opensearch.common.annotation.PublicApi;
 import org.opensearch.common.collect.Tuple;
 import org.opensearch.common.concurrent.GatedCloseable;
@@ -91,11 +69,7 @@ import org.opensearch.common.metrics.MeanMetric;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.common.unit.TimeValue;
 import org.opensearch.common.util.BigArrays;
-import org.opensearch.common.util.concurrent.AbstractRunnable;
-import org.opensearch.common.util.concurrent.AsyncIOProcessor;
-import org.opensearch.common.util.concurrent.BufferedAsyncIOProcessor;
-import org.opensearch.common.util.concurrent.RunOnce;
-import org.opensearch.common.util.concurrent.ThreadContext;
+import org.opensearch.common.util.concurrent.*;
 import org.opensearch.common.util.io.IOUtils;
 import org.opensearch.core.Assertions;
 import org.opensearch.core.action.ActionListener;
@@ -106,44 +80,20 @@ import org.opensearch.core.indices.breaker.CircuitBreakerService;
 import org.opensearch.core.rest.RestStatus;
 import org.opensearch.core.xcontent.MediaTypeRegistry;
 import org.opensearch.gateway.WriteStateException;
-import org.opensearch.index.IndexModule;
 import org.opensearch.index.IndexNotFoundException;
-import org.opensearch.index.IndexService;
-import org.opensearch.index.IndexSettings;
-import org.opensearch.index.ReplicationStats;
-import org.opensearch.index.SegmentReplicationShardStats;
-import org.opensearch.index.VersionType;
+import org.opensearch.index.*;
 import org.opensearch.index.cache.IndexCache;
 import org.opensearch.index.cache.bitset.ShardBitsetFilterCache;
 import org.opensearch.index.cache.request.ShardRequestCache;
 import org.opensearch.index.codec.CodecService;
-import org.opensearch.index.engine.CommitStats;
-import org.opensearch.index.engine.Engine;
+import org.opensearch.index.engine.*;
 import org.opensearch.index.engine.Engine.GetResult;
-import org.opensearch.index.engine.EngineConfig;
-import org.opensearch.index.engine.EngineConfigFactory;
-import org.opensearch.index.engine.EngineException;
-import org.opensearch.index.engine.EngineFactory;
-import org.opensearch.index.engine.NRTReplicationEngine;
-import org.opensearch.index.engine.ReadOnlyEngine;
-import org.opensearch.index.engine.RefreshFailedEngineException;
-import org.opensearch.index.engine.SafeCommitInfo;
-import org.opensearch.index.engine.Segment;
-import org.opensearch.index.engine.SegmentsStats;
 import org.opensearch.index.fielddata.FieldDataStats;
 import org.opensearch.index.fielddata.ShardFieldData;
 import org.opensearch.index.flush.FlushStats;
 import org.opensearch.index.get.GetStats;
 import org.opensearch.index.get.ShardGetService;
-import org.opensearch.index.mapper.DocumentMapper;
-import org.opensearch.index.mapper.DocumentMapperForType;
-import org.opensearch.index.mapper.IdFieldMapper;
-import org.opensearch.index.mapper.MapperService;
-import org.opensearch.index.mapper.Mapping;
-import org.opensearch.index.mapper.ParsedDocument;
-import org.opensearch.index.mapper.RootObjectMapper;
-import org.opensearch.index.mapper.SourceToParse;
-import org.opensearch.index.mapper.Uid;
+import org.opensearch.index.mapper.*;
 import org.opensearch.index.merge.MergeStats;
 import org.opensearch.index.recovery.RecoveryStats;
 import org.opensearch.index.refresh.RefreshStats;
@@ -151,41 +101,19 @@ import org.opensearch.index.remote.RemoteSegmentStats;
 import org.opensearch.index.remote.RemoteStoreStatsTrackerFactory;
 import org.opensearch.index.search.stats.SearchStats;
 import org.opensearch.index.search.stats.ShardSearchStats;
-import org.opensearch.index.seqno.ReplicationTracker;
-import org.opensearch.index.seqno.RetentionLease;
-import org.opensearch.index.seqno.RetentionLeaseStats;
-import org.opensearch.index.seqno.RetentionLeaseSyncer;
-import org.opensearch.index.seqno.RetentionLeases;
-import org.opensearch.index.seqno.SeqNoStats;
-import org.opensearch.index.seqno.SequenceNumbers;
+import org.opensearch.index.seqno.*;
 import org.opensearch.index.shard.PrimaryReplicaSyncer.ResyncTask;
 import org.opensearch.index.similarity.SimilarityService;
-import org.opensearch.index.store.RemoteSegmentStoreDirectory;
-import org.opensearch.index.store.RemoteStoreFileDownloader;
-import org.opensearch.index.store.Store;
+import org.opensearch.index.store.*;
 import org.opensearch.index.store.Store.MetadataSnapshot;
-import org.opensearch.index.store.StoreFileMetadata;
-import org.opensearch.index.store.StoreStats;
 import org.opensearch.index.store.remote.metadata.RemoteSegmentMetadata;
-import org.opensearch.index.translog.RemoteBlobStoreInternalTranslogFactory;
-import org.opensearch.index.translog.RemoteFsTranslog;
-import org.opensearch.index.translog.RemoteTranslogStats;
-import org.opensearch.index.translog.Translog;
-import org.opensearch.index.translog.TranslogConfig;
-import org.opensearch.index.translog.TranslogFactory;
-import org.opensearch.index.translog.TranslogRecoveryRunner;
-import org.opensearch.index.translog.TranslogStats;
+import org.opensearch.index.translog.*;
 import org.opensearch.index.warmer.ShardIndexWarmerService;
 import org.opensearch.index.warmer.WarmerStats;
 import org.opensearch.indices.IndexingMemoryController;
 import org.opensearch.indices.IndicesService;
 import org.opensearch.indices.cluster.IndicesClusterStateService;
-import org.opensearch.indices.recovery.PeerRecoveryTargetService;
-import org.opensearch.indices.recovery.RecoveryFailedException;
-import org.opensearch.indices.recovery.RecoveryListener;
-import org.opensearch.indices.recovery.RecoverySettings;
-import org.opensearch.indices.recovery.RecoveryState;
-import org.opensearch.indices.recovery.RecoveryTarget;
+import org.opensearch.indices.recovery.*;
 import org.opensearch.indices.replication.checkpoint.ReplicationCheckpoint;
 import org.opensearch.indices.replication.checkpoint.SegmentReplicationCheckpointPublisher;
 import org.opensearch.indices.replication.common.ReplicationTimer;
@@ -202,18 +130,7 @@ import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.NoSuchFileException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -221,19 +138,12 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.LongSupplier;
-import java.util.function.Supplier;
+import java.util.function.*;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import static org.opensearch.index.seqno.RetentionLeaseActions.RETAIN_ALL;
-import static org.opensearch.index.seqno.SequenceNumbers.LOCAL_CHECKPOINT_KEY;
-import static org.opensearch.index.seqno.SequenceNumbers.MAX_SEQ_NO;
-import static org.opensearch.index.seqno.SequenceNumbers.UNASSIGNED_SEQ_NO;
+import static org.opensearch.index.seqno.SequenceNumbers.*;
 import static org.opensearch.index.translog.Translog.Durability;
 import static org.opensearch.index.translog.Translog.TRANSLOG_UUID_KEY;
 
@@ -338,7 +248,6 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
     private final AtomicReference<Translog.Location> pendingRefreshLocation = new AtomicReference<>();
     private final RefreshPendingLocationListener refreshPendingLocationListener;
     private volatile boolean useRetentionLeasesInPeerRecovery;
-    private final Store remoteStore;
     private final BiFunction<IndexSettings, ShardRouting, TranslogFactory> translogFactorySupplier;
     private final boolean isTimeSeriesIndex;
     private final RemoteStoreStatsTrackerFactory remoteStoreStatsTrackerFactory;
@@ -370,7 +279,6 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
         final CircuitBreakerService circuitBreakerService,
         final BiFunction<IndexSettings, ShardRouting, TranslogFactory> translogFactorySupplier,
         @Nullable final SegmentReplicationCheckpointPublisher checkpointPublisher,
-        @Nullable final Store remoteStore,
         final RemoteStoreStatsTrackerFactory remoteStoreStatsTrackerFactory,
         final Supplier<TimeValue> clusterRemoteTranslogBufferIntervalSupplier,
         final String nodeId,
@@ -464,7 +372,6 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
         this.useRetentionLeasesInPeerRecovery = replicationTracker.hasAllPeerRecoveryRetentionLeases();
         this.refreshPendingLocationListener = new RefreshPendingLocationListener();
         this.checkpointPublisher = checkpointPublisher;
-        this.remoteStore = remoteStore;
         this.translogFactorySupplier = translogFactorySupplier;
         this.isTimeSeriesIndex = (mapperService == null || mapperService.documentMapper() == null)
             ? false
@@ -480,10 +387,6 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
 
     public Store store() {
         return this.store;
-    }
-
-    public Store remoteStore() {
-        return this.remoteStore;
     }
 
     /**
@@ -2016,12 +1919,10 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
     ToDo : Fix this https://github.com/opensearch-project/OpenSearch/issues/8003
      */
     public RemoteSegmentStoreDirectory getRemoteDirectory() {
-        assert indexSettings.isRemoteStoreEnabled();
-        assert remoteStore.directory() instanceof FilterDirectory : "Store.directory is not an instance of FilterDirectory";
-        FilterDirectory remoteStoreDirectory = (FilterDirectory) remoteStore.directory();
+        FilterDirectory remoteStoreDirectory = (FilterDirectory) store.directory();
         FilterDirectory byteSizeCachingStoreDirectory = (FilterDirectory) remoteStoreDirectory.getDelegate();
-        final Directory remoteDirectory = byteSizeCachingStoreDirectory.getDelegate();
-        return ((RemoteSegmentStoreDirectory) remoteDirectory);
+        final OpenSearchDirectory openSearchDirectory = (org.opensearch.index.store.OpenSearchDirectory) byteSizeCachingStoreDirectory.getDelegate();
+        return (RemoteSegmentStoreDirectory) openSearchDirectory.getStorage();
     }
 
     /**
@@ -3853,16 +3754,6 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
             internalRefreshListener.add(new CheckpointRefreshListener(this, this.checkpointPublisher));
         }
 
-        if (isRemoteStoreEnabled()) {
-            internalRefreshListener.add(
-                new RemoteStoreRefreshListener(
-                    this,
-                    this.checkpointPublisher,
-                    remoteStoreStatsTrackerFactory.getRemoteSegmentTransferTracker(shardId())
-                )
-            );
-        }
-
         /*
           With segment replication enabled for primary relocation, recover replica shard initially as read only and
           change to a writeable engine during relocation handoff after a round of segment replication.
@@ -3903,7 +3794,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
     }
 
     private boolean isRemoteStoreEnabled() {
-        return (remoteStore != null && shardRouting.primary());
+        return isRemoteTranslogEnabled();
     }
 
     public boolean isRemoteTranslogEnabled() {
@@ -4876,7 +4767,6 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
             .filter(entry -> entry.getKey().startsWith(IndexFileNames.SEGMENTS) == false)
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
         store.incRef();
-        remoteStore.incRef();
         try {
             final Directory storeDirectory;
             if (recoveryState.getStage() == RecoveryState.Stage.INDEX) {
@@ -4921,7 +4811,6 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
                 (System.currentTimeMillis() - startTimeMs)
             );
             store.decRef();
-            remoteStore.decRef();
         }
     }
 
@@ -4941,11 +4830,6 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
     ) throws IOException {
         logger.trace("Downloading segments from given remote segment store");
         RemoteSegmentStoreDirectory remoteDirectory = null;
-        if (remoteStore != null) {
-            remoteDirectory = getRemoteDirectory();
-            remoteDirectory.init();
-            remoteStore.incRef();
-        }
         Map<String, RemoteSegmentStoreDirectory.UploadedSegmentMetadata> uploadedSegments = sourceRemoteDirectory
             .getSegmentsUploadedToRemoteStore();
         final Directory storeDirectory = store.directory();
@@ -4967,22 +4851,14 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
                     )
                 ) {
                     SegmentInfos infosSnapshot = SegmentInfos.readCommit(store.directory(), indexInput, commitGeneration);
-                    long processedLocalCheckpoint = Long.parseLong(infosSnapshot.getUserData().get(LOCAL_CHECKPOINT_KEY));
-                    if (remoteStore != null) {
-                        store.commitSegmentInfos(infosSnapshot, processedLocalCheckpoint, processedLocalCheckpoint);
-                    } else {
-                        store.directory().sync(infosSnapshot.files(true));
-                        store.directory().syncMetaData();
-                    }
+                    store.directory().sync(infosSnapshot.files(true));
+                    store.directory().syncMetaData();
                 }
             }
         } catch (IOException e) {
             throw new IndexShardRecoveryException(shardId, "Exception while copying segment files from remote segment store", e);
         } finally {
             store.decRef();
-            if (remoteStore != null) {
-                remoteStore.decRef();
-            }
         }
     }
 

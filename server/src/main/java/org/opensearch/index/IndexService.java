@@ -90,6 +90,7 @@ import org.opensearch.index.shard.ShardNotFoundException;
 import org.opensearch.index.shard.ShardNotInPrimaryModeException;
 import org.opensearch.index.shard.ShardPath;
 import org.opensearch.index.similarity.SimilarityService;
+import org.opensearch.index.store.OpenSearchDirectory;
 import org.opensearch.index.store.Store;
 import org.opensearch.index.translog.Translog;
 import org.opensearch.index.translog.TranslogFactory;
@@ -485,17 +486,16 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
                 }
             };
 
-            Store remoteStore = null;
+            Directory storageDirectory = null;
             if (this.indexSettings.isRemoteStoreEnabled()) {
-                Directory remoteDirectory = remoteDirectoryFactory.newDirectory(this.indexSettings, path);
-                remoteStore = new Store(shardId, this.indexSettings, remoteDirectory, lock, Store.OnClose.EMPTY, path);
+                storageDirectory = remoteDirectoryFactory.newDirectory(this.indexSettings, path);
             }
-
-            Directory directory = directoryFactory.newDirectory(this.indexSettings, path);
+            Directory cacheDirectory = directoryFactory.newDirectory(this.indexSettings, path);
+            Directory openSearchDirectory = new OpenSearchDirectory(cacheDirectory, storageDirectory);
             store = new Store(
                 shardId,
                 this.indexSettings,
-                directory,
+                openSearchDirectory,
                 lock,
                 new StoreCloseListener(shardId, () -> eventListener.onStoreClosed(shardId)),
                 path
@@ -524,7 +524,6 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
                 circuitBreakerService,
                 translogFactorySupplier,
                 this.indexSettings.isSegRepEnabled() ? checkpointPublisher : null,
-                remoteStore,
                 remoteStoreStatsTrackerFactory,
                 clusterRemoteTranslogBufferIntervalSupplier,
                 nodeEnv.nodeId(),
@@ -622,10 +621,6 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
     private void closeShard(String reason, ShardId sId, IndexShard indexShard, Store store, IndexEventListener listener) {
         final int shardId = sId.id();
         final Settings indexSettings = this.getIndexSettings().getSettings();
-        Store remoteStore = null;
-        if (indexShard != null) {
-            remoteStore = indexShard.remoteStore();
-        }
         if (store != null) {
             store.beforeClose();
         }
@@ -655,11 +650,6 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
                 } else {
                     logger.trace("[{}] store not initialized prior to closing shard, nothing to close", shardId);
                 }
-
-                if (remoteStore != null && indexShard.isPrimaryMode() && deleted.get()) {
-                    remoteStore.close();
-                }
-
             } catch (Exception e) {
                 logger.warn(
                     () -> new ParameterizedMessage("[{}] failed to close store on shard removal (reason: [{}])", shardId, reason),

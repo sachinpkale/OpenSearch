@@ -33,10 +33,16 @@
 package org.opensearch.index.engine;
 
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.StandardDirectoryReader;
 import org.apache.lucene.search.ReferenceManager;
 import org.apache.lucene.search.SearcherManager;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FilterDirectory;
 import org.opensearch.common.SuppressForbidden;
 import org.opensearch.common.lucene.index.OpenSearchDirectoryReader;
+import org.opensearch.index.shard.OpenSearchDirectorySyncManager;
+import org.opensearch.index.store.OpenSearchDirectory;
+import org.opensearch.index.store.RemoteSegmentStoreDirectory;
 
 import java.io.IOException;
 
@@ -70,6 +76,19 @@ class OpenSearchReaderManager extends ReferenceManager<OpenSearchDirectoryReader
     @Override
     protected OpenSearchDirectoryReader refreshIfNeeded(OpenSearchDirectoryReader referenceToRefresh) throws IOException {
         final OpenSearchDirectoryReader reader = (OpenSearchDirectoryReader) DirectoryReader.openIfChanged(referenceToRefresh);
+        if (reader != null) {
+            FilterDirectory remoteStoreDirectory = (FilterDirectory) reader.directory();
+            FilterDirectory byteSizeCachingStoreDirectory = (FilterDirectory) remoteStoreDirectory.getDelegate();
+            final OpenSearchDirectory openSearchDirectory = (org.opensearch.index.store.OpenSearchDirectory) byteSizeCachingStoreDirectory.getDelegate();
+
+            Directory cacheDirectory = openSearchDirectory.getCache();
+            RemoteSegmentStoreDirectory storageDirectory = (RemoteSegmentStoreDirectory) openSearchDirectory.getStorage();
+            try {
+                OpenSearchDirectorySyncManager.syncCacheFilesToStorage(((StandardDirectoryReader)reader.getDelegate()).getSegmentInfos(), cacheDirectory, storageDirectory);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
         return reader;
     }
 

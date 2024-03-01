@@ -99,8 +99,7 @@ public final class RemoteStoreRefreshListener extends ReleasableRetryableRefresh
         logger = Loggers.getLogger(getClass(), indexShard.shardId());
         this.indexShard = indexShard;
         this.storeDirectory = indexShard.store().directory();
-        this.remoteDirectory = (RemoteSegmentStoreDirectory) ((FilterDirectory) ((FilterDirectory) indexShard.remoteStore().directory())
-            .getDelegate()).getDelegate();
+        this.remoteDirectory = null;
         localSegmentChecksumMap = new HashMap<>();
         RemoteSegmentMetadata remoteSegmentMetadata = null;
         if (indexShard.routingEntry().primary()) {

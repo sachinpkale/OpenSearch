@@ -51,7 +51,7 @@ public class RemoteStoreReplicationSource implements SegmentReplicationSource {
 
     public RemoteStoreReplicationSource(IndexShard indexShard) {
         this.indexShard = indexShard;
-        FilterDirectory remoteStoreDirectory = (FilterDirectory) indexShard.remoteStore().directory();
+        FilterDirectory remoteStoreDirectory = null;
         FilterDirectory byteSizeCachingStoreDirectory = (FilterDirectory) remoteStoreDirectory.getDelegate();
         this.remoteDirectory = (RemoteSegmentStoreDirectory) byteSizeCachingStoreDirectory.getDelegate();
     }
