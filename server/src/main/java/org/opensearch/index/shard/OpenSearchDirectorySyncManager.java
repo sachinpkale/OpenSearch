@@ -12,22 +12,28 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.apache.lucene.codecs.CodecUtil;
+import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentInfos;
-import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.IOContext;
-import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.*;
 import org.opensearch.action.LatchedActionListener;
 import org.opensearch.action.support.GroupedActionListener;
+import org.opensearch.common.lucene.store.ByteArrayIndexInput;
 import org.opensearch.core.action.ActionListener;
 import org.opensearch.core.index.shard.ShardId;
+import org.opensearch.index.store.OpenSearchDirectory;
 import org.opensearch.index.store.RemoteSegmentStoreDirectory;
+import org.opensearch.index.store.remote.metadata.RemoteSegmentMetadata;
 import org.opensearch.indices.replication.checkpoint.ReplicationCheckpoint;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.Collection;
+import java.nio.file.NoSuchFileException;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
+
+import static org.opensearch.index.seqno.SequenceNumbers.LOCAL_CHECKPOINT_KEY;
 
 /**
  * RefreshListener implementation to upload newly created segment files to the remote store
@@ -76,9 +82,85 @@ public final class OpenSearchDirectorySyncManager {
         return successful.get();
     }
 
-    public static void syncStorageFilesToCache(Directory cache, RemoteSegmentStoreDirectory storage) {
+    public static void syncStorageFilesToCache(OpenSearchDirectory openSearchDirectory) throws IOException {
+        Directory cache = openSearchDirectory.getCache();
+        RemoteSegmentStoreDirectory storage = (RemoteSegmentStoreDirectory) openSearchDirectory.getStorage();
+        // We need to call RemoteSegmentStoreDirectory.init() in order to get latest metadata of the files that
+        // are uploaded to the remote segment store.
+        RemoteSegmentMetadata metadata = storage.init();
 
+        Map<String, RemoteSegmentStoreDirectory.UploadedSegmentMetadata> uploadedSegments = storage
+            .getSegmentsUploadedToRemoteStore()
+            .entrySet()
+            .stream()
+            .filter(entry -> entry.getKey().startsWith(IndexFileNames.SEGMENTS) == false)
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+        if (uploadedSegments.isEmpty() == false) {
+            try {
+                copySegmentFiles(cache, storage, uploadedSegments);
+                try (final ChecksumIndexInput input = toIndexInput(metadata.getSegmentInfosBytes())) {
+                    SegmentInfos segmentInfos = SegmentInfos.readCommit(cache, input, metadata.getGeneration());
+                    segmentInfos.commit(cache);
+                }
+            } catch (IOException e) {
+                throw new RuntimeException("Exception while copying segment files from remote segment store", e);
+            }
+        }
     }
+
+    private static ChecksumIndexInput toIndexInput(byte[] input) {
+        return new BufferedChecksumIndexInput(new ByteArrayIndexInput("Snapshot of SegmentInfos", input));
+    }
+
+    private static void copySegmentFiles(Directory cache, RemoteSegmentStoreDirectory storage, Map<String, RemoteSegmentStoreDirectory.UploadedSegmentMetadata> uploadedSegments) throws IOException {
+        Set<String> toDownloadSegments = new HashSet<>();
+        Set<String> skippedSegments = new HashSet<>();
+        try {
+            for (String file : cache.listAll()) {
+                cache.deleteFile(file);
+            }
+            for (String file : uploadedSegments.keySet()) {
+                long checksum = Long.parseLong(uploadedSegments.get(file).getChecksum());
+                if (localDirectoryContains(cache, file, checksum) == false) {
+                    toDownloadSegments.add(file);
+                } else {
+                    skippedSegments.add(file);
+                }
+            }
+            for (String file: toDownloadSegments) {
+                try {
+                    logger.info("Dowloading file: " + file);
+                    cache.copyFrom(storage, file, file, IOContext.DEFAULT);
+                } catch (Exception e) {
+                    throw new IOException("Error occurred when downloading segments from remote store", e);
+                }
+            }
+        } finally {
+            logger.info("Downloaded segments here: {}", toDownloadSegments);
+            logger.info("Skipped download for segments here: {}", skippedSegments);
+        }
+    }
+
+    private static boolean localDirectoryContains(Directory localDirectory, String file, long checksum) throws IOException {
+        try (IndexInput indexInput = localDirectory.openInput(file, IOContext.DEFAULT)) {
+            if (checksum == CodecUtil.retrieveChecksum(indexInput)) {
+                return true;
+            } else {
+                logger.warn("Checksum mismatch between local and remote segment file: {}, will override local file", file);
+                localDirectory.deleteFile(file);
+            }
+        } catch (NoSuchFileException | FileNotFoundException e) {
+            logger.debug("File {} does not exist in local FS, downloading from remote store", file);
+        } catch (IOException e) {
+            logger.warn("Exception while reading checksum of file: {}, this can happen if file is corrupted", file);
+            // For any other exception on reading checksum, we delete the file to re-download again
+            localDirectory.deleteFile(file);
+        }
+        return false;
+    }
+
+
 
     private static boolean isRefreshAfterCommit(Directory cache, RemoteSegmentStoreDirectory storage) throws IOException {
         String lastCommittedLocalSegmentFileName = SegmentInfos.getLastCommitSegmentsFileName(cache);
@@ -143,7 +225,7 @@ public final class OpenSearchDirectorySyncManager {
             segmentInfos,
             cacheDirectory,
             1,
-            ReplicationCheckpoint.empty(new ShardId("index-1", "index-uuid", 1)),
+            new ReplicationCheckpoint(new ShardId("index-1", "index-uuid", 1), 0, segmentInfos.getGeneration(), segmentInfos.version, 0L, "", Collections.emptyMap()),
             "dummyNodeId"
         );
     }

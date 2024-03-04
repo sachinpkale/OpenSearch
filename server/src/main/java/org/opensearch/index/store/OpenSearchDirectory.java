@@ -9,6 +9,7 @@
 package org.opensearch.index.store;
 
 import org.apache.lucene.store.*;
+import org.opensearch.index.shard.OpenSearchDirectorySyncManager;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -19,9 +20,10 @@ public class OpenSearchDirectory extends Directory {
     private Directory cache;
     private Directory storage;
 
-    public OpenSearchDirectory(Directory cache, Directory storage) {
+    public OpenSearchDirectory(Directory cache, Directory storage) throws IOException {
         this.cache = cache;
         this.storage = storage;
+        OpenSearchDirectorySyncManager.syncStorageFilesToCache(this);
     }
 
     @Override

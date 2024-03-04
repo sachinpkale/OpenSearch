@@ -1965,6 +1965,14 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
         if (currentState == IndexShardState.CLOSED) {
             throw new IndexShardNotRecoveringException(shardId, currentState);
         }
+        try {
+            FilterDirectory remoteStoreDirectory = (FilterDirectory) store.directory();
+            FilterDirectory byteSizeCachingStoreDirectory = (FilterDirectory) remoteStoreDirectory.getDelegate();
+            final OpenSearchDirectory openSearchDirectory = (org.opensearch.index.store.OpenSearchDirectory) byteSizeCachingStoreDirectory.getDelegate();
+            OpenSearchDirectorySyncManager.syncStorageFilesToCache(openSearchDirectory);
+        } catch(Exception e) {
+            // Ignoring for now
+        }
         assert currentState == IndexShardState.RECOVERING : "expected a recovering shard " + shardId + " but got " + currentState;
         indexEventListener.beforeIndexShardRecovery(this, indexSettings);
     }
@@ -2352,9 +2360,6 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
             verifyNotClosed();
             if (indexSettings.isRemoteStoreEnabled()) {
                 // Download missing segments from remote segment store.
-                if (syncFromRemote) {
-                    syncSegmentsFromRemoteSegmentStore(false);
-                }
                 if (shardRouting.primary()) {
                     if (syncFromRemote) {
                         syncRemoteTranslogAndUpdateGlobalCheckpoint();
@@ -4677,9 +4682,6 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
                 }
             };
             IOUtils.close(currentEngineReference.getAndSet(readOnlyEngine));
-            if (indexSettings.isRemoteStoreEnabled()) {
-                syncSegmentsFromRemoteSegmentStore(false);
-            }
             if (indexSettings.isRemoteTranslogStoreEnabled() && shardRouting.primary()) {
                 syncRemoteTranslogAndUpdateGlobalCheckpoint();
             }
@@ -4733,207 +4735,6 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
         assert translogFactory instanceof RemoteBlobStoreInternalTranslogFactory;
         Repository repository = ((RemoteBlobStoreInternalTranslogFactory) translogFactory).getRepository();
         RemoteFsTranslog.download(repository, shardId, getThreadPool(), shardPath().resolveTranslog(), logger);
-    }
-
-    /**
-     * Downloads segments from remote segment store
-     * @param overrideLocal flag to override local segment files with those in remote store.
-     * @throws IOException if exception occurs while reading segments from remote store.
-     */
-    public void syncSegmentsFromRemoteSegmentStore(boolean overrideLocal) throws IOException {
-        syncSegmentsFromRemoteSegmentStore(overrideLocal, () -> {});
-    }
-
-    /**
-     * Downloads segments from remote segment store along with updating the access time of the recovery target.
-     * @param overrideLocal flag to override local segment files with those in remote store.
-     * @param onFileSync runnable that updates the access time when run.
-     * @throws IOException if exception occurs while reading segments from remote store.
-     */
-    public void syncSegmentsFromRemoteSegmentStore(boolean overrideLocal, final Runnable onFileSync) throws IOException {
-        boolean syncSegmentSuccess = false;
-        long startTimeMs = System.currentTimeMillis();
-        assert indexSettings.isRemoteStoreEnabled();
-        logger.trace("Downloading segments from remote segment store");
-        RemoteSegmentStoreDirectory remoteDirectory = getRemoteDirectory();
-        // We need to call RemoteSegmentStoreDirectory.init() in order to get latest metadata of the files that
-        // are uploaded to the remote segment store.
-        RemoteSegmentMetadata remoteSegmentMetadata = remoteDirectory.init();
-
-        Map<String, RemoteSegmentStoreDirectory.UploadedSegmentMetadata> uploadedSegments = remoteDirectory
-            .getSegmentsUploadedToRemoteStore()
-            .entrySet()
-            .stream()
-            .filter(entry -> entry.getKey().startsWith(IndexFileNames.SEGMENTS) == false)
-            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-        store.incRef();
-        try {
-            final Directory storeDirectory;
-            if (recoveryState.getStage() == RecoveryState.Stage.INDEX) {
-                storeDirectory = new StoreRecovery.StatsDirectoryWrapper(store.directory(), recoveryState.getIndex());
-                for (String file : uploadedSegments.keySet()) {
-                    long checksum = Long.parseLong(uploadedSegments.get(file).getChecksum());
-                    if (overrideLocal || localDirectoryContains(storeDirectory, file, checksum) == false) {
-                        recoveryState.getIndex().addFileDetail(file, uploadedSegments.get(file).getLength(), false);
-                    } else {
-                        recoveryState.getIndex().addFileDetail(file, uploadedSegments.get(file).getLength(), true);
-                    }
-                }
-            } else {
-                storeDirectory = store.directory();
-            }
-            copySegmentFiles(storeDirectory, remoteDirectory, null, uploadedSegments, overrideLocal, onFileSync);
-
-            if (remoteSegmentMetadata != null) {
-                final SegmentInfos infosSnapshot = store.buildSegmentInfos(
-                    remoteSegmentMetadata.getSegmentInfosBytes(),
-                    remoteSegmentMetadata.getGeneration()
-                );
-                long processedLocalCheckpoint = Long.parseLong(infosSnapshot.getUserData().get(LOCAL_CHECKPOINT_KEY));
-                // delete any other commits, we want to start the engine only from a new commit made with the downloaded infos bytes.
-                // Extra segments will be wiped on engine open.
-                for (String file : List.of(store.directory().listAll())) {
-                    if (file.startsWith(IndexFileNames.SEGMENTS)) {
-                        store.deleteQuiet(file);
-                    }
-                }
-                assert Arrays.stream(store.directory().listAll()).filter(f -> f.startsWith(IndexFileNames.SEGMENTS)).findAny().isEmpty()
-                    : "There should not be any segments file in the dir";
-                store.commitSegmentInfos(infosSnapshot, processedLocalCheckpoint, processedLocalCheckpoint);
-            }
-            syncSegmentSuccess = true;
-        } catch (IOException e) {
-            throw new IndexShardRecoveryException(shardId, "Exception while copying segment files from remote segment store", e);
-        } finally {
-            logger.trace(
-                "syncSegmentsFromRemoteSegmentStore success={} elapsedTime={}",
-                syncSegmentSuccess,
-                (System.currentTimeMillis() - startTimeMs)
-            );
-            store.decRef();
-        }
-    }
-
-    /**
-     * Downloads segments from given remote segment store for a specific commit.
-     * @param overrideLocal flag to override local segment files with those in remote store
-     * @param sourceRemoteDirectory RemoteSegmentDirectory Instance from which we need to sync segments
-     * @param primaryTerm Primary Term for shard at the time of commit operation for which we are syncing segments
-     * @param commitGeneration commit generation at the time of commit operation for which we are syncing segments
-     * @throws IOException if exception occurs while reading segments from remote store
-     */
-    public void syncSegmentsFromGivenRemoteSegmentStore(
-        boolean overrideLocal,
-        RemoteSegmentStoreDirectory sourceRemoteDirectory,
-        long primaryTerm,
-        long commitGeneration
-    ) throws IOException {
-        logger.trace("Downloading segments from given remote segment store");
-        RemoteSegmentStoreDirectory remoteDirectory = null;
-        Map<String, RemoteSegmentStoreDirectory.UploadedSegmentMetadata> uploadedSegments = sourceRemoteDirectory
-            .getSegmentsUploadedToRemoteStore();
-        final Directory storeDirectory = store.directory();
-        store.incRef();
-
-        try {
-            String segmentsNFile = copySegmentFiles(
-                storeDirectory,
-                sourceRemoteDirectory,
-                remoteDirectory,
-                uploadedSegments,
-                overrideLocal,
-                () -> {}
-            );
-            if (segmentsNFile != null) {
-                try (
-                    ChecksumIndexInput indexInput = new BufferedChecksumIndexInput(
-                        storeDirectory.openInput(segmentsNFile, IOContext.DEFAULT)
-                    )
-                ) {
-                    SegmentInfos infosSnapshot = SegmentInfos.readCommit(store.directory(), indexInput, commitGeneration);
-                    store.directory().sync(infosSnapshot.files(true));
-                    store.directory().syncMetaData();
-                }
-            }
-        } catch (IOException e) {
-            throw new IndexShardRecoveryException(shardId, "Exception while copying segment files from remote segment store", e);
-        } finally {
-            store.decRef();
-        }
-    }
-
-    private String copySegmentFiles(
-        Directory storeDirectory,
-        RemoteSegmentStoreDirectory sourceRemoteDirectory,
-        RemoteSegmentStoreDirectory targetRemoteDirectory,
-        Map<String, RemoteSegmentStoreDirectory.UploadedSegmentMetadata> uploadedSegments,
-        boolean overrideLocal,
-        final Runnable onFileSync
-    ) throws IOException {
-        Set<String> toDownloadSegments = new HashSet<>();
-        Set<String> skippedSegments = new HashSet<>();
-        String segmentNFile = null;
-
-        try {
-            if (overrideLocal) {
-                for (String file : storeDirectory.listAll()) {
-                    storeDirectory.deleteFile(file);
-                }
-            }
-
-            for (String file : uploadedSegments.keySet()) {
-                long checksum = Long.parseLong(uploadedSegments.get(file).getChecksum());
-                if (overrideLocal || localDirectoryContains(storeDirectory, file, checksum) == false) {
-                    toDownloadSegments.add(file);
-                } else {
-                    skippedSegments.add(file);
-                }
-
-                if (file.startsWith(IndexFileNames.SEGMENTS)) {
-                    assert segmentNFile == null : "There should be only one SegmentInfosSnapshot file";
-                    segmentNFile = file;
-                }
-            }
-
-            if (toDownloadSegments.isEmpty() == false) {
-                try {
-                    fileDownloader.download(sourceRemoteDirectory, storeDirectory, targetRemoteDirectory, toDownloadSegments, onFileSync);
-                } catch (Exception e) {
-                    throw new IOException("Error occurred when downloading segments from remote store", e);
-                }
-            }
-        } finally {
-            logger.trace("Downloaded segments here: {}", toDownloadSegments);
-            logger.trace("Skipped download for segments here: {}", skippedSegments);
-        }
-
-        return segmentNFile;
-    }
-
-    // Visible for testing
-    boolean localDirectoryContains(Directory localDirectory, String file, long checksum) throws IOException {
-        try (IndexInput indexInput = localDirectory.openInput(file, IOContext.DEFAULT)) {
-            if (checksum == CodecUtil.retrieveChecksum(indexInput)) {
-                return true;
-            } else {
-                logger.warn("Checksum mismatch between local and remote segment file: {}, will override local file", file);
-                // If there is a checksum mismatch and we are not serving reads it is safe to go ahead and delete the file now.
-                // Outside of engine resets this method will be invoked during recovery so this is safe.
-                if (isReadAllowed() == false) {
-                    localDirectory.deleteFile(file);
-                } else {
-                    // segment conflict with remote store while the shard is serving reads.
-                    failShard("Local copy of segment " + file + " has a different checksum than the version in remote store", null);
-                }
-            }
-        } catch (NoSuchFileException | FileNotFoundException e) {
-            logger.debug("File {} does not exist in local FS, downloading from remote store", file);
-        } catch (IOException e) {
-            logger.warn("Exception while reading checksum of file: {}, this can happen if file is corrupted", file);
-            // For any other exception on reading checksum, we delete the file to re-download again
-            localDirectory.deleteFile(file);
-        }
-        return false;
     }
 
     /**

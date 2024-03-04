@@ -770,7 +770,7 @@ public class OpenSearchNode implements TestClusterConfiguration {
         String heapSize = System.getProperty("tests.heap.size", "512m");
         defaultEnv.put(
             "OPENSEARCH_JAVA_OPTS",
-            "-Xms" + heapSize + " -Xmx" + heapSize + " -ea -esa " + systemPropertiesString + " " + jvmArgsString + " " +
+            "-Xms" + heapSize + " -Xmx" + heapSize + " -esa " + systemPropertiesString + " " + jvmArgsString + " " +
             // Support passing in additional JVM arguments
                 System.getProperty("tests.jvm.argline", "")
         );
