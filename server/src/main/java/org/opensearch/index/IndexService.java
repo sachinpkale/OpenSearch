@@ -143,7 +143,6 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
     private final NodeEnvironment nodeEnv;
     private final ShardStoreDeleter shardStoreDeleter;
     private final IndexStorePlugin.DirectoryFactory directoryFactory;
-    private final IndexStorePlugin.DirectoryFactory remoteDirectoryFactory;
     private final IndexStorePlugin.RecoveryStateFactory recoveryStateFactory;
     private final CheckedFunction<DirectoryReader, DirectoryReader, IOException> readerWrapper;
     private final IndexCache indexCache;
@@ -202,7 +201,6 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
         Client client,
         QueryCache queryCache,
         IndexStorePlugin.DirectoryFactory directoryFactory,
-        IndexStorePlugin.DirectoryFactory remoteDirectoryFactory,
         IndexEventListener eventListener,
         Function<IndexService, CheckedFunction<DirectoryReader, DirectoryReader, IOException>> wrapperFactory,
         MapperRegistry mapperRegistry,
@@ -279,7 +277,6 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
         this.eventListener = eventListener;
         this.nodeEnv = nodeEnv;
         this.directoryFactory = directoryFactory;
-        this.remoteDirectoryFactory = remoteDirectoryFactory;
         this.recoveryStateFactory = recoveryStateFactory;
         this.engineFactory = Objects.requireNonNull(engineFactory);
         this.engineConfigFactory = Objects.requireNonNull(engineConfigFactory);
@@ -486,12 +483,7 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
                 }
             };
 
-            Directory storageDirectory = null;
-            if (this.indexSettings.isRemoteStoreEnabled()) {
-                storageDirectory = remoteDirectoryFactory.newDirectory(this.indexSettings, path);
-            }
-            Directory cacheDirectory = directoryFactory.newDirectory(this.indexSettings, path);
-            Directory openSearchDirectory = new OpenSearchDirectory(cacheDirectory, storageDirectory);
+            Directory openSearchDirectory = directoryFactory.newDirectory(this.indexSettings, path);
             store = new Store(
                 shardId,
                 this.indexSettings,

@@ -357,7 +357,6 @@ public class IndicesService extends AbstractLifecycleComponent
     private final Set<Index> danglingIndicesToWrite = Sets.newConcurrentHashSet();
     private final boolean nodeWriteDanglingIndicesInfo;
     private final ValuesSourceRegistry valuesSourceRegistry;
-    private final IndexStorePlugin.DirectoryFactory remoteDirectoryFactory;
     private final BiFunction<IndexSettings, ShardRouting, TranslogFactory> translogFactorySupplier;
     private volatile TimeValue clusterDefaultRefreshInterval;
     private volatile TimeValue clusterRemoteTranslogBufferInterval;
@@ -391,7 +390,6 @@ public class IndicesService extends AbstractLifecycleComponent
         Map<String, IndexStorePlugin.DirectoryFactory> directoryFactories,
         ValuesSourceRegistry valuesSourceRegistry,
         Map<String, IndexStorePlugin.RecoveryStateFactory> recoveryStateFactories,
-        IndexStorePlugin.DirectoryFactory remoteDirectoryFactory,
         Supplier<RepositoriesService> repositoriesServiceSupplier,
         SearchRequestStats searchRequestStats,
         @Nullable RemoteStoreStatsTrackerFactory remoteStoreStatsTrackerFactory,
@@ -488,7 +486,6 @@ public class IndicesService extends AbstractLifecycleComponent
 
         this.allowExpensiveQueries = ALLOW_EXPENSIVE_QUERIES.get(clusterService.getSettings());
         clusterService.getClusterSettings().addSettingsUpdateConsumer(ALLOW_EXPENSIVE_QUERIES, this::setAllowExpensiveQueries);
-        this.remoteDirectoryFactory = remoteDirectoryFactory;
         this.translogFactorySupplier = getTranslogFactorySupplier(repositoriesServiceSupplier, threadPool, remoteStoreStatsTrackerFactory);
         this.searchRequestStats = searchRequestStats;
         this.clusterDefaultRefreshInterval = CLUSTER_DEFAULT_INDEX_REFRESH_INTERVAL_SETTING.get(clusterService.getSettings());
@@ -891,7 +888,6 @@ public class IndicesService extends AbstractLifecycleComponent
             namedWriteableRegistry,
             this::isIdFieldDataEnabled,
             valuesSourceRegistry,
-            remoteDirectoryFactory,
             translogFactorySupplier,
             this::getClusterDefaultRefreshInterval,
             this::getClusterRemoteTranslogBufferInterval,
