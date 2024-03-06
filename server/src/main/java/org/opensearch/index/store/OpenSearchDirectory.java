@@ -53,7 +53,11 @@ public class OpenSearchDirectory extends Directory {
 
     @Override
     public void sync(Collection<String> collection) throws IOException {
-        cache.sync(collection);
+        if (collection == null) {
+            OpenSearchDirectorySyncManager.syncStorageFilesToCache(this);
+        } else {
+            cache.sync(collection);
+        }
     }
 
     @Override

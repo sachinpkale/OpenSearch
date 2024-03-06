@@ -75,6 +75,8 @@ import org.opensearch.index.shard.IndexingOperationListener;
 import org.opensearch.index.shard.SearchOperationListener;
 import org.opensearch.index.similarity.SimilarityService;
 import org.opensearch.index.store.FsDirectoryFactory;
+import org.opensearch.index.store.OpenSearchDirectoryFactory;
+import org.opensearch.index.store.RemoteSegmentStoreDirectoryFactory;
 import org.opensearch.index.store.remote.directory.RemoteSnapshotDirectoryFactory;
 import org.opensearch.index.store.remote.filecache.FileCache;
 import org.opensearch.index.translog.TranslogFactory;
@@ -105,6 +107,8 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+
+import static org.opensearch.indices.analysis.PreBuiltCacheFactory.CachingStrategy.OPENSEARCH;
 
 /**
  * IndexModule represents the central extension point for index level custom implementations like:
@@ -505,7 +509,8 @@ public final class IndexModule {
         MMAPFS("mmapfs"),
         SIMPLEFS("simplefs"),
         FS("fs"),
-        REMOTE_SNAPSHOT("remote_snapshot");
+        REMOTE_SNAPSHOT("remote_snapshot"),
+        OPENSEARCH("opensearch");
 
         private final String settingsKey;
         private final boolean deprecated;
@@ -601,7 +606,6 @@ public final class IndexModule {
         NamedWriteableRegistry namedWriteableRegistry,
         BooleanSupplier idFieldDataEnabled,
         ValuesSourceRegistry valuesSourceRegistry,
-        IndexStorePlugin.DirectoryFactory remoteDirectoryFactory,
         BiFunction<IndexSettings, ShardRouting, TranslogFactory> translogFactorySupplier,
         Supplier<TimeValue> clusterDefaultRefreshIntervalSupplier,
         Supplier<TimeValue> clusterRemoteTranslogBufferIntervalSupplier,
@@ -648,7 +652,6 @@ public final class IndexModule {
                 client,
                 queryCache,
                 directoryFactory,
-                remoteDirectoryFactory,
                 eventListener,
                 readerWrapperFactory,
                 mapperRegistry,
@@ -679,6 +682,9 @@ public final class IndexModule {
         final IndexSettings indexSettings,
         final Map<String, IndexStorePlugin.DirectoryFactory> indexStoreFactories
     ) {
+        if (indexSettings.isRemoteStoreEnabled()) {
+            return indexStoreFactories.get(Type.OPENSEARCH.getSettingsKey());
+        }
         final String storeType = indexSettings.getValue(INDEX_STORE_TYPE_SETTING);
         final Type type;
         final Boolean allowMmap = NODE_STORE_ALLOW_MMAP.get(indexSettings.getNodeSettings());
@@ -786,6 +792,10 @@ public final class IndexModule {
                         type.getSettingsKey(),
                         new RemoteSnapshotDirectoryFactory(repositoriesService, threadPool, remoteStoreFileCache)
                     );
+                    break;
+                case OPENSEARCH:
+                    final IndexStorePlugin.DirectoryFactory remoteDirectoryFactory = new RemoteSegmentStoreDirectoryFactory(repositoriesService, threadPool);
+                    factories.put(type.getSettingsKey(), new OpenSearchDirectoryFactory(remoteDirectoryFactory, DEFAULT_DIRECTORY_FACTORY));
                     break;
                 default:
                     throw new IllegalStateException("No directory factory mapping for built-in type " + type);

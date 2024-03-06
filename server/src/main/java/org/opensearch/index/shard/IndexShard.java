@@ -1966,10 +1966,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
             throw new IndexShardNotRecoveringException(shardId, currentState);
         }
         try {
-            FilterDirectory remoteStoreDirectory = (FilterDirectory) store.directory();
-            FilterDirectory byteSizeCachingStoreDirectory = (FilterDirectory) remoteStoreDirectory.getDelegate();
-            final OpenSearchDirectory openSearchDirectory = (org.opensearch.index.store.OpenSearchDirectory) byteSizeCachingStoreDirectory.getDelegate();
-            OpenSearchDirectorySyncManager.syncStorageFilesToCache(openSearchDirectory);
+            store.directory().sync(null);
         } catch(Exception e) {
             // Ignoring for now
         }

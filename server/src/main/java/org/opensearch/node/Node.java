@@ -784,11 +784,6 @@ public class Node implements Closeable {
 
             final RecoverySettings recoverySettings = new RecoverySettings(settings, settingsModule.getClusterSettings());
 
-            final IndexStorePlugin.DirectoryFactory remoteDirectoryFactory = new RemoteSegmentStoreDirectoryFactory(
-                repositoriesServiceReference::get,
-                threadPool
-            );
-
             final SearchRequestStats searchRequestStats = new SearchRequestStats(clusterService.getClusterSettings());
             final SearchRequestSlowLog searchRequestSlowLog = new SearchRequestSlowLog(clusterService);
 
@@ -814,7 +809,6 @@ public class Node implements Closeable {
                 Map.copyOf(directoryFactories),
                 searchModule.getValuesSourceRegistry(),
                 recoveryStateFactories,
-                remoteDirectoryFactory,
                 repositoriesServiceReference::get,
                 searchRequestStats,
                 remoteStoreStatsTrackerFactory,
