@@ -14,7 +14,6 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.opensearch.action.LatchedActionListener;
@@ -30,8 +29,6 @@ import org.opensearch.index.engine.EngineException;
 import org.opensearch.index.engine.InternalEngine;
 import org.opensearch.index.remote.RemoteSegmentTransferTracker;
 import org.opensearch.index.seqno.SequenceNumbers;
-import org.opensearch.index.store.RemoteSegmentStoreDirectory;
-import org.opensearch.index.store.remote.metadata.RemoteSegmentMetadata;
 import org.opensearch.index.translog.Translog;
 import org.opensearch.indices.replication.checkpoint.ReplicationCheckpoint;
 import org.opensearch.indices.replication.checkpoint.SegmentReplicationCheckpointPublisher;
@@ -83,7 +80,6 @@ public final class RemoteStoreRefreshListener extends ReleasableRetryableRefresh
 
     private final IndexShard indexShard;
     private final Directory storeDirectory;
-    private final RemoteSegmentStoreDirectory remoteDirectory;
     private final RemoteSegmentTransferTracker segmentTracker;
     private final Map<String, String> localSegmentChecksumMap;
     private volatile long primaryTerm;
@@ -99,19 +95,17 @@ public final class RemoteStoreRefreshListener extends ReleasableRetryableRefresh
         logger = Loggers.getLogger(getClass(), indexShard.shardId());
         this.indexShard = indexShard;
         this.storeDirectory = indexShard.store().directory();
-        this.remoteDirectory = null;
         localSegmentChecksumMap = new HashMap<>();
-        RemoteSegmentMetadata remoteSegmentMetadata = null;
         if (indexShard.routingEntry().primary()) {
-            try {
-                remoteSegmentMetadata = this.remoteDirectory.init();
-            } catch (IOException e) {
-                logger.error("Exception while initialising RemoteSegmentStoreDirectory", e);
-            }
+//            try {
+                //remoteSegmentMetadata = this.remoteDirectory.init();
+//            } catch (IOException e) {
+//                logger.error("Exception while initialising RemoteSegmentStoreDirectory", e);
+//            }
         }
         // initializing primary term with the primary term of latest metadata in remote store.
         // if no metadata is present, this value will be initialized with -1.
-        this.primaryTerm = remoteSegmentMetadata != null ? remoteSegmentMetadata.getPrimaryTerm() : INVALID_PRIMARY_TERM;
+        this.primaryTerm = INVALID_PRIMARY_TERM;
         this.segmentTracker = segmentTracker;
         resetBackOffDelayIterator();
         this.checkpointPublisher = checkpointPublisher;
@@ -167,7 +161,7 @@ public final class RemoteStoreRefreshListener extends ReleasableRetryableRefresh
         boolean shouldSync = didRefresh // If the readers change, didRefresh is always true.
             // The third condition exists for uploading the zero state segments where the refresh has not changed the reader
             // reference, but it is important to upload the zero state segments so that the restore does not break.
-            || remoteDirectory.getSegmentsUploadedToRemoteStore().isEmpty()
+//            || remoteDirectory.getSegmentsUploadedToRemoteStore().isEmpty()
             // When the shouldSync is called the first time, then 1st condition on primary term is true. But after that
             // we update the primary term and the same condition would not evaluate to true again in syncSegments.
             // Below check ensures that if there is commit, then that gets picked up by both 1st and 2nd shouldSync call.
@@ -222,9 +216,9 @@ public final class RemoteStoreRefreshListener extends ReleasableRetryableRefresh
                 // if a new segments_N file is present in local that is not uploaded to remote store yet, it
                 // is considered as a first refresh post commit. A cleanup of stale commit files is triggered.
                 // This is done to avoid delete post each refresh.
-                if (isRefreshAfterCommit()) {
-                    remoteDirectory.deleteStaleSegmentsAsync(indexShard.getRecoverySettings().getMinRemoteSegmentMetadataFiles());
-                }
+//                if (isRefreshAfterCommit()) {
+////                    remoteDirectory.deleteStaleSegmentsAsync(indexShard.getRecoverySettings().getMinRemoteSegmentMetadataFiles());
+//                }
 
                 try (GatedCloseable<SegmentInfos> segmentInfosGatedCloseable = indexShard.getSegmentInfosSnapshot()) {
                     SegmentInfos segmentInfos = segmentInfosGatedCloseable.get();
@@ -361,22 +355,22 @@ public final class RemoteStoreRefreshListener extends ReleasableRetryableRefresh
         return ThreadPool.Names.REMOTE_REFRESH_RETRY;
     }
 
-    private boolean isRefreshAfterCommit() throws IOException {
-        String lastCommittedLocalSegmentFileName = SegmentInfos.getLastCommitSegmentsFileName(storeDirectory);
-        return (lastCommittedLocalSegmentFileName != null
-            && !remoteDirectory.containsFile(lastCommittedLocalSegmentFileName, getChecksumOfLocalFile(lastCommittedLocalSegmentFileName)));
-    }
+//    private boolean isRefreshAfterCommit() throws IOException {
+//        String lastCommittedLocalSegmentFileName = SegmentInfos.getLastCommitSegmentsFileName(storeDirectory);
+//        return (lastCommittedLocalSegmentFileName != null
+//            && !remoteDirectory.containsFile(lastCommittedLocalSegmentFileName, getChecksumOfLocalFile(lastCommittedLocalSegmentFileName)));
+//    }
 
     /**
      * Returns if the current refresh has happened after a commit.
      * @return true if this refresh has happened on account of a commit. If otherwise or exception, returns false.
      */
     private boolean isRefreshAfterCommitSafe() {
-        try {
-            return isRefreshAfterCommit();
-        } catch (Exception e) {
-            logger.info("Exception occurred in isRefreshAfterCommitSafe", e);
-        }
+//        try {
+//            return isRefreshAfterCommit();
+//        } catch (Exception e) {
+//            logger.info("Exception occurred in isRefreshAfterCommitSafe", e);
+//        }
         return false;
     }
 
@@ -394,14 +388,14 @@ public final class RemoteStoreRefreshListener extends ReleasableRetryableRefresh
             throw new UnsupportedOperationException("Encountered null TranslogGeneration while uploading metadata to remote segment store");
         } else {
             long translogFileGeneration = translogGeneration.translogFileGeneration;
-            remoteDirectory.uploadMetadata(
-                localSegmentsPostRefresh,
-                segmentInfosSnapshot,
-                storeDirectory,
-                translogFileGeneration,
-                replicationCheckpoint,
-                indexShard.getNodeId()
-            );
+//            remoteDirectory.uploadMetadata(
+//                localSegmentsPostRefresh,
+//                segmentInfosSnapshot,
+//                storeDirectory,
+//                translogFileGeneration,
+//                replicationCheckpoint,
+//                indexShard.getNodeId()
+//            );
         }
     }
 
@@ -436,7 +430,7 @@ public final class RemoteStoreRefreshListener extends ReleasableRetryableRefresh
                 batchUploadListener.onFailure(ex);
             });
             statsListener.beforeUpload(src);
-            remoteDirectory.copyFrom(storeDirectory, src, IOContext.DEFAULT, aggregatedListener);
+//            remoteDirectory.copyFrom(storeDirectory, src, IOContext.DEFAULT, aggregatedListener);
         }
     }
 
@@ -447,15 +441,15 @@ public final class RemoteStoreRefreshListener extends ReleasableRetryableRefresh
      * @return true if the upload has to be skipped for the file.
      */
     private boolean skipUpload(String file) {
-        try {
-            // Exclude files that are already uploaded and the exclude files to come up with the list of files to be uploaded.
-            return EXCLUDE_FILES.contains(file) || remoteDirectory.containsFile(file, getChecksumOfLocalFile(file));
-        } catch (IOException e) {
-            logger.error(
-                "Exception while reading checksum of local segment file: {}, ignoring the exception and re-uploading the file",
-                file
-            );
-        }
+//        try {
+//            // Exclude files that are already uploaded and the exclude files to come up with the list of files to be uploaded.
+//            return EXCLUDE_FILES.contains(file) || remoteDirectory.containsFile(file, getChecksumOfLocalFile(file));
+//        } catch (IOException e) {
+//            logger.error(
+//                "Exception while reading checksum of local segment file: {}, ignoring the exception and re-uploading the file",
+//                file
+//            );
+//        }
         return false;
     }
 
@@ -508,17 +502,17 @@ public final class RemoteStoreRefreshListener extends ReleasableRetryableRefresh
      * uploaded segment files onto remote store.
      */
     private void initializeRemoteDirectoryOnTermUpdate() throws IOException {
-        if (this.primaryTerm != indexShard.getOperationPrimaryTerm()) {
-            logger.trace("primaryTerm update from={} to={}", primaryTerm, indexShard.getOperationPrimaryTerm());
-            this.primaryTerm = indexShard.getOperationPrimaryTerm();
-            RemoteSegmentMetadata uploadedMetadata = this.remoteDirectory.init();
-
-            // During failover, the uploaded metadata would have names of files that have been uploaded to remote store.
-            // Here we update the tracker with latest remote uploaded files.
-            if (uploadedMetadata != null) {
-                segmentTracker.setLatestUploadedFiles(uploadedMetadata.getMetadata().keySet());
-            }
-        }
+//        if (this.primaryTerm != indexShard.getOperationPrimaryTerm()) {
+//            logger.trace("primaryTerm update from={} to={}", primaryTerm, indexShard.getOperationPrimaryTerm());
+//            this.primaryTerm = indexShard.getOperationPrimaryTerm();
+//            RemoteSegmentMetadata uploadedMetadata = this.remoteDirectory.init();
+//
+//            // During failover, the uploaded metadata would have names of files that have been uploaded to remote store.
+//            // Here we update the tracker with latest remote uploaded files.
+//            if (uploadedMetadata != null) {
+//                segmentTracker.setLatestUploadedFiles(uploadedMetadata.getMetadata().keySet());
+//            }
+//        }
     }
 
     /**

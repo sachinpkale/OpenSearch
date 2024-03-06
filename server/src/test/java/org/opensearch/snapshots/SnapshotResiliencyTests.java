@@ -186,7 +186,6 @@ import org.opensearch.index.remote.RemoteStoreStatsTrackerFactory;
 import org.opensearch.index.seqno.GlobalCheckpointSyncAction;
 import org.opensearch.index.seqno.RetentionLeaseSyncer;
 import org.opensearch.index.shard.PrimaryReplicaSyncer;
-import org.opensearch.index.store.RemoteSegmentStoreDirectoryFactory;
 import org.opensearch.index.store.remote.filecache.FileCache;
 import org.opensearch.index.store.remote.filecache.FileCacheStats;
 import org.opensearch.indices.IndicesModule;

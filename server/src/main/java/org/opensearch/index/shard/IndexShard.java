@@ -34,10 +34,10 @@ package org.opensearch.index.shard;
 
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
-import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.*;
 import org.apache.lucene.search.*;
-import org.apache.lucene.store.*;
+import org.apache.lucene.store.AlreadyClosedException;
+import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.util.ThreadInterruptedException;
 import org.opensearch.ExceptionsHelper;
 import org.opensearch.OpenSearchException;
@@ -104,9 +104,11 @@ import org.opensearch.index.search.stats.ShardSearchStats;
 import org.opensearch.index.seqno.*;
 import org.opensearch.index.shard.PrimaryReplicaSyncer.ResyncTask;
 import org.opensearch.index.similarity.SimilarityService;
-import org.opensearch.index.store.*;
+import org.opensearch.index.store.RemoteStoreFileDownloader;
+import org.opensearch.index.store.Store;
 import org.opensearch.index.store.Store.MetadataSnapshot;
-import org.opensearch.index.store.remote.metadata.RemoteSegmentMetadata;
+import org.opensearch.index.store.StoreFileMetadata;
+import org.opensearch.index.store.StoreStats;
 import org.opensearch.index.translog.*;
 import org.opensearch.index.warmer.ShardIndexWarmerService;
 import org.opensearch.index.warmer.WarmerStats;
@@ -123,13 +125,11 @@ import org.opensearch.search.suggest.completion.CompletionStats;
 import org.opensearch.threadpool.ThreadPool;
 
 import java.io.Closeable;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.NoSuchFileException;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
@@ -143,7 +143,8 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import static org.opensearch.index.seqno.RetentionLeaseActions.RETAIN_ALL;
-import static org.opensearch.index.seqno.SequenceNumbers.*;
+import static org.opensearch.index.seqno.SequenceNumbers.MAX_SEQ_NO;
+import static org.opensearch.index.seqno.SequenceNumbers.UNASSIGNED_SEQ_NO;
 import static org.opensearch.index.translog.Translog.Durability;
 import static org.opensearch.index.translog.Translog.TRANSLOG_UUID_KEY;
 
@@ -1498,8 +1499,8 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
      * @throws IOException if there is some failure in acquiring lock in remote store.
      */
     public void acquireLockOnCommitData(String snapshotId, long primaryTerm, long generation) throws IOException {
-        RemoteSegmentStoreDirectory remoteSegmentStoreDirectory = getRemoteDirectory();
-        remoteSegmentStoreDirectory.acquireLock(primaryTerm, generation, snapshotId);
+//        RemoteSegmentStoreDirectory remoteSegmentStoreDirectory = getRemoteDirectory();
+//        remoteSegmentStoreDirectory.acquireLock(primaryTerm, generation, snapshotId);
     }
 
     /**
@@ -1510,8 +1511,8 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
      * @throws IOException if there is some failure in releasing lock in remote store.
      */
     public void releaseLockOnCommitData(String snapshotId, long primaryTerm, long generation) throws IOException {
-        RemoteSegmentStoreDirectory remoteSegmentStoreDirectory = getRemoteDirectory();
-        remoteSegmentStoreDirectory.releaseLock(primaryTerm, generation, snapshotId);
+//        RemoteSegmentStoreDirectory remoteSegmentStoreDirectory = getRemoteDirectory();
+//        remoteSegmentStoreDirectory.releaseLock(primaryTerm, generation, snapshotId);
     }
 
     public Optional<NRTReplicationEngine> getReplicationEngine() {
@@ -1918,45 +1919,45 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
     /*
     ToDo : Fix this https://github.com/opensearch-project/OpenSearch/issues/8003
      */
-    public RemoteSegmentStoreDirectory getRemoteDirectory() {
-        FilterDirectory remoteStoreDirectory = (FilterDirectory) store.directory();
-        FilterDirectory byteSizeCachingStoreDirectory = (FilterDirectory) remoteStoreDirectory.getDelegate();
-        final OpenSearchDirectory openSearchDirectory = (org.opensearch.index.store.OpenSearchDirectory) byteSizeCachingStoreDirectory.getDelegate();
-        return (RemoteSegmentStoreDirectory) openSearchDirectory.getStorage();
-    }
+//    public RemoteSegmentStoreDirectory getRemoteDirectory() {
+//        FilterDirectory remoteStoreDirectory = (FilterDirectory) store.directory();
+//        FilterDirectory byteSizeCachingStoreDirectory = (FilterDirectory) remoteStoreDirectory.getDelegate();
+//        final OpenSearchDirectory openSearchDirectory = (org.opensearch.index.store.OpenSearchDirectory) byteSizeCachingStoreDirectory.getDelegate();
+//        return (RemoteSegmentStoreDirectory) openSearchDirectory.getStorage();
+//    }
 
     /**
      * Returns true iff it is able to verify that remote segment store
      * is in sync with local
      */
     boolean isRemoteSegmentStoreInSync() {
-        assert indexSettings.isRemoteStoreEnabled();
-        try {
-            RemoteSegmentStoreDirectory directory = getRemoteDirectory();
-            if (directory.readLatestMetadataFile() != null) {
-                Collection<String> uploadFiles = directory.getSegmentsUploadedToRemoteStore().keySet();
-                try (GatedCloseable<SegmentInfos> segmentInfosGatedCloseable = getSegmentInfosSnapshot()) {
-                    Collection<String> localSegmentInfosFiles = segmentInfosGatedCloseable.get().files(true);
-                    Set<String> localFiles = new HashSet<>(localSegmentInfosFiles);
-                    // verifying that all files except EXCLUDE_FILES are uploaded to the remote
-                    localFiles.removeAll(RemoteStoreRefreshListener.EXCLUDE_FILES);
-                    if (uploadFiles.containsAll(localFiles)) {
-                        return true;
-                    }
-                    logger.debug(
-                        () -> new ParameterizedMessage(
-                            "RemoteSegmentStoreSyncStatus localSize={} remoteSize={}",
-                            localFiles.size(),
-                            uploadFiles.size()
-                        )
-                    );
-                }
-            }
-        } catch (AlreadyClosedException e) {
-            throw e;
-        } catch (Throwable e) {
-            logger.error("Exception while reading latest metadata", e);
-        }
+//        assert indexSettings.isRemoteStoreEnabled();
+//        try {
+//            RemoteSegmentStoreDirectory directory = getRemoteDirectory();
+//            if (directory.readLatestMetadataFile() != null) {
+//                Collection<String> uploadFiles = directory.getSegmentsUploadedToRemoteStore().keySet();
+//                try (GatedCloseable<SegmentInfos> segmentInfosGatedCloseable = getSegmentInfosSnapshot()) {
+//                    Collection<String> localSegmentInfosFiles = segmentInfosGatedCloseable.get().files(true);
+//                    Set<String> localFiles = new HashSet<>(localSegmentInfosFiles);
+//                    // verifying that all files except EXCLUDE_FILES are uploaded to the remote
+//                    localFiles.removeAll(RemoteStoreRefreshListener.EXCLUDE_FILES);
+//                    if (uploadFiles.containsAll(localFiles)) {
+//                        return true;
+//                    }
+//                    logger.debug(
+//                        () -> new ParameterizedMessage(
+//                            "RemoteSegmentStoreSyncStatus localSize={} remoteSize={}",
+//                            localFiles.size(),
+//                            uploadFiles.size()
+//                        )
+//                    );
+//                }
+//            }
+//        } catch (AlreadyClosedException e) {
+//            throw e;
+//        } catch (Throwable e) {
+//            logger.error("Exception while reading latest metadata", e);
+//        }
         return false;
     }
 
@@ -1966,10 +1967,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
             throw new IndexShardNotRecoveringException(shardId, currentState);
         }
         try {
-            FilterDirectory remoteStoreDirectory = (FilterDirectory) store.directory();
-            FilterDirectory byteSizeCachingStoreDirectory = (FilterDirectory) remoteStoreDirectory.getDelegate();
-            final OpenSearchDirectory openSearchDirectory = (org.opensearch.index.store.OpenSearchDirectory) byteSizeCachingStoreDirectory.getDelegate();
-            OpenSearchDirectorySyncManager.syncStorageFilesToCache(openSearchDirectory);
+            store.directory().sync(null);
         } catch(Exception e) {
             // Ignoring for now
         }

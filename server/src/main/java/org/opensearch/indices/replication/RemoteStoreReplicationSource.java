@@ -19,10 +19,8 @@ import org.opensearch.common.util.CancellableThreads;
 import org.opensearch.core.action.ActionListener;
 import org.opensearch.index.shard.IndexShard;
 import org.opensearch.index.shard.IndexShardState;
-import org.opensearch.index.store.RemoteSegmentStoreDirectory;
 import org.opensearch.index.store.Store;
 import org.opensearch.index.store.StoreFileMetadata;
-import org.opensearch.index.store.remote.metadata.RemoteSegmentMetadata;
 import org.opensearch.indices.replication.checkpoint.ReplicationCheckpoint;
 
 import java.io.IOException;
@@ -46,14 +44,14 @@ public class RemoteStoreReplicationSource implements SegmentReplicationSource {
     private static final Logger logger = LogManager.getLogger(RemoteStoreReplicationSource.class);
 
     private final IndexShard indexShard;
-    private final RemoteSegmentStoreDirectory remoteDirectory;
+    private Directory remoteDirectory;
     private final CancellableThreads cancellableThreads = new CancellableThreads();
 
     public RemoteStoreReplicationSource(IndexShard indexShard) {
         this.indexShard = indexShard;
         FilterDirectory remoteStoreDirectory = null;
         FilterDirectory byteSizeCachingStoreDirectory = (FilterDirectory) remoteStoreDirectory.getDelegate();
-        this.remoteDirectory = (RemoteSegmentStoreDirectory) byteSizeCachingStoreDirectory.getDelegate();
+        //this.remoteDirectory = (RemoteSegmentStoreDirectory) byteSizeCachingStoreDirectory.getDelegate();
     }
 
     @Override
@@ -65,31 +63,31 @@ public class RemoteStoreReplicationSource implements SegmentReplicationSource {
         Map<String, StoreFileMetadata> metadataMap;
         // TODO: Need to figure out a way to pass this information for segment metadata via remote store.
         try (final GatedCloseable<SegmentInfos> segmentInfosSnapshot = indexShard.getSegmentInfosSnapshot()) {
-            final Version version = segmentInfosSnapshot.get().getCommitLuceneVersion();
-            final RemoteSegmentMetadata mdFile = getRemoteSegmentMetadata();
-            // During initial recovery flow, the remote store might not
-            // have metadata as primary hasn't uploaded anything yet.
-            if (mdFile == null && indexShard.state().equals(IndexShardState.STARTED) == false) {
-                listener.onResponse(new CheckpointInfoResponse(checkpoint, Collections.emptyMap(), null));
-                return;
-            }
-            assert mdFile != null : "Remote metadata file can't be null if shard is active " + indexShard.state();
-            metadataMap = mdFile.getMetadata()
-                .entrySet()
-                .stream()
-                .collect(
-                    Collectors.toMap(
-                        e -> e.getKey(),
-                        e -> new StoreFileMetadata(
-                            e.getValue().getOriginalFilename(),
-                            e.getValue().getLength(),
-                            Store.digestToString(Long.valueOf(e.getValue().getChecksum())),
-                            version,
-                            null
-                        )
-                    )
-                );
-            listener.onResponse(new CheckpointInfoResponse(mdFile.getReplicationCheckpoint(), metadataMap, mdFile.getSegmentInfosBytes()));
+//            final Version version = segmentInfosSnapshot.get().getCommitLuceneVersion();
+//            final RemoteSegmentMetadata mdFile = getRemoteSegmentMetadata();
+//            // During initial recovery flow, the remote store might not
+//            // have metadata as primary hasn't uploaded anything yet.
+//            if (mdFile == null && indexShard.state().equals(IndexShardState.STARTED) == false) {
+//                listener.onResponse(new CheckpointInfoResponse(checkpoint, Collections.emptyMap(), null));
+//                return;
+//            }
+//            assert mdFile != null : "Remote metadata file can't be null if shard is active " + indexShard.state();
+//            metadataMap = mdFile.getMetadata()
+//                .entrySet()
+//                .stream()
+//                .collect(
+//                    Collectors.toMap(
+//                        e -> e.getKey(),
+//                        e -> new StoreFileMetadata(
+//                            e.getValue().getOriginalFilename(),
+//                            e.getValue().getLength(),
+//                            Store.digestToString(Long.valueOf(e.getValue().getChecksum())),
+//                            version,
+//                            null
+//                        )
+//                    )
+//                );
+//            listener.onResponse(new CheckpointInfoResponse(mdFile.getReplicationCheckpoint(), metadataMap, mdFile.getSegmentInfosBytes()));
         } catch (Exception e) {
             listener.onFailure(e);
         }
@@ -147,14 +145,16 @@ public class RemoteStoreReplicationSource implements SegmentReplicationSource {
     }
 
     private boolean remoteMetadataExists() throws IOException {
-        final AtomicBoolean metadataExists = new AtomicBoolean(false);
-        cancellableThreads.executeIO(() -> metadataExists.set(remoteDirectory.readLatestMetadataFile() != null));
-        return metadataExists.get();
+        return false;
+//        final AtomicBoolean metadataExists = new AtomicBoolean(false);
+//        cancellableThreads.executeIO(() -> metadataExists.set(remoteDirectory.readLatestMetadataFile() != null));
+//        return metadataExists.get();
     }
 
-    private RemoteSegmentMetadata getRemoteSegmentMetadata() throws IOException {
-        AtomicReference<RemoteSegmentMetadata> mdFile = new AtomicReference<>();
-        cancellableThreads.executeIO(() -> mdFile.set(remoteDirectory.init()));
-        return mdFile.get();
-    }
+//    private RemoteSegmentMetadata getRemoteSegmentMetadata() throws IOException {
+//
+//        AtomicReference<RemoteSegmentMetadata> mdFile = new AtomicReference<>();
+//        cancellableThreads.executeIO(() -> mdFile.set(remoteDirectory.init()));
+//        return mdFile.get();
+//    }
 }

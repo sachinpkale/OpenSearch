@@ -63,8 +63,6 @@ import org.opensearch.index.mapper.MapperService;
 import org.opensearch.index.seqno.SequenceNumbers;
 import org.opensearch.index.snapshots.IndexShardRestoreFailedException;
 import org.opensearch.index.snapshots.blobstore.RemoteStoreShardShallowCopySnapshot;
-import org.opensearch.index.store.RemoteSegmentStoreDirectory;
-import org.opensearch.index.store.RemoteSegmentStoreDirectoryFactory;
 import org.opensearch.index.store.Store;
 import org.opensearch.index.translog.Checkpoint;
 import org.opensearch.index.translog.Translog;

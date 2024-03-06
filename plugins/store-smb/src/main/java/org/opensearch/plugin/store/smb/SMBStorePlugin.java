@@ -36,15 +36,18 @@ import org.opensearch.index.store.smbmmapfs.SmbMmapFsDirectoryFactory;
 import org.opensearch.index.store.smbniofs.SmbNIOFsDirectoryFactory;
 import org.opensearch.plugins.IndexStorePlugin;
 import org.opensearch.plugins.Plugin;
+import org.opensearch.repositories.RepositoriesService;
+import org.opensearch.threadpool.ThreadPool;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Supplier;
 
 public class SMBStorePlugin extends Plugin implements IndexStorePlugin {
 
     @Override
-    public Map<String, DirectoryFactory> getDirectoryFactories() {
+    public Map<String, DirectoryFactory> getDirectoryFactories(Supplier<RepositoriesService> repositoriesService, ThreadPool threadPool) {
         final Map<String, DirectoryFactory> indexStoreFactories = new HashMap<>(2);
         indexStoreFactories.put("smb_mmap_fs", new SmbMmapFsDirectoryFactory());
         indexStoreFactories.put("smb_nio_fs", new SmbNIOFsDirectoryFactory());

@@ -8,9 +8,11 @@
 
 package org.opensearch.index.store;
 
-import org.apache.lucene.store.IOContext;
-import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.*;
 import org.opensearch.common.blobstore.BlobContainer;
+
+import java.io.IOException;
+import java.nio.file.Path;
 
 /**
  * A {@code RemoteBufferedOutputDirectory} is an extension of RemoteDirectory which also provides an abstraction layer
@@ -20,13 +22,19 @@ import org.opensearch.common.blobstore.BlobContainer;
  *
  * @opensearch.internal
  */
-public class RemoteBufferedOutputDirectory extends RemoteDirectory {
+public class RemoteBufferedOutputDirectory extends FSDirectory {
     public RemoteBufferedOutputDirectory(BlobContainer blobContainer) {
-        super(blobContainer);
+        super(Path.of("abc"), NoLockFactory.INSTANCE);
+
     }
 
     @Override
     public IndexOutput createOutput(String name, IOContext context) {
-        return new RemoteBufferedIndexOutput(name, this.blobContainer);
+        return new RemoteBufferedIndexOutput(name, null);
+    }
+
+    @Override
+    public IndexInput openInput(String s, IOContext ioContext) throws IOException {
+        return null;
     }
 }

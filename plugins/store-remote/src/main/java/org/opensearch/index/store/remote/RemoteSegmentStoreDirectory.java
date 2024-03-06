@@ -6,7 +6,7 @@
  * compatible open source license.
  */
 
-package org.opensearch.index.store;
+package org.opensearch.index.store.remote;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

@@ -6,12 +6,12 @@
  * compatible open source license.
  */
 
-package org.opensearch.index.store;
+package org.opensearch.index.store.remote;
 
 import org.apache.lucene.store.*;
-import org.opensearch.index.shard.OpenSearchDirectorySyncManager;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Set;
 
@@ -53,7 +53,13 @@ public class OpenSearchDirectory extends Directory {
 
     @Override
     public void sync(Collection<String> collection) throws IOException {
-        cache.sync(collection);
+        if (collection == null) {
+            OpenSearchDirectorySyncManager.syncStorageFilesToCache(this);
+        } else if(collection instanceof ArrayList && ((ArrayList)collection).get(0).equals("ABCDE")) {
+            OpenSearchDirectorySyncManager.syncCacheFilesToStorage(((ArrayList)collection).subList(1, collection.size()), cache, storage);
+        }else {
+            cache.sync(collection);
+        }
     }
 
     @Override

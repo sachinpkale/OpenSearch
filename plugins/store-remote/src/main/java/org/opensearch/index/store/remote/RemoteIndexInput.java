@@ -6,7 +6,7 @@
  * compatible open source license.
  */
 
-package org.opensearch.index.store;
+package org.opensearch.index.store.remote;
 
 import org.apache.lucene.store.IndexInput;
 

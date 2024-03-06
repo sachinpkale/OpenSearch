@@ -15,7 +15,6 @@ import org.opensearch.common.settings.Settings;
 import org.opensearch.core.util.FileSystemUtils;
 import org.opensearch.index.IndexModule;
 import org.opensearch.index.IndexSettings;
-import org.opensearch.index.store.RemoteSegmentStoreDirectory;
 import org.opensearch.indices.replication.common.ReplicationType;
 import org.opensearch.snapshots.AbstractSnapshotIntegTestCase;
 

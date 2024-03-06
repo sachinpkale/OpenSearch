@@ -975,6 +975,14 @@ updates:
     labels:
       - "dependabot"
       - "dependencies"
+  - directory: /plugins/store-remote/
+    open-pull-requests-limit: 1
+    package-ecosystem: gradle
+    schedule:
+      interval: weekly
+    labels:
+      - "dependabot"
+      - "dependencies"
   - directory: /plugins/transport-nio/
     open-pull-requests-limit: 1
     package-ecosystem: gradle

@@ -9,6 +9,7 @@
 package org.opensearch.index.store;
 
 import org.apache.lucene.store.DataInput;
+import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.OutputStreamIndexOutput;
 import org.opensearch.common.blobstore.BlobContainer;
 import org.opensearch.common.io.stream.BytesStreamOutput;
@@ -26,14 +27,14 @@ import java.io.InputStream;
  *
  * @opensearch.internal
  */
-public class RemoteBufferedIndexOutput extends RemoteIndexOutput {
+public class RemoteBufferedIndexOutput extends IndexOutput {
     private final BytesStreamOutput out;
     private final OutputStreamIndexOutput indexOutputBuffer;
     // visible for testing
     static final int BUFFER_SIZE = 4096;
 
     public RemoteBufferedIndexOutput(String name, BlobContainer blobContainer, int bufferSize) {
-        super(name, blobContainer);
+        super(name, name);
         out = new BytesStreamOutput();
         indexOutputBuffer = new OutputStreamIndexOutput(name, name, out, bufferSize);
     }
@@ -44,7 +45,7 @@ public class RemoteBufferedIndexOutput extends RemoteIndexOutput {
 
     // Visible for testing
     RemoteBufferedIndexOutput(String name, BlobContainer blobContainer, BytesStreamOutput out, OutputStreamIndexOutput indexOutputBuffer) {
-        super(name, blobContainer);
+        super(name, name);
         this.out = out;
         this.indexOutputBuffer = indexOutputBuffer;
     }
@@ -64,7 +65,7 @@ public class RemoteBufferedIndexOutput extends RemoteIndexOutput {
 
         try (final BytesStreamOutput outStream = out; InputStream stream = out.bytes().streamInput()) {
             indexOutputBuffer.close();
-            blobContainer.writeBlob(getName(), stream, out.bytes().length(), false);
+            //blobContainer.writeBlob(getName(), stream, out.bytes().length(), false);
         }
 
     }

@@ -29,7 +29,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 
 /**
- * Helper class to downloads files from a {@link RemoteSegmentStoreDirectory}
+ * Helper class to downloads files from a
  * instance to a local {@link Directory} instance in parallel depending on thread
  * pool size and recovery settings.
  *

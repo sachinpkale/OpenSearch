@@ -106,8 +106,6 @@ import org.opensearch.index.seqno.SequenceNumbers;
 import org.opensearch.index.similarity.SimilarityService;
 import org.opensearch.index.snapshots.IndexShardSnapshotStatus;
 import org.opensearch.index.store.RemoteBufferedOutputDirectory;
-import org.opensearch.index.store.RemoteDirectory;
-import org.opensearch.index.store.RemoteSegmentStoreDirectory;
 import org.opensearch.index.store.Store;
 import org.opensearch.index.store.StoreFileMetadata;
 import org.opensearch.index.store.lockmanager.RemoteStoreLockManager;

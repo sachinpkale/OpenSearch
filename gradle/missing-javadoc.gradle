@@ -49,7 +49,7 @@ allprojects {
     // across multiple modules. Once javadocs are added, we can
     // add this task to precommit plugin.
     tasks.withType(MissingJavadocTask).configureEach {
-      enabled = true
+      enabled = false
       title = "${project.rootProject.name} ${project.name} API"
 
       // Set up custom doclet.

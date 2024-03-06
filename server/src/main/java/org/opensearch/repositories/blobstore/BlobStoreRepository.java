@@ -117,7 +117,6 @@ import org.opensearch.index.snapshots.blobstore.RateLimitingInputStream;
 import org.opensearch.index.snapshots.blobstore.RemoteStoreShardShallowCopySnapshot;
 import org.opensearch.index.snapshots.blobstore.SlicedInputStream;
 import org.opensearch.index.snapshots.blobstore.SnapshotFiles;
-import org.opensearch.index.store.RemoteSegmentStoreDirectoryFactory;
 import org.opensearch.index.store.Store;
 import org.opensearch.index.store.StoreFileMetadata;
 import org.opensearch.index.store.lockmanager.FileLockInfo;
@@ -1137,20 +1136,20 @@ public abstract class BlobStoreRepository extends AbstractLifecycleComponent imp
                                 remoteStoreMetadataLockManager.release(
                                     FileLockInfo.getLockInfoBuilder().withAcquirerId(snapshotUUID).build()
                                 );
-                                if (!isIndexPresent(clusterService, indexUUID)) {
-                                    // this is a temporary solution where snapshot deletion triggers remote store side
-                                    // cleanup if index is already deleted. We will add a poller in future to take
-                                    // care of remote store side cleanup.
-                                    // see https://github.com/opensearch-project/OpenSearch/issues/8469
-                                    new RemoteSegmentStoreDirectoryFactory(
-                                        remoteStoreLockManagerFactory.getRepositoriesService(),
-                                        threadPool
-                                    ).newDirectory(
-                                        remoteStoreRepoForIndex,
-                                        indexUUID,
-                                        new ShardId(Index.UNKNOWN_INDEX_NAME, indexUUID, Integer.valueOf(shardId))
-                                    ).close();
-                                }
+//                                if (!isIndexPresent(clusterService, indexUUID)) {
+//                                    // this is a temporary solution where snapshot deletion triggers remote store side
+//                                    // cleanup if index is already deleted. We will add a poller in future to take
+//                                    // care of remote store side cleanup.
+//                                    // see https://github.com/opensearch-project/OpenSearch/issues/8469
+//                                    new RemoteSegmentStoreDirectoryFactory(
+//                                        remoteStoreLockManagerFactory.getRepositoriesService(),
+//                                        threadPool
+//                                    ).newDirectory(
+//                                        remoteStoreRepoForIndex,
+//                                        indexUUID,
+//                                        new ShardId(Index.UNKNOWN_INDEX_NAME, indexUUID, Integer.valueOf(shardId))
+//                                    ).close();
+//                                }
                             }
                         }
                     }
@@ -1607,20 +1606,20 @@ public abstract class BlobStoreRepository extends AbstractLifecycleComponent imp
                                     remoteStoreMetadataLockManager.release(
                                         FileLockInfo.getLockInfoBuilder().withAcquirerId(snapshotUUID.get()).build()
                                     );
-                                    if (!isIndexPresent(clusterService, indexUUID)) {
-                                        // this is a temporary solution where snapshot deletion triggers remote store side
-                                        // cleanup if index is already deleted. We will add a poller in future to take
-                                        // care of remote store side cleanup.
-                                        // see https://github.com/opensearch-project/OpenSearch/issues/8469
-                                        new RemoteSegmentStoreDirectoryFactory(
-                                            remoteStoreLockManagerFactory.getRepositoriesService(),
-                                            threadPool
-                                        ).newDirectory(
-                                            remoteStoreRepoForIndex,
-                                            indexUUID,
-                                            new ShardId(Index.UNKNOWN_INDEX_NAME, indexUUID, Integer.parseInt(shardBlob.getKey()))
-                                        ).close();
-                                    }
+//                                    if (!isIndexPresent(clusterService, indexUUID)) {
+//                                        // this is a temporary solution where snapshot deletion triggers remote store side
+//                                        // cleanup if index is already deleted. We will add a poller in future to take
+//                                        // care of remote store side cleanup.
+//                                        // see https://github.com/opensearch-project/OpenSearch/issues/8469
+//                                        new RemoteSegmentStoreDirectoryFactory(
+//                                            remoteStoreLockManagerFactory.getRepositoriesService(),
+//                                            threadPool
+//                                        ).newDirectory(
+//                                            remoteStoreRepoForIndex,
+//                                            indexUUID,
+//                                            new ShardId(Index.UNKNOWN_INDEX_NAME, indexUUID, Integer.parseInt(shardBlob.getKey()))
+//                                        ).close();
+//                                    }
                                 }
                             }
                         }

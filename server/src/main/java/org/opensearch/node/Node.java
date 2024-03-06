@@ -145,7 +145,6 @@ import org.opensearch.index.analysis.AnalysisRegistry;
 import org.opensearch.index.engine.EngineFactory;
 import org.opensearch.index.recovery.RemoteStoreRestoreService;
 import org.opensearch.index.remote.RemoteStoreStatsTrackerFactory;
-import org.opensearch.index.store.RemoteSegmentStoreDirectoryFactory;
 import org.opensearch.index.store.remote.filecache.FileCache;
 import org.opensearch.index.store.remote.filecache.FileCacheCleaner;
 import org.opensearch.index.store.remote.filecache.FileCacheFactory;
@@ -749,7 +748,7 @@ public class Node implements Closeable {
             final Map<String, IndexStorePlugin.DirectoryFactory> directoryFactories = new HashMap<>();
             pluginsService.filterPlugins(IndexStorePlugin.class)
                 .stream()
-                .map(IndexStorePlugin::getDirectoryFactories)
+                .map(p -> p.getDirectoryFactories(repositoriesServiceReference::get, threadPool))
                 .flatMap(m -> m.entrySet().stream())
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue))
                 .forEach((k, v) -> {

@@ -40,10 +40,13 @@ import org.opensearch.common.annotation.PublicApi;
 import org.opensearch.index.IndexSettings;
 import org.opensearch.index.shard.ShardPath;
 import org.opensearch.indices.recovery.RecoveryState;
+import org.opensearch.repositories.RepositoriesService;
+import org.opensearch.threadpool.ThreadPool;
 
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
+import java.util.function.Supplier;
 
 /**
  * A plugin that provides alternative directory implementations.
@@ -78,7 +81,7 @@ public interface IndexStorePlugin {
      *
      * @return a map from store type to an directory factory
      */
-    Map<String, DirectoryFactory> getDirectoryFactories();
+    Map<String, DirectoryFactory> getDirectoryFactories(Supplier<RepositoriesService> repositoriesService, ThreadPool threadPool);
 
     /**
      * An interface that allows to create a new {@link RecoveryState} per shard.

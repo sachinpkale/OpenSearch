@@ -10,7 +10,6 @@ package org.opensearch.index.remote;
 
 import org.opensearch.common.blobstore.BlobMetadata;
 import org.opensearch.common.blobstore.support.PlainBlobMetadata;
-import org.opensearch.index.store.RemoteSegmentStoreDirectory;
 import org.opensearch.index.translog.transfer.TranslogTransferMetadata;
 import org.opensearch.test.OpenSearchTestCase;
 
