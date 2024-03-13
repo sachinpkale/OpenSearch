@@ -544,9 +544,9 @@ public class OpenSearchNode implements TestClusterConfiguration {
         logToProcessStdout("Creating opensearch keystore with password set to [" + keystorePassword + "]");
         if (keystorePassword.length() > 0) {
             runOpenSearchBinScriptWithInput(keystorePassword + "\n" + keystorePassword, "opensearch-keystore", "create", "-p");
-        } else {
+        } /*else {
             runOpenSearchBinScript("opensearch-keystore", "-v", "create");
-        }
+        }*/
 
         if (keystoreSettings.isEmpty() == false || keystoreFiles.isEmpty() == false) {
             logToProcessStdout("Adding " + keystoreSettings.size() + " keystore settings and " + keystoreFiles.size() + " keystore files");

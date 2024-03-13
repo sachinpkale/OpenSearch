@@ -62,7 +62,7 @@ public class TranslogTransferManager {
     private final FileTransferTracker fileTransferTracker;
     private final RemoteTranslogTransferTracker remoteTranslogTransferTracker;
 
-    private static final long TRANSFER_TIMEOUT_IN_MILLIS = 30000;
+    private static final long TRANSFER_TIMEOUT_IN_MILLIS = 50;
 
     private static final int METADATA_FILES_TO_FETCH = 10;
 
@@ -117,13 +117,18 @@ public class TranslogTransferManager {
             if (toUpload.isEmpty()) {
                 logger.trace("Nothing to upload for transfer");
                 return true;
+            } else {
+                logger.info("Uploading: " + toUpload.stream().map(TransferFileSnapshot::getName).collect(Collectors.toList()));
             }
 
             fileTransferTracker.recordBytesForFiles(toUpload);
             captureStatsBeforeUpload();
             final CountDownLatch latch = new CountDownLatch(toUpload.size());
             LatchedActionListener<TransferFileSnapshot> latchedActionListener = new LatchedActionListener<>(
-                ActionListener.wrap(fileTransferTracker::onSuccess, ex -> {
+                ActionListener.wrap(fs -> {
+                    logger.info("Successful for: " + fs.getName());
+                    fileTransferTracker.onSuccess(fs);
+                }, ex -> {
                     assert ex instanceof FileTransferException;
                     logger.error(
                         () -> new ParameterizedMessage(

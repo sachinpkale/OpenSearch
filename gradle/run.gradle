@@ -39,6 +39,17 @@ testClusters {
     testDistribution = 'archive'
     if (numZones > 1) numberOfZones = numZones
     if (numNodes > 1) numberOfNodes = numNodes
+    setting 'node.attr.remote_store.segment.repository', 'my-fs-repository'
+    setting 'node.attr.remote_store.translog.repository', 'my-fs-repository'
+    setting 'node.attr.remote_store.state.repository', 'my-fs-repository'
+//    setting 'node.attr.remote_store.repository.my-fs-repository.type', 'fs'
+//    setting 'node.attr.remote_store.repository.my-fs-repository.settings.location', '/Users/kalsac/Codebase/OpenSearch/build/testclusters/runTask-0/repo'
+    setting 'node.attr.remote_store.repository.my-fs-repository.type', 's3'
+    setting 'node.attr.remote_store.repository.my-fs-repository.settings.bucket', 'segment-upload-test-123'
+    setting 'node.attr.remote_store.repository.my-fs-repository.settings.base_path', 'from-local'
+    setting 'node.attr.remote_store.repository.my-fs-repository.settings.region', 'us-east-1'
+    setting 'cluster.minimum.index.refresh_interval', '20s'
+    setting 'cluster.default.index.refresh_interval', '20s'
     if (findProperty("installedPlugins")) {
       installedPlugins = Eval.me(installedPlugins)
       for (String p : installedPlugins) {
