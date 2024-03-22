@@ -14,22 +14,16 @@ import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.opensearch.cluster.metadata.RepositoriesMetadata;
 import org.opensearch.cluster.metadata.RepositoryMetadata;
 import org.opensearch.cluster.node.DiscoveryNode;
-import org.opensearch.common.settings.Setting;
-import org.opensearch.common.util.FeatureFlags;
 import org.opensearch.repositories.RepositoriesService;
 import org.opensearch.repositories.Repository;
 import org.opensearch.repositories.RepositoryException;
 import org.opensearch.threadpool.ThreadPool;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.function.Supplier;
-
-import static org.opensearch.common.util.FeatureFlags.REMOTE_STORE_MIGRATION_EXPERIMENTAL;
 
 /**
  * Contains all the method needed for a remote store backed node lifecycle.
@@ -39,96 +33,6 @@ public class RemoteStoreNodeService {
     private static final Logger logger = LogManager.getLogger(RemoteStoreNodeService.class);
     private final Supplier<RepositoriesService> repositoriesService;
     private final ThreadPool threadPool;
-    public static final Setting<CompatibilityMode> REMOTE_STORE_COMPATIBILITY_MODE_SETTING = new Setting<>(
-        "remote_store.compatibility_mode",
-        CompatibilityMode.STRICT.name(),
-        CompatibilityMode::parseString,
-        value -> {
-            if (value == CompatibilityMode.MIXED
-                && FeatureFlags.isEnabled(FeatureFlags.REMOTE_STORE_MIGRATION_EXPERIMENTAL_SETTING) == false) {
-                throw new IllegalArgumentException(
-                    " mixed mode is under an experimental feature and can be activated only by enabling "
-                        + REMOTE_STORE_MIGRATION_EXPERIMENTAL
-                        + " feature flag in the JVM options "
-                );
-            }
-        },
-        Setting.Property.Dynamic,
-        Setting.Property.NodeScope
-    );
-
-    public static final Setting<Direction> MIGRATION_DIRECTION_SETTING = new Setting<>(
-        "migration.direction",
-        Direction.NONE.name(),
-        Direction::parseString,
-        value -> {
-            if (value != Direction.NONE && FeatureFlags.isEnabled(FeatureFlags.REMOTE_STORE_MIGRATION_EXPERIMENTAL_SETTING) == false) {
-                throw new IllegalArgumentException(
-                    " migration.direction is under an experimental feature and can be activated only by enabling "
-                        + REMOTE_STORE_MIGRATION_EXPERIMENTAL
-                        + " feature flag in the JVM options "
-                );
-            }
-        },
-        Setting.Property.Dynamic,
-        Setting.Property.NodeScope
-    );
-
-    /**
-     * Node join compatibility mode introduced with remote backed storage.
-     *
-     * @opensearch.internal
-     */
-    public enum CompatibilityMode {
-        STRICT("strict"),
-        MIXED("mixed");
-
-        public final String mode;
-
-        CompatibilityMode(String mode) {
-            this.mode = mode;
-        }
-
-        public static CompatibilityMode parseString(String compatibilityMode) {
-            try {
-                return CompatibilityMode.valueOf(compatibilityMode.toUpperCase(Locale.ROOT));
-            } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException(
-                    "["
-                        + compatibilityMode
-                        + "] compatibility mode is not supported. "
-                        + "supported modes are ["
-                        + Arrays.toString(CompatibilityMode.values())
-                        + "]"
-                );
-            }
-        }
-    }
-
-    /**
-     * Migration Direction intended for docrep to remote store migration and vice versa
-     *
-     * @opensearch.internal
-     */
-    public enum Direction {
-        REMOTE_STORE("remote_store"),
-        NONE("none"),
-        DOCREP("docrep");
-
-        public final String direction;
-
-        Direction(String d) {
-            this.direction = d;
-        }
-
-        public static Direction parseString(String direction) {
-            try {
-                return Direction.valueOf(direction.toUpperCase(Locale.ROOT));
-            } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("[" + direction + "] migration.direction is not supported.");
-            }
-        }
-    }
 
     public RemoteStoreNodeService(Supplier<RepositoriesService> repositoriesService, ThreadPool threadPool) {
         this.repositoriesService = repositoriesService;

@@ -53,6 +53,7 @@ import org.opensearch.common.SetOnce;
 import org.opensearch.common.UUIDs;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.common.util.FeatureFlags;
+import org.opensearch.indices.RemoteStoreSettings;
 import org.opensearch.node.remotestore.RemoteStoreNodeService;
 import org.opensearch.repositories.RepositoriesService;
 import org.opensearch.repositories.blobstore.BlobStoreRepository;
@@ -69,13 +70,13 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.opensearch.common.util.FeatureFlags.REMOTE_STORE_MIGRATION_EXPERIMENTAL;
+import static org.opensearch.indices.RemoteStoreSettings.MIGRATION_DIRECTION_SETTING;
+import static org.opensearch.indices.RemoteStoreSettings.REMOTE_STORE_COMPATIBILITY_MODE_SETTING;
 import static org.opensearch.node.remotestore.RemoteStoreNodeAttribute.REMOTE_STORE_CLUSTER_STATE_REPOSITORY_NAME_ATTRIBUTE_KEY;
 import static org.opensearch.node.remotestore.RemoteStoreNodeAttribute.REMOTE_STORE_REPOSITORY_SETTINGS_ATTRIBUTE_KEY_PREFIX;
 import static org.opensearch.node.remotestore.RemoteStoreNodeAttribute.REMOTE_STORE_REPOSITORY_TYPE_ATTRIBUTE_KEY_FORMAT;
 import static org.opensearch.node.remotestore.RemoteStoreNodeAttribute.REMOTE_STORE_SEGMENT_REPOSITORY_NAME_ATTRIBUTE_KEY;
 import static org.opensearch.node.remotestore.RemoteStoreNodeAttribute.REMOTE_STORE_TRANSLOG_REPOSITORY_NAME_ATTRIBUTE_KEY;
-import static org.opensearch.node.remotestore.RemoteStoreNodeService.MIGRATION_DIRECTION_SETTING;
-import static org.opensearch.node.remotestore.RemoteStoreNodeService.REMOTE_STORE_COMPATIBILITY_MODE_SETTING;
 import static org.opensearch.test.VersionUtils.allVersions;
 import static org.opensearch.test.VersionUtils.maxCompatibleVersion;
 import static org.opensearch.test.VersionUtils.randomCompatibleVersion;
@@ -415,7 +416,7 @@ public class JoinTaskExecutorTests extends OpenSearchTestCase {
     public void testRemoteStoreNodeJoiningNonRemoteStoreClusterMixedMode() {
         final DiscoveryNode existingNode = new DiscoveryNode(UUIDs.base64UUID(), buildNewFakeTransportAddress(), Version.CURRENT);
         final Settings settings = Settings.builder()
-            .put(MIGRATION_DIRECTION_SETTING.getKey(), RemoteStoreNodeService.Direction.REMOTE_STORE)
+            .put(MIGRATION_DIRECTION_SETTING.getKey(), RemoteStoreSettings.Direction.REMOTE_STORE)
             .put(REMOTE_STORE_COMPATIBILITY_MODE_SETTING.getKey(), "mixed")
             .build();
         final Settings nodeSettings = Settings.builder().put(REMOTE_STORE_MIGRATION_EXPERIMENTAL, "true").build();
@@ -434,7 +435,7 @@ public class JoinTaskExecutorTests extends OpenSearchTestCase {
         final DiscoveryNode docrepNode = new DiscoveryNode(UUIDs.base64UUID(), buildNewFakeTransportAddress(), Version.CURRENT);
         DiscoveryNode remoteNode = newDiscoveryNode(remoteStoreNodeAttributes(SEGMENT_REPO, TRANSLOG_REPO));
         final Settings settings = Settings.builder()
-            .put(MIGRATION_DIRECTION_SETTING.getKey(), RemoteStoreNodeService.Direction.REMOTE_STORE)
+            .put(MIGRATION_DIRECTION_SETTING.getKey(), RemoteStoreSettings.Direction.REMOTE_STORE)
             .put(REMOTE_STORE_COMPATIBILITY_MODE_SETTING.getKey(), "mixed")
             .build();
         final Settings nodeSettings = Settings.builder().put(REMOTE_STORE_MIGRATION_EXPERIMENTAL, "true").build();

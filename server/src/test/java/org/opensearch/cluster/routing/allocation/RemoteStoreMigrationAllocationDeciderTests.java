@@ -56,8 +56,8 @@ import org.opensearch.common.settings.ClusterSettings;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.common.util.FeatureFlags;
 import org.opensearch.core.index.shard.ShardId;
+import org.opensearch.indices.RemoteStoreSettings;
 import org.opensearch.indices.replication.common.ReplicationType;
-import org.opensearch.node.remotestore.RemoteStoreNodeService;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -69,9 +69,9 @@ import static org.opensearch.cluster.metadata.IndexMetadata.SETTING_REMOTE_STORE
 import static org.opensearch.cluster.metadata.IndexMetadata.SETTING_REMOTE_TRANSLOG_STORE_REPOSITORY;
 import static org.opensearch.cluster.metadata.IndexMetadata.SETTING_REPLICATION_TYPE;
 import static org.opensearch.common.util.FeatureFlags.REMOTE_STORE_MIGRATION_EXPERIMENTAL;
+import static org.opensearch.indices.RemoteStoreSettings.MIGRATION_DIRECTION_SETTING;
+import static org.opensearch.indices.RemoteStoreSettings.REMOTE_STORE_COMPATIBILITY_MODE_SETTING;
 import static org.opensearch.node.remotestore.RemoteStoreNodeAttribute.REMOTE_STORE_CLUSTER_STATE_REPOSITORY_NAME_ATTRIBUTE_KEY;
-import static org.opensearch.node.remotestore.RemoteStoreNodeService.MIGRATION_DIRECTION_SETTING;
-import static org.opensearch.node.remotestore.RemoteStoreNodeService.REMOTE_STORE_COMPATIBILITY_MODE_SETTING;
 import static org.hamcrest.core.Is.is;
 
 public class RemoteStoreMigrationAllocationDeciderTests extends OpenSearchAllocationTestCase {
@@ -82,17 +82,17 @@ public class RemoteStoreMigrationAllocationDeciderTests extends OpenSearchAlloca
     private final Settings directionEnabledNodeSettings = Settings.builder().put(REMOTE_STORE_MIGRATION_EXPERIMENTAL, "true").build();
 
     private final Settings strictModeCompatibilitySettings = Settings.builder()
-        .put(REMOTE_STORE_COMPATIBILITY_MODE_SETTING.getKey(), RemoteStoreNodeService.CompatibilityMode.STRICT)
+        .put(REMOTE_STORE_COMPATIBILITY_MODE_SETTING.getKey(), RemoteStoreSettings.CompatibilityMode.STRICT)
         .build();
     private final Settings mixedModeCompatibilitySettings = Settings.builder()
-        .put(REMOTE_STORE_COMPATIBILITY_MODE_SETTING.getKey(), RemoteStoreNodeService.CompatibilityMode.MIXED)
+        .put(REMOTE_STORE_COMPATIBILITY_MODE_SETTING.getKey(), RemoteStoreSettings.CompatibilityMode.MIXED)
         .build();
 
     private final Settings remoteStoreDirectionSettings = Settings.builder()
-        .put(MIGRATION_DIRECTION_SETTING.getKey(), RemoteStoreNodeService.Direction.REMOTE_STORE)
+        .put(MIGRATION_DIRECTION_SETTING.getKey(), RemoteStoreSettings.Direction.REMOTE_STORE)
         .build();
     private final Settings docrepDirectionSettings = Settings.builder()
-        .put(MIGRATION_DIRECTION_SETTING.getKey(), RemoteStoreNodeService.Direction.DOCREP)
+        .put(MIGRATION_DIRECTION_SETTING.getKey(), RemoteStoreSettings.Direction.DOCREP)
         .build();
 
     private Boolean isRemoteStoreBackedIndex = null, isMixedMode;
@@ -114,13 +114,9 @@ public class RemoteStoreMigrationAllocationDeciderTests extends OpenSearchAlloca
         indexMetadataBuilder = getIndexMetadataBuilder(isRemoteStoreBackedIndex, shardCount, replicaCount);
 
         String compatibilityMode = isMixedMode
-            ? RemoteStoreNodeService.CompatibilityMode.MIXED.mode
-            : RemoteStoreNodeService.CompatibilityMode.STRICT.mode;
-        customSettings = getCustomSettings(
-            RemoteStoreNodeService.Direction.REMOTE_STORE.direction,
-            compatibilityMode,
-            indexMetadataBuilder
-        );
+            ? RemoteStoreSettings.CompatibilityMode.MIXED.mode
+            : RemoteStoreSettings.CompatibilityMode.STRICT.mode;
+        customSettings = getCustomSettings(RemoteStoreSettings.Direction.REMOTE_STORE.direction, compatibilityMode, indexMetadataBuilder);
 
         if (routingTable != null) {
             metadata = Metadata.builder().put(indexMetadataBuilder).build();
@@ -614,16 +610,16 @@ public class RemoteStoreMigrationAllocationDeciderTests extends OpenSearchAlloca
     private Settings getCustomSettings(String direction, String compatibilityMode, IndexMetadata.Builder indexMetadataBuilder) {
         Settings.Builder builder = Settings.builder();
         // direction settings
-        if (direction.toLowerCase(Locale.ROOT).equals(RemoteStoreNodeService.Direction.REMOTE_STORE.direction)) {
+        if (direction.toLowerCase(Locale.ROOT).equals(RemoteStoreSettings.Direction.REMOTE_STORE.direction)) {
             builder.put(remoteStoreDirectionSettings);
-        } else if (direction.toLowerCase(Locale.ROOT).equals(RemoteStoreNodeService.Direction.DOCREP.direction)) {
+        } else if (direction.toLowerCase(Locale.ROOT).equals(RemoteStoreSettings.Direction.DOCREP.direction)) {
             builder.put(docrepDirectionSettings);
         }
 
         // compatibility mode settings
-        if (compatibilityMode.toLowerCase(Locale.ROOT).equals(RemoteStoreNodeService.CompatibilityMode.STRICT.mode)) {
+        if (compatibilityMode.toLowerCase(Locale.ROOT).equals(RemoteStoreSettings.CompatibilityMode.STRICT.mode)) {
             builder.put(strictModeCompatibilitySettings);
-        } else if (compatibilityMode.toLowerCase(Locale.ROOT).equals(RemoteStoreNodeService.CompatibilityMode.MIXED.mode)) {
+        } else if (compatibilityMode.toLowerCase(Locale.ROOT).equals(RemoteStoreSettings.CompatibilityMode.MIXED.mode)) {
             builder.put(mixedModeCompatibilitySettings);
         }
 
@@ -636,7 +632,7 @@ public class RemoteStoreMigrationAllocationDeciderTests extends OpenSearchAlloca
     }
 
     private String getRandomCompatibilityMode() {
-        return randomFrom(RemoteStoreNodeService.CompatibilityMode.STRICT.mode, RemoteStoreNodeService.CompatibilityMode.MIXED.mode);
+        return randomFrom(RemoteStoreSettings.CompatibilityMode.STRICT.mode, RemoteStoreSettings.CompatibilityMode.MIXED.mode);
     }
 
     private ClusterSettings getClusterSettings(Settings settings) {

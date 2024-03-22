@@ -14,7 +14,13 @@ import org.opensearch.common.settings.Setting;
 import org.opensearch.common.settings.Setting.Property;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.common.unit.TimeValue;
+import org.opensearch.common.util.FeatureFlags;
 import org.opensearch.index.IndexSettings;
+
+import java.util.Arrays;
+import java.util.Locale;
+
+import static org.opensearch.common.util.FeatureFlags.REMOTE_STORE_MIGRATION_EXPERIMENTAL;
 
 /**
  * Settings for remote store
@@ -53,6 +59,39 @@ public class RemoteStoreSettings {
         Property.NodeScope,
         Property.Dynamic
     );
+    public static final Setting<CompatibilityMode> REMOTE_STORE_COMPATIBILITY_MODE_SETTING = new Setting<>(
+        "remote_store.compatibility_mode",
+        CompatibilityMode.STRICT.name(),
+        CompatibilityMode::parseString,
+        value -> {
+            if (value == CompatibilityMode.MIXED
+                && FeatureFlags.isEnabled(FeatureFlags.REMOTE_STORE_MIGRATION_EXPERIMENTAL_SETTING) == false) {
+                throw new IllegalArgumentException(
+                    " mixed mode is under an experimental feature and can be activated only by enabling "
+                        + REMOTE_STORE_MIGRATION_EXPERIMENTAL
+                        + " feature flag in the JVM options "
+                );
+            }
+        },
+        Property.Dynamic,
+        Property.NodeScope
+    );
+    public static final Setting<Direction> MIGRATION_DIRECTION_SETTING = new Setting<>(
+        "migration.direction",
+        Direction.NONE.name(),
+        Direction::parseString,
+        value -> {
+            if (value != Direction.NONE && FeatureFlags.isEnabled(FeatureFlags.REMOTE_STORE_MIGRATION_EXPERIMENTAL_SETTING) == false) {
+                throw new IllegalArgumentException(
+                    " migration.direction is under an experimental feature and can be activated only by enabling "
+                        + REMOTE_STORE_MIGRATION_EXPERIMENTAL
+                        + " feature flag in the JVM options "
+                );
+            }
+        },
+        Property.Dynamic,
+        Property.NodeScope
+    );
 
     private volatile TimeValue clusterRemoteTranslogBufferInterval;
     private volatile int minRemoteSegmentMetadataFiles;
@@ -86,5 +125,61 @@ public class RemoteStoreSettings {
 
     public int getMinRemoteSegmentMetadataFiles() {
         return this.minRemoteSegmentMetadataFiles;
+    }
+
+    /**
+     * Node join compatibility mode introduced with remote backed storage.
+     *
+     * @opensearch.internal
+     */
+    public enum CompatibilityMode {
+        STRICT("strict"),
+        MIXED("mixed");
+
+        public final String mode;
+
+        CompatibilityMode(String mode) {
+            this.mode = mode;
+        }
+
+        public static CompatibilityMode parseString(String compatibilityMode) {
+            try {
+                return CompatibilityMode.valueOf(compatibilityMode.toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException(
+                    "["
+                        + compatibilityMode
+                        + "] compatibility mode is not supported. "
+                        + "supported modes are ["
+                        + Arrays.toString(CompatibilityMode.values())
+                        + "]"
+                );
+            }
+        }
+    }
+
+    /**
+     * Migration Direction intended for docrep to remote store migration and vice versa
+     *
+     * @opensearch.internal
+     */
+    public enum Direction {
+        REMOTE_STORE("remote_store"),
+        NONE("none"),
+        DOCREP("docrep");
+
+        public final String direction;
+
+        Direction(String d) {
+            this.direction = d;
+        }
+
+        public static Direction parseString(String direction) {
+            try {
+                return Direction.valueOf(direction.toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("[" + direction + "] migration.direction is not supported.");
+            }
+        }
     }
 }

@@ -15,7 +15,7 @@ import org.opensearch.test.OpenSearchIntegTestCase;
 
 import java.util.List;
 
-import static org.opensearch.node.remotestore.RemoteStoreNodeService.REMOTE_STORE_COMPATIBILITY_MODE_SETTING;
+import static org.opensearch.indices.RemoteStoreSettings.REMOTE_STORE_COMPATIBILITY_MODE_SETTING;
 import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertAcked;
 
 @OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST, numDataNodes = 0, autoManageMasterNodes = false)

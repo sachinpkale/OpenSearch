@@ -65,9 +65,9 @@ import java.util.stream.Collectors;
 
 import static org.opensearch.cluster.decommission.DecommissionHelper.nodeCommissioned;
 import static org.opensearch.gateway.GatewayService.STATE_NOT_RECOVERED_BLOCK;
-import static org.opensearch.node.remotestore.RemoteStoreNodeService.CompatibilityMode;
-import static org.opensearch.node.remotestore.RemoteStoreNodeService.CompatibilityMode.STRICT;
-import static org.opensearch.node.remotestore.RemoteStoreNodeService.REMOTE_STORE_COMPATIBILITY_MODE_SETTING;
+import static org.opensearch.indices.RemoteStoreSettings.CompatibilityMode;
+import static org.opensearch.indices.RemoteStoreSettings.CompatibilityMode.STRICT;
+import static org.opensearch.indices.RemoteStoreSettings.REMOTE_STORE_COMPATIBILITY_MODE_SETTING;
 
 /**
  * Main executor for Nodes joining the OpenSearch cluster

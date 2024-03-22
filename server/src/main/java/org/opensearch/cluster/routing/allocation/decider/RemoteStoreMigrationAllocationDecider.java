@@ -39,9 +39,9 @@ import org.opensearch.cluster.routing.ShardRouting;
 import org.opensearch.cluster.routing.allocation.RoutingAllocation;
 import org.opensearch.common.settings.ClusterSettings;
 import org.opensearch.common.settings.Settings;
-import org.opensearch.node.remotestore.RemoteStoreNodeService;
-import org.opensearch.node.remotestore.RemoteStoreNodeService.CompatibilityMode;
-import org.opensearch.node.remotestore.RemoteStoreNodeService.Direction;
+import org.opensearch.indices.RemoteStoreSettings;
+import org.opensearch.indices.RemoteStoreSettings.CompatibilityMode;
+import org.opensearch.indices.RemoteStoreSettings.Direction;
 
 import java.util.Locale;
 
@@ -65,13 +65,10 @@ public class RemoteStoreMigrationAllocationDecider extends AllocationDecider {
     private boolean remoteStoreBackedIndex;
 
     public RemoteStoreMigrationAllocationDecider(Settings settings, ClusterSettings clusterSettings) {
-        this.migrationDirection = RemoteStoreNodeService.MIGRATION_DIRECTION_SETTING.get(settings);
-        this.compatibilityMode = RemoteStoreNodeService.REMOTE_STORE_COMPATIBILITY_MODE_SETTING.get(settings);
-        clusterSettings.addSettingsUpdateConsumer(RemoteStoreNodeService.MIGRATION_DIRECTION_SETTING, this::setMigrationDirection);
-        clusterSettings.addSettingsUpdateConsumer(
-            RemoteStoreNodeService.REMOTE_STORE_COMPATIBILITY_MODE_SETTING,
-            this::setCompatibilityMode
-        );
+        this.migrationDirection = RemoteStoreSettings.MIGRATION_DIRECTION_SETTING.get(settings);
+        this.compatibilityMode = RemoteStoreSettings.REMOTE_STORE_COMPATIBILITY_MODE_SETTING.get(settings);
+        clusterSettings.addSettingsUpdateConsumer(RemoteStoreSettings.MIGRATION_DIRECTION_SETTING, this::setMigrationDirection);
+        clusterSettings.addSettingsUpdateConsumer(RemoteStoreSettings.REMOTE_STORE_COMPATIBILITY_MODE_SETTING, this::setCompatibilityMode);
     }
 
     private void setMigrationDirection(Direction migrationDirection) {
@@ -86,7 +83,7 @@ public class RemoteStoreMigrationAllocationDecider extends AllocationDecider {
     public Decision canAllocate(ShardRouting shardRouting, RoutingNode node, RoutingAllocation allocation) {
         DiscoveryNode targetNode = node.node();
 
-        if (compatibilityMode.equals(CompatibilityMode.STRICT)) {
+        if (compatibilityMode.equals(RemoteStoreSettings.CompatibilityMode.STRICT)) {
             // assuming all nodes are of the same type (all remote or all non-remote)
             return allocation.decision(
                 Decision.YES,
@@ -95,7 +92,7 @@ public class RemoteStoreMigrationAllocationDecider extends AllocationDecider {
             );
         }
 
-        if (migrationDirection.equals(Direction.REMOTE_STORE) == false) {
+        if (migrationDirection.equals(RemoteStoreSettings.Direction.REMOTE_STORE) == false) {
             // docrep migration direction is currently not supported
             return allocation.decision(
                 Decision.YES,

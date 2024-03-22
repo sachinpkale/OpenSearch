@@ -134,7 +134,6 @@ import org.opensearch.monitor.process.ProcessService;
 import org.opensearch.node.Node;
 import org.opensearch.node.Node.DiscoverySettings;
 import org.opensearch.node.NodeRoleSettings;
-import org.opensearch.node.remotestore.RemoteStoreNodeService;
 import org.opensearch.node.resource.tracker.ResourceTrackerSettings;
 import org.opensearch.persistent.PersistentTasksClusterService;
 import org.opensearch.persistent.decider.EnableAssignmentDecider;
@@ -704,8 +703,8 @@ public final class ClusterSettings extends AbstractScopedSettings {
                 RemoteClusterStateService.INDEX_METADATA_UPLOAD_TIMEOUT_SETTING,
                 RemoteClusterStateService.GLOBAL_METADATA_UPLOAD_TIMEOUT_SETTING,
                 RemoteClusterStateService.METADATA_MANIFEST_UPLOAD_TIMEOUT_SETTING,
-                RemoteStoreNodeService.REMOTE_STORE_COMPATIBILITY_MODE_SETTING,
-                RemoteStoreNodeService.MIGRATION_DIRECTION_SETTING,
+                RemoteStoreSettings.REMOTE_STORE_COMPATIBILITY_MODE_SETTING,
+                RemoteStoreSettings.MIGRATION_DIRECTION_SETTING,
                 IndicesService.CLUSTER_REMOTE_INDEX_RESTRICT_ASYNC_DURABILITY_SETTING,
                 IndicesService.CLUSTER_INDEX_RESTRICT_REPLICATION_TYPE_SETTING,
                 IndicesService.CLUSTER_REMOTE_STORE_PATH_PREFIX_TYPE_SETTING,
