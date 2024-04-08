@@ -104,6 +104,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.opensearch.gateway.remote.RemoteClusterStateService.REMOTE_CLUSTER_STATE_ENABLED_SETTING;
 import static org.opensearch.index.query.QueryBuilders.matchAllQuery;
 import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertAcked;
 import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertHitCount;
@@ -124,7 +125,10 @@ public class RelocationIT extends ParameterizedStaticSettingsOpenSearchIntegTest
 
     @ParametersFactory
     public static Collection<Object[]> parameters() {
-        return replicationSettings;
+        Object[] remoteStoreParameter = new Object[] { Settings.builder().put(REMOTE_CLUSTER_STATE_ENABLED_SETTING.getKey(), true).build() };
+        Collection<Object[]> parameters = new ArrayList<>(replicationSettings);
+        parameters.add(remoteStoreParameter);
+        return parameters;
     }
 
     private final TimeValue ACCEPTABLE_RELOCATION_TIME = new TimeValue(5, TimeUnit.MINUTES);

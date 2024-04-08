@@ -46,13 +46,24 @@ import org.opensearch.common.unit.TimeValue;
 import org.opensearch.index.query.QueryBuilders;
 import org.opensearch.test.OpenSearchIntegTestCase;
 import org.opensearch.test.hamcrest.OpenSearchAssertions;
+import org.opensearch.test.ParameterizedStaticSettingsOpenSearchIntegTestCase;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.Collection;
+import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 
 @OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST)
-public class IndexPrimaryRelocationIT extends OpenSearchIntegTestCase {
+public class IndexPrimaryRelocationIT extends ParameterizedStaticSettingsOpenSearchIntegTestCase {
+    public IndexPrimaryRelocationIT(Settings nodeSettings) {
+        super(nodeSettings);
+    }
+
+    @ParametersFactory
+    public static Collection<Object[]> parameters() {
+        return remoteStoreSettings;
+    }
 
     private static final int RELOCATION_COUNT = 15;
 
@@ -138,7 +149,7 @@ public class IndexPrimaryRelocationIT extends OpenSearchIntegTestCase {
         finished.set(true);
         indexingThread.join();
         refresh("test");
-        OpenSearchAssertions.assertHitCount(client().prepareSearch("test").setTrackTotalHits(true).get(), numAutoGenDocs.get());
+        assertBusy(() -> OpenSearchAssertions.assertHitCount(client().prepareSearch("test").setTrackTotalHits(true).get(), numAutoGenDocs.get()));
         OpenSearchAssertions.assertHitCount(
             client().prepareSearch("test")
                 .setTrackTotalHits(true)// extra paranoia ;)

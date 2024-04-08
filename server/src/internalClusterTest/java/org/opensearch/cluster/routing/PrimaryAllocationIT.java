@@ -32,6 +32,7 @@
 
 package org.opensearch.cluster.routing;
 
+import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 import org.opensearch.action.DocWriteResponse;
 import org.opensearch.action.admin.cluster.reroute.ClusterRerouteRequestBuilder;
 import org.opensearch.action.admin.indices.shards.IndicesShardStoresResponse;
@@ -62,6 +63,7 @@ import org.opensearch.plugins.Plugin;
 import org.opensearch.test.InternalSettingsPlugin;
 import org.opensearch.test.InternalTestCluster;
 import org.opensearch.test.OpenSearchIntegTestCase;
+import org.opensearch.test.ParameterizedStaticSettingsOpenSearchIntegTestCase;
 import org.opensearch.test.disruption.NetworkDisruption;
 import org.opensearch.test.disruption.NetworkDisruption.TwoPartitions;
 import org.opensearch.test.transport.MockTransportService;
@@ -95,7 +97,15 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 
 @OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST, numDataNodes = 0)
-public class PrimaryAllocationIT extends OpenSearchIntegTestCase {
+public class PrimaryAllocationIT extends ParameterizedStaticSettingsOpenSearchIntegTestCase {
+    public PrimaryAllocationIT(Settings nodeSettings) {
+        super(nodeSettings);
+    }
+
+    @ParametersFactory
+    public static Collection<Object[]> parameters() {
+        return remoteStoreSettings;
+    }
 
     @Override
     protected Collection<Class<? extends Plugin>> nodePlugins() {
