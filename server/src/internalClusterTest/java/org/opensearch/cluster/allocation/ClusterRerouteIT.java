@@ -32,6 +32,7 @@
 
 package org.opensearch.cluster.allocation;
 
+import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -70,9 +71,11 @@ import org.opensearch.test.MockLogAppender;
 import org.opensearch.test.OpenSearchIntegTestCase;
 import org.opensearch.test.OpenSearchIntegTestCase.ClusterScope;
 import org.opensearch.test.OpenSearchIntegTestCase.Scope;
+import org.opensearch.test.ParameterizedStaticSettingsOpenSearchIntegTestCase;
 
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
 import static org.opensearch.cluster.metadata.IndexMetadata.SETTING_BLOCKS_METADATA;
@@ -90,8 +93,17 @@ import static org.hamcrest.Matchers.hasSize;
 // testDelayWithALargeAmountOfShards does a lot of cluster state updates, and WindowsFS slows it down too much (#52000)
 @LuceneTestCase.SuppressFileSystems(value = "WindowsFS")
 @ClusterScope(scope = Scope.TEST, numDataNodes = 0)
-public class ClusterRerouteIT extends OpenSearchIntegTestCase {
+public class ClusterRerouteIT extends ParameterizedStaticSettingsOpenSearchIntegTestCase {
     private final Logger logger = LogManager.getLogger(ClusterRerouteIT.class);
+
+    public ClusterRerouteIT(Settings nodeSettings) {
+        super(nodeSettings);
+    }
+
+    @ParametersFactory
+    public static Collection<Object[]> parameters() {
+        return remoteStoreSettings;
+    }
 
     public void testRerouteWithCommands_disableAllocationSettings() throws Exception {
         Settings commonSettings = Settings.builder()
