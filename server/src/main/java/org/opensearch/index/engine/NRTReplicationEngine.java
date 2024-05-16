@@ -31,6 +31,8 @@ import org.opensearch.index.translog.TranslogException;
 import org.opensearch.index.translog.TranslogManager;
 import org.opensearch.index.translog.WriteOnlyTranslogManager;
 import org.opensearch.index.translog.listener.TranslogEventListener;
+import org.opensearch.indices.replication.SegmentReplicationTargetService;
+import org.opensearch.indices.replication.checkpoint.ReplicationCheckpoint;
 import org.opensearch.search.suggest.completion.CompletionStats;
 
 import java.io.Closeable;
@@ -44,6 +46,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import static org.opensearch.index.seqno.SequenceNumbers.MAX_SEQ_NO;
 
@@ -64,6 +68,7 @@ public class NRTReplicationEngine extends Engine {
     private final WriteOnlyTranslogManager translogManager;
     private final Lock flushLock = new ReentrantLock();
     protected final ReplicaFileTracker replicaFileTracker;
+    private final Runnable refresher;
 
     private volatile long lastReceivedPrimaryGen = SequenceNumbers.NO_OPS_PERFORMED;
 
@@ -97,6 +102,7 @@ public class NRTReplicationEngine extends Engine {
             for (ReferenceManager.RefreshListener listener : engineConfig.getInternalRefreshListener()) {
                 this.readerManager.addListener(listener);
             }
+            this.refresher = engineConfig.getRefresher();
             final Map<String, String> userData = this.lastCommittedSegmentInfos.getUserData();
             final String translogUUID = Objects.requireNonNull(userData.get(Translog.TRANSLOG_UUID_KEY));
             translogManagerRef = new WriteOnlyTranslogManager(
@@ -283,7 +289,7 @@ public class NRTReplicationEngine extends Engine {
      */
     @Override
     public boolean refreshNeeded() {
-        return false;
+        return true;
     }
 
     @Override
@@ -349,12 +355,13 @@ public class NRTReplicationEngine extends Engine {
 
     @Override
     public void refresh(String source) throws EngineException {
-        // Refresh on this engine should only ever happen in the reader after new segments arrive.
+        refresher.run();
     }
 
     @Override
     public boolean maybeRefresh(String source) throws EngineException {
-        return false;
+        refresh(source);
+        return true;
     }
 
     @Override

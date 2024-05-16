@@ -21,6 +21,7 @@ import org.opensearch.cluster.node.DiscoveryNode;
 import org.opensearch.cluster.routing.ShardRouting;
 import org.opensearch.cluster.service.ClusterService;
 import org.opensearch.common.Nullable;
+import org.opensearch.common.annotation.ExperimentalApi;
 import org.opensearch.common.lifecycle.AbstractLifecycleComponent;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.common.util.CancellableThreads;
@@ -533,6 +534,7 @@ public class SegmentReplicationTargetService extends AbstractLifecycleComponent 
      *
      * @opensearch.internal
      */
+    @ExperimentalApi
     public interface SegmentReplicationListener extends ReplicationListener {
 
         @Override

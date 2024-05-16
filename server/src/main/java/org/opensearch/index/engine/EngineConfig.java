@@ -110,6 +110,8 @@ public final class EngineConfig {
     private final boolean isReadOnlyReplica;
     private final BooleanSupplier startedPrimarySupplier;
     private final Comparator<LeafReader> leafSorter;
+    @Nullable
+    private final Runnable refresher;
 
     /**
      * A supplier of the outstanding retention leases. This is used during merged operations to determine which operations that have been
@@ -296,6 +298,7 @@ public final class EngineConfig {
         this.startedPrimarySupplier = builder.startedPrimarySupplier;
         this.translogFactory = builder.translogFactory;
         this.leafSorter = builder.leafSorter;
+        this.refresher = builder.refresher;
     }
 
     /**
@@ -557,6 +560,10 @@ public final class EngineConfig {
         return this.leafSorter;
     }
 
+    public Runnable getRefresher() {
+        return this.refresher;
+    }
+
     /**
      * Builder for EngineConfig class
      *
@@ -590,6 +597,8 @@ public final class EngineConfig {
         private BooleanSupplier startedPrimarySupplier;
         private TranslogFactory translogFactory = new InternalTranslogFactory();
         Comparator<LeafReader> leafSorter;
+        private Runnable refresher;
+
 
         public Builder shardId(ShardId shardId) {
             this.shardId = shardId;
@@ -723,6 +732,11 @@ public final class EngineConfig {
 
         public Builder leafSorter(Comparator<LeafReader> leafSorter) {
             this.leafSorter = leafSorter;
+            return this;
+        }
+
+        public Builder refresher(Runnable refresher) {
+            this.refresher = refresher;
             return this;
         }
 

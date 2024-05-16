@@ -206,7 +206,8 @@ public class PublishCheckpointAction extends TransportReplicationAction<
                 return new ReplicaResult();
             }
             if (request.getCheckpoint().getShardId().equals(replica.shardId())) {
-                replicationService.onNewCheckpoint(request.getCheckpoint(), replica);
+                // Ignore for now, only pull model is supported
+                //replicationService.onNewCheckpoint(request.getCheckpoint(), replica);
             }
             return new ReplicaResult();
         });

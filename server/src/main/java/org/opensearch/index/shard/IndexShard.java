@@ -35,28 +35,12 @@ package org.opensearch.index.shard;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.index.CheckIndex;
-import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.FilterDirectoryReader;
-import org.apache.lucene.index.IndexCommit;
-import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.SegmentInfos;
-import org.apache.lucene.index.Term;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.QueryCachingPolicy;
-import org.apache.lucene.search.ReferenceManager;
-import org.apache.lucene.search.Sort;
-import org.apache.lucene.search.UsageTrackingQueryCachingPolicy;
-import org.apache.lucene.store.AlreadyClosedException;
-import org.apache.lucene.store.BufferedChecksumIndexInput;
-import org.apache.lucene.store.ChecksumIndexInput;
-import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.FilterDirectory;
-import org.apache.lucene.store.IOContext;
-import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.index.*;
+import org.apache.lucene.search.*;
+import org.apache.lucene.store.*;
 import org.apache.lucene.util.ThreadInterruptedException;
 import org.opensearch.ExceptionsHelper;
+import org.opensearch.OpenSearchCorruptionException;
 import org.opensearch.OpenSearchException;
 import org.opensearch.action.ActionRunnable;
 import org.opensearch.action.admin.indices.flush.FlushRequest;
@@ -74,12 +58,7 @@ import org.opensearch.cluster.routing.RecoverySource;
 import org.opensearch.cluster.routing.RecoverySource.SnapshotRecoverySource;
 import org.opensearch.cluster.routing.ShardRouting;
 import org.opensearch.cluster.routing.ShardRoutingState;
-import org.opensearch.common.Booleans;
-import org.opensearch.common.CheckedConsumer;
-import org.opensearch.common.CheckedFunction;
-import org.opensearch.common.CheckedRunnable;
-import org.opensearch.common.Nullable;
-import org.opensearch.common.SetOnce;
+import org.opensearch.common.*;
 import org.opensearch.common.annotation.PublicApi;
 import org.opensearch.common.collect.Tuple;
 import org.opensearch.common.concurrent.GatedCloseable;
@@ -93,11 +72,7 @@ import org.opensearch.common.metrics.MeanMetric;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.common.unit.TimeValue;
 import org.opensearch.common.util.BigArrays;
-import org.opensearch.common.util.concurrent.AbstractRunnable;
-import org.opensearch.common.util.concurrent.AsyncIOProcessor;
-import org.opensearch.common.util.concurrent.BufferedAsyncIOProcessor;
-import org.opensearch.common.util.concurrent.RunOnce;
-import org.opensearch.common.util.concurrent.ThreadContext;
+import org.opensearch.common.util.concurrent.*;
 import org.opensearch.common.util.io.IOUtils;
 import org.opensearch.core.Assertions;
 import org.opensearch.core.action.ActionListener;
@@ -108,44 +83,20 @@ import org.opensearch.core.indices.breaker.CircuitBreakerService;
 import org.opensearch.core.rest.RestStatus;
 import org.opensearch.core.xcontent.MediaTypeRegistry;
 import org.opensearch.gateway.WriteStateException;
-import org.opensearch.index.IndexModule;
 import org.opensearch.index.IndexNotFoundException;
-import org.opensearch.index.IndexService;
-import org.opensearch.index.IndexSettings;
-import org.opensearch.index.ReplicationStats;
-import org.opensearch.index.SegmentReplicationShardStats;
-import org.opensearch.index.VersionType;
+import org.opensearch.index.*;
 import org.opensearch.index.cache.IndexCache;
 import org.opensearch.index.cache.bitset.ShardBitsetFilterCache;
 import org.opensearch.index.cache.request.ShardRequestCache;
 import org.opensearch.index.codec.CodecService;
-import org.opensearch.index.engine.CommitStats;
-import org.opensearch.index.engine.Engine;
+import org.opensearch.index.engine.*;
 import org.opensearch.index.engine.Engine.GetResult;
-import org.opensearch.index.engine.EngineConfig;
-import org.opensearch.index.engine.EngineConfigFactory;
-import org.opensearch.index.engine.EngineException;
-import org.opensearch.index.engine.EngineFactory;
-import org.opensearch.index.engine.NRTReplicationEngine;
-import org.opensearch.index.engine.ReadOnlyEngine;
-import org.opensearch.index.engine.RefreshFailedEngineException;
-import org.opensearch.index.engine.SafeCommitInfo;
-import org.opensearch.index.engine.Segment;
-import org.opensearch.index.engine.SegmentsStats;
 import org.opensearch.index.fielddata.FieldDataStats;
 import org.opensearch.index.fielddata.ShardFieldData;
 import org.opensearch.index.flush.FlushStats;
 import org.opensearch.index.get.GetStats;
 import org.opensearch.index.get.ShardGetService;
-import org.opensearch.index.mapper.DocumentMapper;
-import org.opensearch.index.mapper.DocumentMapperForType;
-import org.opensearch.index.mapper.IdFieldMapper;
-import org.opensearch.index.mapper.MapperService;
-import org.opensearch.index.mapper.Mapping;
-import org.opensearch.index.mapper.ParsedDocument;
-import org.opensearch.index.mapper.RootObjectMapper;
-import org.opensearch.index.mapper.SourceToParse;
-import org.opensearch.index.mapper.Uid;
+import org.opensearch.index.mapper.*;
 import org.opensearch.index.merge.MergeStats;
 import org.opensearch.index.recovery.RecoveryStats;
 import org.opensearch.index.refresh.RefreshStats;
@@ -153,44 +104,25 @@ import org.opensearch.index.remote.RemoteSegmentStats;
 import org.opensearch.index.remote.RemoteStoreStatsTrackerFactory;
 import org.opensearch.index.search.stats.SearchStats;
 import org.opensearch.index.search.stats.ShardSearchStats;
-import org.opensearch.index.seqno.ReplicationTracker;
-import org.opensearch.index.seqno.RetentionLease;
-import org.opensearch.index.seqno.RetentionLeaseStats;
-import org.opensearch.index.seqno.RetentionLeaseSyncer;
-import org.opensearch.index.seqno.RetentionLeases;
-import org.opensearch.index.seqno.SeqNoStats;
-import org.opensearch.index.seqno.SequenceNumbers;
+import org.opensearch.index.seqno.*;
 import org.opensearch.index.shard.PrimaryReplicaSyncer.ResyncTask;
 import org.opensearch.index.similarity.SimilarityService;
-import org.opensearch.index.store.RemoteSegmentStoreDirectory;
-import org.opensearch.index.store.RemoteStoreFileDownloader;
-import org.opensearch.index.store.Store;
+import org.opensearch.index.store.*;
 import org.opensearch.index.store.Store.MetadataSnapshot;
-import org.opensearch.index.store.StoreFileMetadata;
-import org.opensearch.index.store.StoreStats;
 import org.opensearch.index.store.remote.metadata.RemoteSegmentMetadata;
-import org.opensearch.index.translog.RemoteBlobStoreInternalTranslogFactory;
-import org.opensearch.index.translog.RemoteFsTranslog;
-import org.opensearch.index.translog.RemoteTranslogStats;
-import org.opensearch.index.translog.Translog;
-import org.opensearch.index.translog.TranslogConfig;
-import org.opensearch.index.translog.TranslogFactory;
-import org.opensearch.index.translog.TranslogRecoveryRunner;
-import org.opensearch.index.translog.TranslogStats;
+import org.opensearch.index.translog.*;
 import org.opensearch.index.warmer.ShardIndexWarmerService;
 import org.opensearch.index.warmer.WarmerStats;
 import org.opensearch.indices.IndexingMemoryController;
 import org.opensearch.indices.IndicesService;
 import org.opensearch.indices.RemoteStoreSettings;
 import org.opensearch.indices.cluster.IndicesClusterStateService;
-import org.opensearch.indices.recovery.PeerRecoveryTargetService;
-import org.opensearch.indices.recovery.RecoveryFailedException;
-import org.opensearch.indices.recovery.RecoveryListener;
-import org.opensearch.indices.recovery.RecoverySettings;
-import org.opensearch.indices.recovery.RecoveryState;
-import org.opensearch.indices.recovery.RecoveryTarget;
+import org.opensearch.indices.recovery.*;
+import org.opensearch.indices.replication.*;
 import org.opensearch.indices.replication.checkpoint.ReplicationCheckpoint;
 import org.opensearch.indices.replication.checkpoint.SegmentReplicationCheckpointPublisher;
+import org.opensearch.indices.replication.common.ReplicationCollection;
+import org.opensearch.indices.replication.common.ReplicationFailedException;
 import org.opensearch.indices.replication.common.ReplicationTimer;
 import org.opensearch.repositories.RepositoriesService;
 import org.opensearch.repositories.Repository;
@@ -205,18 +137,7 @@ import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.NoSuchFileException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -224,22 +145,13 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.LongSupplier;
-import java.util.function.Supplier;
+import java.util.function.*;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import static org.opensearch.index.seqno.RetentionLeaseActions.RETAIN_ALL;
-import static org.opensearch.index.seqno.SequenceNumbers.LOCAL_CHECKPOINT_KEY;
-import static org.opensearch.index.seqno.SequenceNumbers.MAX_SEQ_NO;
-import static org.opensearch.index.seqno.SequenceNumbers.UNASSIGNED_SEQ_NO;
-import static org.opensearch.index.shard.IndexShard.ShardMigrationState.REMOTE_MIGRATING_SEEDED;
-import static org.opensearch.index.shard.IndexShard.ShardMigrationState.REMOTE_MIGRATING_UNSEEDED;
-import static org.opensearch.index.shard.IndexShard.ShardMigrationState.REMOTE_NON_MIGRATING;
+import static org.opensearch.index.seqno.SequenceNumbers.*;
+import static org.opensearch.index.shard.IndexShard.ShardMigrationState.*;
 import static org.opensearch.index.translog.Translog.Durability;
 import static org.opensearch.index.translog.Translog.TRANSLOG_UUID_KEY;
 
@@ -492,6 +404,8 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
         this.fileDownloader = new RemoteStoreFileDownloader(shardRouting.shardId(), threadPool, recoverySettings);
         this.shardMigrationState = getShardMigrationState(indexSettings, seedRemote);
         this.discoveryNodes = discoveryNodes;
+        this.onGoingReplications = new ReplicationCollection<>(logger, threadPool);
+        this.segmentReplicationSource = new RemoteStoreReplicationSource(this);
     }
 
     public ThreadPool getThreadPool() {
@@ -516,7 +430,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
      * To be delegated to {@link ReplicationTracker} so that relevant remote store based
      * operations can be ignored during engine migration
      * <p>
-     * Has explicit null checks to ensure that the {@link ReplicationTracker#invariant()}
+     * Has explicit null checks to ensure that the {@link ReplicationTracker}
      * checks does not fail during a cluster manager state update when the latest replication group
      * calculation is not yet done and the cached replication group details are available
      */
@@ -1836,6 +1750,217 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
             return false;
         }
         return true;
+    }
+
+    public ReplicationCheckpoint latestReceivedCheckpoint = null;
+    public ReplicationCollection<SegmentReplicationTarget> onGoingReplications;
+
+    public SegmentReplicationSource segmentReplicationSource;
+
+    protected void updateLatestReceivedCheckpoint(ReplicationCheckpoint receivedCheckpoint) {
+        if (latestReceivedCheckpoint != null) {
+            if (receivedCheckpoint.isAheadOf(latestReceivedCheckpoint)) {
+                latestReceivedCheckpoint = receivedCheckpoint;
+            }
+        } else {
+            latestReceivedCheckpoint = receivedCheckpoint;
+        }
+    }
+
+
+    public synchronized void onNewCheckpoint() {
+        RemoteSegmentStoreDirectory remoteDirectory = getRemoteDirectory();
+        RemoteSegmentMetadata remoteSegmentMetadata = null;
+        try {
+            remoteSegmentMetadata = remoteDirectory.init();
+        } catch(IOException e) {
+            //
+        }
+        final ReplicationCheckpoint receivedCheckpoint = remoteSegmentMetadata.getReplicationCheckpoint();
+
+        logger.debug(() -> new ParameterizedMessage("Replica received new replication checkpoint from primary [{}]", receivedCheckpoint));
+        // if the shard is in any state
+        if (state().equals(IndexShardState.CLOSED)) {
+            // ignore if shard is closed
+            logger.trace(() -> "Ignoring checkpoint, Shard is closed");
+            return;
+        }
+        updateLatestReceivedCheckpoint(receivedCheckpoint);
+        // Checks if replica shard is in the correct STARTED state to process checkpoints (avoids parallel replication events taking place)
+        // This check ensures we do not try to process a received checkpoint while the shard is still recovering, yet we stored the latest
+        // checkpoint to be replayed once the shard is Active.
+        if (state().equals(IndexShardState.STARTED) == true) {
+            // Checks if received checkpoint is already present and ahead then it replaces old received checkpoint
+            SegmentReplicationTarget ongoingReplicationTarget = onGoingReplications.getOngoingReplicationTarget(shardId());
+            if (ongoingReplicationTarget != null) {
+                if (ongoingReplicationTarget.getCheckpoint().getPrimaryTerm() < receivedCheckpoint.getPrimaryTerm()) {
+                    logger.debug(
+                        () -> new ParameterizedMessage(
+                            "Cancelling ongoing replication {} from old primary with primary term {}",
+                            ongoingReplicationTarget.description(),
+                            ongoingReplicationTarget.getCheckpoint().getPrimaryTerm()
+                        )
+                    );
+                    ongoingReplicationTarget.cancel("Cancelling stuck target after new primary");
+                } else {
+                    logger.debug(
+                        () -> new ParameterizedMessage(
+                            "Ignoring new replication checkpoint - shard is currently replicating to checkpoint {}",
+                            ongoingReplicationTarget.getCheckpoint()
+                        )
+                    );
+                    return;
+                }
+            }
+            //final Thread thread = Thread.currentThread();
+            if (shouldProcessCheckpoint(receivedCheckpoint)) {
+                startReplication(receivedCheckpoint, new SegmentReplicationTargetService.SegmentReplicationListener() {
+                    @Override
+                    public void onReplicationDone(SegmentReplicationState state) {
+                        logger.debug(
+                            () -> new ParameterizedMessage(
+                                "[shardId {}] [replication id {}] Replication complete to {}, timing data: {}",
+                                shardId().getId(),
+                                state.getReplicationId(),
+                                getLatestReplicationCheckpoint(),
+                                state.getTimingData()
+                            )
+                        );
+
+                        // update visible checkpoint to primary
+                        //updateVisibleCheckpoint(state.getReplicationId());
+
+                        // if we received a checkpoint during the copy event that is ahead of this
+                        // try and process it.
+                        //processLatestReceivedCheckpoint(replicaShard, thread);
+                    }
+
+                    @Override
+                    public void onReplicationFailure(
+                        SegmentReplicationState state,
+                        ReplicationFailedException e,
+                        boolean sendShardFailure
+                    ) {
+                        //logReplicationFailure(state, e, replicaShard);
+                        if (sendShardFailure == true) {
+                            failShard(e.getMessage(), e);
+                        } //else {
+                            //processLatestReceivedCheckpoint(replicaShard, thread);
+                        //}
+                    }
+                });
+            } else if (isSegmentReplicationAllowed()) {
+                // if we didn't process the checkpoint because we are up to date,
+                // send our latest checkpoint to the primary to update tracking.
+                // replicationId is not used by the primary set to a default value.
+                final long replicationId = NO_OPS_PERFORMED;
+                //updateVisibleCheckpoint(replicationId);
+            }
+        } else {
+            logger.trace(
+                () -> new ParameterizedMessage("Ignoring checkpoint, shard not started {} {}", receivedCheckpoint, state())
+            );
+        }
+    }
+
+    public SegmentReplicationTarget startReplication(
+        final ReplicationCheckpoint checkpoint,
+        final SegmentReplicationTargetService.SegmentReplicationListener listener
+    ) {
+        final SegmentReplicationTarget target = new SegmentReplicationTarget(
+            this,
+            checkpoint,
+            segmentReplicationSource,
+            listener
+        );
+        startReplication(target);
+        return target;
+    }
+
+    // pkg-private for integration tests
+    void startReplication(final SegmentReplicationTarget target) {
+        final long replicationId;
+        try {
+            replicationId = onGoingReplications.startSafe(target, recoverySettings.activityTimeout());
+        } catch (ReplicationFailedException e) {
+            // replication already running for shard.
+            target.fail(e, false);
+            return;
+        }
+        logger.trace(() -> new ParameterizedMessage("Added new replication to collection {}", target.description()));
+        threadPool.generic().execute(new ReplicationRunner(replicationId));
+    }
+
+    private class ReplicationRunner extends AbstractRunnable {
+
+        final long replicationId;
+
+        public ReplicationRunner(long replicationId) {
+            this.replicationId = replicationId;
+        }
+
+        @Override
+        public void onFailure(Exception e) {
+            onGoingReplications.fail(replicationId, new ReplicationFailedException("Unexpected Error during replication", e), false);
+        }
+
+        @Override
+        public void doRun() {
+            start(replicationId);
+        }
+    }
+
+    private void start(final long replicationId) {
+        final SegmentReplicationTarget target;
+        try (ReplicationCollection.ReplicationRef<SegmentReplicationTarget> replicationRef = onGoingReplications.get(replicationId)) {
+            // This check is for handling edge cases where the reference is removed before the ReplicationRunner is started by the
+            // threadpool.
+            if (replicationRef == null) {
+                return;
+            }
+            target = replicationRef.get();
+        }
+        target.startReplication(new ActionListener<>() {
+            @Override
+            public void onResponse(Void o) {
+                logger.debug(() -> new ParameterizedMessage("Finished replicating {} marking as done.", target.description()));
+                onGoingReplications.markAsDone(replicationId);
+                if (target.state().getIndex().recoveredFileCount() != 0 && target.state().getIndex().recoveredBytes() != 0) {
+                    //completedReplications.put(target.shardId(), target.state());
+                }
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                logger.debug("Replication failed {}", target.description());
+                if (isStoreCorrupt(target) || e instanceof CorruptIndexException || e instanceof OpenSearchCorruptionException) {
+                    onGoingReplications.fail(replicationId, new ReplicationFailedException("Store corruption during replication", e), true);
+                    return;
+                }
+                onGoingReplications.fail(replicationId, new ReplicationFailedException("Segment Replication failed", e), false);
+            }
+        });
+    }
+
+    private boolean isStoreCorrupt(SegmentReplicationTarget target) {
+        // ensure target is not already closed. In that case
+        // we can assume the store is not corrupt and that the replication
+        // event completed successfully.
+        if (target.refCount() > 0) {
+            final Store store = target.store();
+            if (store.tryIncRef()) {
+                try {
+                    return store.isMarkedCorrupted();
+                } catch (IOException ex) {
+                    logger.warn("Unable to determine if store is corrupt", ex);
+                    return false;
+                } finally {
+                    store.decRef();
+                }
+            }
+        }
+        // store already closed.
+        return false;
     }
 
     /**
@@ -4014,8 +4139,8 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
             isReadOnlyReplica,
             this::enableUploadToRemoteTranslog,
             translogFactorySupplier.apply(indexSettings, shardRouting),
-            isTimeSeriesDescSortOptimizationEnabled() ? DataStream.TIMESERIES_LEAF_SORTER : null // DESC @timestamp default order for
-            // timeseries
+            isTimeSeriesDescSortOptimizationEnabled() ? DataStream.TIMESERIES_LEAF_SORTER : null,
+            this::onNewCheckpoint
         );
     }
 

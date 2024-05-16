@@ -20,6 +20,7 @@ import org.apache.lucene.store.IndexInput;
 import org.opensearch.OpenSearchCorruptionException;
 import org.opensearch.action.StepListener;
 import org.opensearch.common.UUIDs;
+import org.opensearch.common.annotation.ExperimentalApi;
 import org.opensearch.common.lucene.Lucene;
 import org.opensearch.common.util.CancellableThreads;
 import org.opensearch.core.action.ActionListener;
@@ -46,6 +47,7 @@ import java.util.stream.Collectors;
  *
  * @opensearch.internal
  */
+@ExperimentalApi
 public class SegmentReplicationTarget extends ReplicationTarget {
 
     private final ReplicationCheckpoint checkpoint;
