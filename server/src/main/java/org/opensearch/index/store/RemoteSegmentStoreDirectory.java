@@ -60,6 +60,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
+import static org.opensearch.index.store.RemoteSegmentStoreDirectory.MetadataFilenameUtils.SEPARATOR;
+
 /**
  * A RemoteDirectory extension for remote segment store. We need to make sure we don't overwrite a segment file once uploaded.
  * In order to prevent segment overwrite which can occur due to two primary nodes for the same shard at the same time,
@@ -347,6 +349,10 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory implement
         // Visible for testing
         static long getGeneration(String[] filenameTokens) {
             return RemoteStoreUtils.invertLong(filenameTokens[2]);
+        }
+
+        static long getTimestamp(String[] filenameTokens) {
+            return RemoteStoreUtils.invertLong(filenameTokens[6]);
         }
 
         public static Tuple<String, String> getNodeIdByPrimaryTermAndGen(String filename) {
@@ -796,8 +802,12 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory implement
             logger.error("Exception while fetching segment metadata lock files, skipping deleteStaleSegments", e);
             return;
         }
+
+        Set<String> implicitLockedFiles = getImplicitLockedFiles(metadataFilesEligibleToDelete, new ArrayList<>());
+
         List<String> metadataFilesToBeDeleted = metadataFilesEligibleToDelete.stream()
             .filter(metadataFile -> allLockFiles.contains(metadataFile) == false)
+            .filter(metadataFile -> implicitLockedFiles.contains(metadataFile) == false)
             .collect(Collectors.toList());
 
         logger.debug(
@@ -857,6 +867,26 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory implement
             }
         }
         logger.debug("deletedSegmentFiles={}", deletedSegmentFiles);
+    }
+
+    private Set<String> getImplicitLockedFiles(List<String> metadataFilesEligibleToDelete, List<Long> pinnedTimestamps) {
+        Set<String> implicitLockedFiles = new HashSet<>();
+        int cursor = 0;
+        long prevMdTimestamp = Long.MAX_VALUE;
+        for (int i = metadataFilesEligibleToDelete.size() - 1; i >= 0; i--) {
+            String metadataFileName = metadataFilesEligibleToDelete.get(i);
+            long currentMdTimestamp = MetadataFilenameUtils.getTimestamp(metadataFileName.split(SEPARATOR));
+            if (currentMdTimestamp < pinnedTimestamps.get(cursor) && prevMdTimestamp > pinnedTimestamps.get(cursor)) {
+                implicitLockedFiles.add(metadataFileName);
+                cursor++;
+                if (cursor >= pinnedTimestamps.size()) {
+                    break;
+                }
+                i--;
+            }
+            prevMdTimestamp = currentMdTimestamp;
+        }
+        return implicitLockedFiles;
     }
 
     public void deleteStaleSegmentsAsync(int lastNMetadataFilesToKeep) {
