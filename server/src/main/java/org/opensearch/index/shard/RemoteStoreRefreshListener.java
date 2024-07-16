@@ -40,9 +40,11 @@ import org.opensearch.indices.replication.checkpoint.SegmentReplicationCheckpoin
 import org.opensearch.threadpool.ThreadPool;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -237,7 +239,13 @@ public final class RemoteStoreRefreshListener extends ReleasableRetryableRefresh
                 // is considered as a first refresh post commit. A cleanup of stale commit files is triggered.
                 // This is done to avoid delete post each refresh.
                 if (isRefreshAfterCommit()) {
-                    remoteDirectory.deleteStaleSegmentsAsync(indexShard.getRemoteStoreSettings().getMinRemoteSegmentMetadataFiles());
+                    List<Long> pinnedTimestamps = Arrays.stream(indexShard.getRemoteStoreSettings().getPinnedTimestamps().split(","))
+                        .map(Long::parseLong)
+                        .toList();
+                    remoteDirectory.deleteStaleSegmentsAsync(
+                        indexShard.getRemoteStoreSettings().getMinRemoteSegmentMetadataFiles(),
+                        pinnedTimestamps
+                    );
                 }
 
                 try (GatedCloseable<SegmentInfos> segmentInfosGatedCloseable = indexShard.getSegmentInfosSnapshot()) {

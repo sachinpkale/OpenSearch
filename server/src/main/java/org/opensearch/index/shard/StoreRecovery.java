@@ -406,7 +406,8 @@ final class StoreRecovery {
                     shallowCopyShardMetadata.getRemoteStorePathStrategy()
                 );
 
-                sourceRemoteDirectory.initializeToSpecificTimestamp(shallowCopyShardMetadata.startTime());
+                long snapshotTimestamp = Long.parseLong(indexShard.getRemoteStoreSettings().getSnapshotTimestamp());
+                sourceRemoteDirectory.initializeToSpecificTimestamp(snapshotTimestamp);
 
                 indexShard.syncSegmentsFromGivenRemoteSegmentStore(true, sourceRemoteDirectory, primaryTerm, commitGeneration);
                 final Store store = indexShard.store();

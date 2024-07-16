@@ -777,6 +777,10 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory implement
         return metadataFilesToFilterActiveSegments;
     }
 
+    public void deleteStaleSegments(int lastNMetadataFilesToKeep) throws IOException {
+        deleteStaleSegments(lastNMetadataFilesToKeep, List.of());
+    }
+
     /**
      * Delete stale segment and metadata files
      * One metadata file is kept per commit (refresh updates the same file). To read segments uploaded to remote store,
@@ -792,7 +796,7 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory implement
      * @param lastNMetadataFilesToKeep number of metadata files to keep
      * @throws IOException in case of I/O error while reading from / writing to remote segment store
      */
-    public void deleteStaleSegments(int lastNMetadataFilesToKeep) throws IOException {
+    public void deleteStaleSegments(int lastNMetadataFilesToKeep, List<Long> pinnedTimestamps) throws IOException {
         if (lastNMetadataFilesToKeep == -1) {
             logger.info(
                 "Stale segment deletion is disabled if cluster.remote_store.index.segment_metadata.retention.max_count is set to -1"
@@ -823,7 +827,7 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory implement
             return;
         }
 
-        Set<String> implicitLockedFiles = getImplicitLockedFiles(metadataFilesEligibleToDelete, new ArrayList<>());
+        Set<String> implicitLockedFiles = getImplicitLockedFiles(metadataFilesEligibleToDelete, pinnedTimestamps);
 
         List<String> metadataFilesToBeDeleted = metadataFilesEligibleToDelete.stream()
             .filter(metadataFile -> allLockFiles.contains(metadataFile) == false)
@@ -891,6 +895,9 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory implement
 
     private Set<String> getImplicitLockedFiles(List<String> metadataFilesEligibleToDelete, List<Long> pinnedTimestamps) {
         Set<String> implicitLockedFiles = new HashSet<>();
+        if (pinnedTimestamps.isEmpty()) {
+            return implicitLockedFiles;
+        }
         int cursor = 0;
         long prevMdTimestamp = Long.MAX_VALUE;
         for (int i = metadataFilesEligibleToDelete.size() - 1; i >= 0; i--) {
@@ -910,7 +917,11 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory implement
     }
 
     public void deleteStaleSegmentsAsync(int lastNMetadataFilesToKeep) {
-        deleteStaleSegmentsAsync(lastNMetadataFilesToKeep, ActionListener.wrap(r -> {}, e -> {}));
+        deleteStaleSegmentsAsync(lastNMetadataFilesToKeep, List.of());
+    }
+
+    public void deleteStaleSegmentsAsync(int lastNMetadataFilesToKeep, List<Long> pinnedTimestamps) {
+        deleteStaleSegmentsAsync(lastNMetadataFilesToKeep, pinnedTimestamps, ActionListener.wrap(r -> {}, e -> {}));
     }
 
     /**
@@ -920,11 +931,15 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory implement
      * @param lastNMetadataFilesToKeep number of metadata files to keep
      */
     public void deleteStaleSegmentsAsync(int lastNMetadataFilesToKeep, ActionListener<Void> listener) {
+        deleteStaleSegmentsAsync(lastNMetadataFilesToKeep, List.of(), listener);
+    }
+
+    public void deleteStaleSegmentsAsync(int lastNMetadataFilesToKeep, List<Long> pinnedTimestamps, ActionListener<Void> listener) {
         if (canDeleteStaleCommits.compareAndSet(true, false)) {
             try {
                 threadPool.executor(ThreadPool.Names.REMOTE_PURGE).execute(() -> {
                     try {
-                        deleteStaleSegments(lastNMetadataFilesToKeep);
+                        deleteStaleSegments(lastNMetadataFilesToKeep, pinnedTimestamps);
                         listener.onResponse(null);
                     } catch (Exception e) {
                         logger.error(

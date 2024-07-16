@@ -134,6 +134,20 @@ public class RemoteStoreSettings {
         Property.Dynamic
     );
 
+    public static final Setting<String> CLUSTER_REMOTE_PINNED_TIMESTAMPS = Setting.simpleString(
+        "cluster.remote_store.pinned_timestamps",
+        "",
+        Property.NodeScope,
+        Property.Dynamic
+    );
+
+    public static final Setting<String> CLUSTER_REMOTE_SNAPSHOT_TIMESTAMP = Setting.simpleString(
+        "cluster.remote_store.snapshot_timestamp",
+        "",
+        Property.NodeScope,
+        Property.Dynamic
+    );
+
     private volatile TimeValue clusterRemoteTranslogBufferInterval;
     private volatile int minRemoteSegmentMetadataFiles;
     private volatile TimeValue clusterRemoteTranslogTransferTimeout;
@@ -142,6 +156,8 @@ public class RemoteStoreSettings {
     private volatile RemoteStoreEnums.PathHashAlgorithm pathHashAlgorithm;
     private volatile int maxRemoteTranslogReaders;
     private volatile boolean isTranslogMetadataEnabled;
+    private volatile String pinnedTimestamps;
+    private volatile String snapshotTimestamp;
 
     public RemoteStoreSettings(Settings settings, ClusterSettings clusterSettings) {
         clusterRemoteTranslogBufferInterval = CLUSTER_REMOTE_TRANSLOG_BUFFER_INTERVAL_SETTING.get(settings);
@@ -179,6 +195,12 @@ public class RemoteStoreSettings {
             CLUSTER_REMOTE_SEGMENT_TRANSFER_TIMEOUT_SETTING,
             this::setClusterRemoteSegmentTransferTimeout
         );
+
+        pinnedTimestamps = CLUSTER_REMOTE_PINNED_TIMESTAMPS.get(settings);
+        clusterSettings.addSettingsUpdateConsumer(CLUSTER_REMOTE_PINNED_TIMESTAMPS, this::setPinnedTimestamps);
+
+        snapshotTimestamp = CLUSTER_REMOTE_SNAPSHOT_TIMESTAMP.get(settings);
+        clusterSettings.addSettingsUpdateConsumer(CLUSTER_REMOTE_SNAPSHOT_TIMESTAMP, this::setSnapshotTimestamp);
     }
 
     public TimeValue getClusterRemoteTranslogBufferInterval() {
@@ -245,5 +267,21 @@ public class RemoteStoreSettings {
 
     private void setMaxRemoteTranslogReaders(int maxRemoteTranslogReaders) {
         this.maxRemoteTranslogReaders = maxRemoteTranslogReaders;
+    }
+
+    public String getPinnedTimestamps() {
+        return pinnedTimestamps;
+    }
+
+    private void setPinnedTimestamps(String pinnedTimestamps) {
+        this.pinnedTimestamps = pinnedTimestamps;
+    }
+
+    public String getSnapshotTimestamp() {
+        return snapshotTimestamp;
+    }
+
+    private void setSnapshotTimestamp(String snapshotTimestamp) {
+        this.snapshotTimestamp = snapshotTimestamp;
     }
 }

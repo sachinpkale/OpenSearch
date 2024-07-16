@@ -755,6 +755,8 @@ public final class ClusterSettings extends AbstractScopedSettings {
                 RemoteStoreSettings.CLUSTER_REMOTE_STORE_PATH_HASH_ALGORITHM_SETTING,
                 RemoteStoreSettings.CLUSTER_REMOTE_MAX_TRANSLOG_READERS,
                 RemoteStoreSettings.CLUSTER_REMOTE_STORE_TRANSLOG_METADATA,
+                RemoteStoreSettings.CLUSTER_REMOTE_PINNED_TIMESTAMPS,
+                RemoteStoreSettings.CLUSTER_REMOTE_SNAPSHOT_TIMESTAMP,
                 SearchService.CLUSTER_ALLOW_DERIVED_FIELD_SETTING,
 
                 // Composite index settings
