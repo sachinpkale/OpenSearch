@@ -405,11 +405,9 @@ final class StoreRecovery {
                     shardId,
                     shallowCopyShardMetadata.getRemoteStorePathStrategy()
                 );
-                sourceRemoteDirectory.initializeToSpecificCommit(
-                    primaryTerm,
-                    commitGeneration,
-                    recoverySource.snapshot().getSnapshotId().getUUID()
-                );
+
+                sourceRemoteDirectory.initializeToSpecificTimestamp(shallowCopyShardMetadata.startTime());
+
                 indexShard.syncSegmentsFromGivenRemoteSegmentStore(true, sourceRemoteDirectory, primaryTerm, commitGeneration);
                 final Store store = indexShard.store();
                 if (indexShard.indexSettings.isRemoteTranslogStoreEnabled() == false) {
