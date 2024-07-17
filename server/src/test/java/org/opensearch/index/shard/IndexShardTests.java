@@ -2899,7 +2899,7 @@ public class IndexShardTests extends IndexShardTestCase {
 
         target = reinitShard(target, routing);
 
-        target.syncSegmentsFromGivenRemoteSegmentStore(false, tempRemoteSegmentDirectory, primaryTerm, commitGeneration);
+        target.syncSegmentsFromGivenRemoteSegmentStore(false, tempRemoteSegmentDirectory, primaryTerm, commitGeneration, null);
         RemoteSegmentStoreDirectory remoteStoreDirectory = ((RemoteSegmentStoreDirectory) ((FilterDirectory) ((FilterDirectory) target
             .remoteStore()
             .directory()).getDelegate()).getDelegate());

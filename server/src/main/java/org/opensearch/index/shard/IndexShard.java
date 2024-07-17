@@ -5106,7 +5106,8 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
         boolean overrideLocal,
         RemoteSegmentStoreDirectory sourceRemoteDirectory,
         long primaryTerm,
-        long commitGeneration
+        long commitGeneration,
+        RemoteSegmentMetadata remoteSegmentMetadata
     ) throws IOException {
         logger.trace("Downloading segments from given remote segment store");
         RemoteSegmentStoreDirectory remoteDirectory = null;
@@ -5129,7 +5130,23 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
                 overrideLocal,
                 () -> {}
             );
-            if (segmentsNFile != null) {
+            if (remoteSegmentMetadata != null) {
+                final SegmentInfos infosSnapshot = store.buildSegmentInfos(
+                    remoteSegmentMetadata.getSegmentInfosBytes(),
+                    remoteSegmentMetadata.getGeneration()
+                );
+                long processedLocalCheckpoint = Long.parseLong(infosSnapshot.getUserData().get(LOCAL_CHECKPOINT_KEY));
+                // delete any other commits, we want to start the engine only from a new commit made with the downloaded infos bytes.
+                // Extra segments will be wiped on engine open.
+                for (String file : List.of(store.directory().listAll())) {
+                    if (file.startsWith(IndexFileNames.SEGMENTS)) {
+                        store.deleteQuiet(file);
+                    }
+                }
+                assert Arrays.stream(store.directory().listAll()).filter(f -> f.startsWith(IndexFileNames.SEGMENTS)).findAny().isEmpty()
+                    : "There should not be any segments file in the dir";
+                store.commitSegmentInfos(infosSnapshot, processedLocalCheckpoint, processedLocalCheckpoint);
+            } else if (segmentsNFile != null) {
                 try (
                     ChecksumIndexInput indexInput = new BufferedChecksumIndexInput(
                         storeDirectory.openInput(segmentsNFile, IOContext.DEFAULT)

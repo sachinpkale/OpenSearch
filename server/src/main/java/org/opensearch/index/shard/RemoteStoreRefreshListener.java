@@ -40,14 +40,7 @@ import org.opensearch.indices.replication.checkpoint.SegmentReplicationCheckpoin
 import org.opensearch.threadpool.ThreadPool;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -239,9 +232,12 @@ public final class RemoteStoreRefreshListener extends ReleasableRetryableRefresh
                 // is considered as a first refresh post commit. A cleanup of stale commit files is triggered.
                 // This is done to avoid delete post each refresh.
                 if (isRefreshAfterCommit()) {
-                    List<Long> pinnedTimestamps = Arrays.stream(indexShard.getRemoteStoreSettings().getPinnedTimestamps().split(","))
-                        .map(Long::parseLong)
-                        .toList();
+                    List<Long> pinnedTimestamps = new ArrayList<>();
+                    String pt = indexShard.getRemoteStoreSettings().getPinnedTimestamps();
+                    if(pt.isEmpty() == false && pt.split(",").length > 0) {
+                        pinnedTimestamps = Arrays.stream(indexShard.getRemoteStoreSettings().getPinnedTimestamps().split(","))
+                            .map(Long::parseLong).collect(Collectors.toUnmodifiableList());
+                    }
                     remoteDirectory.deleteStaleSegmentsAsync(
                         indexShard.getRemoteStoreSettings().getMinRemoteSegmentMetadataFiles(),
                         pinnedTimestamps

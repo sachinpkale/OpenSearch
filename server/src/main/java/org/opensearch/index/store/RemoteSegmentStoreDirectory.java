@@ -893,15 +893,17 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory implement
         logger.debug("deletedSegmentFiles={}", deletedSegmentFiles);
     }
 
-    private Set<String> getImplicitLockedFiles(List<String> metadataFilesEligibleToDelete, List<Long> pinnedTimestamps) {
+    private Set<String> getImplicitLockedFiles(List<String> metadataFiles, List<Long> pinnedTs) {
+        List<Long> pinnedTimestamps = new ArrayList<>(pinnedTs);
+        pinnedTimestamps.sort(Collections.reverseOrder(Long::compare));
         Set<String> implicitLockedFiles = new HashSet<>();
         if (pinnedTimestamps.isEmpty()) {
             return implicitLockedFiles;
         }
         int cursor = 0;
         long prevMdTimestamp = Long.MAX_VALUE;
-        for (int i = metadataFilesEligibleToDelete.size() - 1; i >= 0; i--) {
-            String metadataFileName = metadataFilesEligibleToDelete.get(i);
+        for (int i = 0; i < metadataFiles.size(); i++) {
+            String metadataFileName = metadataFiles.get(i);
             long currentMdTimestamp = MetadataFilenameUtils.getTimestamp(metadataFileName.split(SEPARATOR));
             if (currentMdTimestamp < pinnedTimestamps.get(cursor) && prevMdTimestamp > pinnedTimestamps.get(cursor)) {
                 implicitLockedFiles.add(metadataFileName);
@@ -910,8 +912,9 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory implement
                     break;
                 }
                 i--;
+            } else {
+                prevMdTimestamp = currentMdTimestamp;
             }
-            prevMdTimestamp = currentMdTimestamp;
         }
         return implicitLockedFiles;
     }

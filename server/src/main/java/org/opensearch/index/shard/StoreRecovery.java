@@ -64,6 +64,7 @@ import org.opensearch.index.snapshots.blobstore.RemoteStoreShardShallowCopySnaps
 import org.opensearch.index.store.RemoteSegmentStoreDirectory;
 import org.opensearch.index.store.RemoteSegmentStoreDirectoryFactory;
 import org.opensearch.index.store.Store;
+import org.opensearch.index.store.remote.metadata.RemoteSegmentMetadata;
 import org.opensearch.index.translog.Checkpoint;
 import org.opensearch.index.translog.Translog;
 import org.opensearch.index.translog.TranslogHeader;
@@ -407,9 +408,9 @@ final class StoreRecovery {
                 );
 
                 long snapshotTimestamp = Long.parseLong(indexShard.getRemoteStoreSettings().getSnapshotTimestamp());
-                sourceRemoteDirectory.initializeToSpecificTimestamp(snapshotTimestamp);
+                RemoteSegmentMetadata metadata = sourceRemoteDirectory.initializeToSpecificTimestamp(snapshotTimestamp);
 
-                indexShard.syncSegmentsFromGivenRemoteSegmentStore(true, sourceRemoteDirectory, primaryTerm, commitGeneration);
+                indexShard.syncSegmentsFromGivenRemoteSegmentStore(true, sourceRemoteDirectory, primaryTerm, commitGeneration, metadata);
                 final Store store = indexShard.store();
                 if (indexShard.indexSettings.isRemoteTranslogStoreEnabled() == false) {
                     bootstrap(indexShard, store);
