@@ -186,16 +186,16 @@ public class ReadOnlyEngine extends Engine {
         // In addition to that we only execute the check if the index the engine belongs to has been
         // created after the refactoring of the Close Index API and its TransportVerifyShardBeforeCloseAction
         // that guarantee that all operations have been flushed to Lucene.
-        assert assertMaxSeqNoEqualsToGlobalCheckpoint(seqNoStats.getMaxSeqNo(), seqNoStats.getGlobalCheckpoint());
-        if (seqNoStats.getMaxSeqNo() != seqNoStats.getGlobalCheckpoint()) {
-            throw new IllegalStateException(
-                "Maximum sequence number ["
-                    + seqNoStats.getMaxSeqNo()
-                    + "] from last commit does not match global checkpoint ["
-                    + seqNoStats.getGlobalCheckpoint()
-                    + "]"
-            );
-        }
+        //assert assertMaxSeqNoEqualsToGlobalCheckpoint(seqNoStats.getMaxSeqNo(), seqNoStats.getGlobalCheckpoint());
+//        if (seqNoStats.getMaxSeqNo() != seqNoStats.getGlobalCheckpoint()) {
+//            throw new IllegalStateException(
+//                "Maximum sequence number ["
+//                    + seqNoStats.getMaxSeqNo()
+//                    + "] from last commit does not match global checkpoint ["
+//                    + seqNoStats.getGlobalCheckpoint()
+//                    + "]"
+//            );
+//        }
     }
 
     protected boolean assertMaxSeqNoEqualsToGlobalCheckpoint(final long maxSeqNo, final long globalCheckpoint) {

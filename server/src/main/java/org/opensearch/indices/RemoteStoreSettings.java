@@ -143,7 +143,7 @@ public class RemoteStoreSettings {
 
     public static final Setting<String> CLUSTER_REMOTE_SNAPSHOT_TIMESTAMP = Setting.simpleString(
         "cluster.remote_store.snapshot_timestamp",
-        "",
+        "-1",
         Property.NodeScope,
         Property.Dynamic
     );

@@ -411,26 +411,38 @@ final class StoreRecovery {
                 RemoteSegmentMetadata metadata = sourceRemoteDirectory.initializeToSpecificTimestamp(snapshotTimestamp);
 
                 indexShard.syncSegmentsFromGivenRemoteSegmentStore(true, sourceRemoteDirectory, primaryTerm, commitGeneration, metadata);
-                final Store store = indexShard.store();
-                if (indexShard.indexSettings.isRemoteTranslogStoreEnabled() == false) {
-                    bootstrap(indexShard, store);
-                } else {
-                    bootstrapForSnapshot(indexShard, store);
-                }
-                assert indexShard.shardRouting.primary() : "only primary shards can recover from store";
+                indexShard.syncTranslogFilesFromRemoteTranslog();
+
                 writeEmptyRetentionLeasesFile(indexShard);
                 indexShard.recoveryState().getIndex().setFileDetailsComplete();
-                if (indexShard.indexSettings.isRemoteStoreEnabled()) {
-                    indexShard.openEngineAndSkipTranslogRecoveryFromSnapshot();
-                } else {
-                    indexShard.openEngineAndRecoverFromTranslog();
-                }
+                indexShard.openEngineAndRecoverFromTranslog();
                 indexShard.getEngine().fillSeqNoGaps(indexShard.getPendingPrimaryTerm());
                 indexShard.finalizeRecovery();
                 if (indexShard.isRemoteTranslogEnabled() && indexShard.shardRouting.primary()) {
                     indexShard.waitForRemoteStoreSync();
                 }
-                indexShard.postRecovery("restore done");
+                indexShard.postRecovery("post recovery from remote_store");
+
+//                final Store store = indexShard.store();
+//                if (indexShard.indexSettings.isRemoteTranslogStoreEnabled() == false) {
+//                    bootstrap(indexShard, store);
+//                } else {
+//                    bootstrapForSnapshot(indexShard, store);
+//                }
+//                assert indexShard.shardRouting.primary() : "only primary shards can recover from store";
+//                writeEmptyRetentionLeasesFile(indexShard);
+//                indexShard.recoveryState().getIndex().setFileDetailsComplete();
+//                if (indexShard.indexSettings.isRemoteStoreEnabled()) {
+//                    indexShard.openEngineAndSkipTranslogRecoveryFromSnapshot();
+//                } else {
+//                    indexShard.openEngineAndRecoverFromTranslog();
+//                }
+//                indexShard.getEngine().fillSeqNoGaps(indexShard.getPendingPrimaryTerm());
+//                indexShard.finalizeRecovery();
+//                if (indexShard.isRemoteTranslogEnabled() && indexShard.shardRouting.primary()) {
+//                    indexShard.waitForRemoteStoreSync();
+//                }
+//                indexShard.postRecovery("restore done");
 
                 listener.onResponse(true);
             } else {

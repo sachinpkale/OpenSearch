@@ -2499,7 +2499,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
             loadGlobalCheckpointToReplicationTracker();
         }
 
-        innerOpenEngineAndTranslog(replicationTracker);
+        innerOpenEngineAndTranslog(replicationTracker, false);
         getEngine().translogManager()
             .recoverFromTranslog(translogRecoveryRunner, getEngine().getProcessedLocalCheckpoint(), Long.MAX_VALUE);
     }
@@ -2566,7 +2566,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
                         // currently only during snapshot restore, we are coming into this block.
                         // here, as while initiliazing remote translog we cannot skip downloading translog files,
                         // so before that step, we are deleting the translog files present in remote store.
-                        deleteTranslogFilesFromRemoteTranslog();
+                        //deleteTranslogFilesFromRemoteTranslog();
                     }
                 } else if (syncFromRemote) {
                     // For replicas, when we download segments from remote segment store, we need to make sure that local

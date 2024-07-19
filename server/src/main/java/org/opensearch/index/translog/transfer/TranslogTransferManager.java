@@ -27,6 +27,7 @@ import org.opensearch.core.common.bytes.BytesReference;
 import org.opensearch.core.index.shard.ShardId;
 import org.opensearch.index.remote.RemoteStoreUtils;
 import org.opensearch.index.remote.RemoteTranslogTransferTracker;
+import org.opensearch.index.store.RemoteSegmentStoreDirectory;
 import org.opensearch.index.translog.Translog;
 import org.opensearch.index.translog.transfer.listener.TranslogTransferListener;
 import org.opensearch.indices.RemoteStoreSettings;
@@ -36,19 +37,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static org.opensearch.index.store.RemoteSegmentStoreDirectory.MetadataFilenameUtils.SEPARATOR;
 import static org.opensearch.index.translog.transfer.FileSnapshot.TransferFileSnapshot;
 import static org.opensearch.index.translog.transfer.FileSnapshot.TranslogFileSnapshot;
+import static org.opensearch.index.translog.transfer.TranslogTransferMetadata.METADATA_SEPARATOR;
 
 /**
  * The class responsible for orchestrating the transfer of a {@link TransferSnapshot} via a {@link TransferService}
@@ -337,7 +334,54 @@ public class TranslogTransferManager {
         }
     }
 
+    public TranslogTransferMetadata readMetadata(String filename) throws IOException {
+        boolean downloadStatus = false;
+        long downloadStartTime = System.nanoTime(), bytesToRead = 0;
+        try (InputStream inputStream = transferService.downloadBlob(remoteMetadataTransferPath, filename)) {
+            // Capture number of bytes for stats before reading
+            bytesToRead = inputStream.available();
+            IndexInput indexInput = new ByteArrayIndexInput("metadata file", inputStream.readAllBytes());
+            TranslogTransferMetadata metadata = metadataStreamWrapper.readStream(indexInput);
+            downloadStatus = true;
+            return metadata;
+        } finally {
+            remoteTranslogTransferTracker.addDownloadTimeInMillis((System.nanoTime() - downloadStartTime) / 1_000_000L);
+            logger.debug("translogMetadataDownloadStatus={}", downloadStatus);
+            if (downloadStatus) {
+                remoteTranslogTransferTracker.addDownloadBytesSucceeded(bytesToRead);
+            }
+        }
+    }
+
+    public Set<String> getImplicitLockedFiles(List<String> metadataFiles, List<Long> pinnedTs) {
+        List<Long> pinnedTimestamps = new ArrayList<>(pinnedTs);
+        pinnedTimestamps.sort(Collections.reverseOrder(Long::compare));
+        Set<String> implicitLockedFiles = new HashSet<>();
+        if (pinnedTimestamps.isEmpty()) {
+            return implicitLockedFiles;
+        }
+        int cursor = 0;
+        long prevMdTimestamp = Long.MAX_VALUE;
+        for (int i = 0; i < metadataFiles.size(); i++) {
+            String metadataFileName = metadataFiles.get(i);
+            long currentMdTimestamp = RemoteStoreUtils.invertLong(metadataFileName.split(METADATA_SEPARATOR)[3]);
+            if (currentMdTimestamp < pinnedTimestamps.get(cursor) && prevMdTimestamp > pinnedTimestamps.get(cursor)) {
+                implicitLockedFiles.add(metadataFileName);
+                cursor++;
+                if (cursor >= pinnedTimestamps.size()) {
+                    break;
+                }
+                i--;
+            } else {
+                prevMdTimestamp = currentMdTimestamp;
+            }
+        }
+        return implicitLockedFiles;
+    }
+
     public TranslogTransferMetadata readMetadata() throws IOException {
+        final long snapshotTimestamp = Long.parseLong(remoteStoreSettings.getSnapshotTimestamp());
+
         SetOnce<TranslogTransferMetadata> metadataSetOnce = new SetOnce<>();
         SetOnce<IOException> exceptionSetOnce = new SetOnce<>();
         final CountDownLatch latch = new CountDownLatch(1);
@@ -349,23 +393,16 @@ public class TranslogTransferManager {
                     TranslogTransferMetadata::getNodeIdByPrimaryTermAndGen
                 );
                 String filename = blobMetadataList.get(0).name();
-                boolean downloadStatus = false;
-                long downloadStartTime = System.nanoTime(), bytesToRead = 0;
-                try (InputStream inputStream = transferService.downloadBlob(remoteMetadataTransferPath, filename)) {
-                    // Capture number of bytes for stats before reading
-                    bytesToRead = inputStream.available();
-                    IndexInput indexInput = new ByteArrayIndexInput("metadata file", inputStream.readAllBytes());
-                    metadataSetOnce.set(metadataStreamWrapper.readStream(indexInput));
-                    downloadStatus = true;
+                if (snapshotTimestamp != -1) {
+                    List<String> metadataFiles = blobMetadataList.stream().map(BlobMetadata::name).collect(Collectors.toList());
+                    filename = getImplicitLockedFiles(metadataFiles, new ArrayList<>(List.of(snapshotTimestamp))).iterator().next();
+                }
+                try {
+                    metadataSetOnce.set(readMetadata(filename));
                 } catch (IOException e) {
-                    logger.error(() -> new ParameterizedMessage("Exception while reading metadata file: {}", filename), e);
+                    String finalFilename = filename;
+                    logger.error(() -> new ParameterizedMessage("Exception while reading metadata file: {}", finalFilename), e);
                     exceptionSetOnce.set(e);
-                } finally {
-                    remoteTranslogTransferTracker.addDownloadTimeInMillis((System.nanoTime() - downloadStartTime) / 1_000_000L);
-                    logger.debug("translogMetadataDownloadStatus={}", downloadStatus);
-                    if (downloadStatus) {
-                        remoteTranslogTransferTracker.addDownloadBytesSucceeded(bytesToRead);
-                    }
                 }
             }, e -> {
                 if (e instanceof RuntimeException) {
@@ -381,7 +418,7 @@ public class TranslogTransferManager {
             transferService.listAllInSortedOrder(
                 remoteMetadataTransferPath,
                 TranslogTransferMetadata.METADATA_PREFIX,
-                METADATA_FILES_TO_FETCH,
+                Integer.MAX_VALUE,
                 latchedActionListener
             );
             latch.await();
@@ -549,7 +586,7 @@ public class TranslogTransferManager {
         });
     }
 
-    public void deleteStaleTranslogMetadataFilesAsync(Runnable onCompletion) {
+    public void deleteStaleTranslogMetadataFilesAsync(List<String> metadataFiles, Runnable onCompletion) {
         try {
             transferService.listAllInSortedOrderAsync(
                 ThreadPool.Names.REMOTE_PURGE,
@@ -581,6 +618,31 @@ public class TranslogTransferManager {
             logger.error("Exception occurred while listing translog metadata files from remote store", e);
             onCompletion.run();
         }
+    }
+
+    public List<String> getTranslogMetadataFiles() {
+        List<String> metadataFiles = new ArrayList<>();
+        try {
+            transferService.listAllInSortedOrder(
+                remoteMetadataTransferPath,
+                TranslogTransferMetadata.METADATA_PREFIX,
+                Integer.MAX_VALUE,
+                new ActionListener<>() {
+                    @Override
+                    public void onResponse(List<BlobMetadata> blobMetadata) {
+                        blobMetadata.stream().map(BlobMetadata::name).forEach(metadataFiles::add);
+                    }
+
+                    @Override
+                    public void onFailure(Exception e) {
+                        logger.error("Exception occurred while listing translog metadata files from remote store", e);
+                    }
+                }
+            );
+        } catch (Exception e) {
+            logger.error("Exception occurred while listing translog metadata files from remote store", e);
+        }
+        return metadataFiles;
     }
 
     public void deleteTranslogFiles() throws IOException {
@@ -635,13 +697,13 @@ public class TranslogTransferManager {
      * @param files list of metadata files to be deleted.
      * @param onCompletion runnable to run on completion of deletion regardless of success/failure.
      */
-    private void deleteMetadataFilesAsync(List<String> files, Runnable onCompletion) {
+    public void deleteMetadataFilesAsync(List<String> files, Runnable onCompletion) {
         try {
             transferService.deleteBlobsAsync(ThreadPool.Names.REMOTE_PURGE, remoteMetadataTransferPath, files, new ActionListener<>() {
                 @Override
                 public void onResponse(Void unused) {
                     onCompletion.run();
-                    logger.trace("Deleted remote translog metadata files {}", files);
+                    logger.info("Deleted remote translog metadata files {}", files);
                 }
 
                 @Override
