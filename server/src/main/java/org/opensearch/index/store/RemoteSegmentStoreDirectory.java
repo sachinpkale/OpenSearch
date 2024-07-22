@@ -828,10 +828,10 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory implement
         }
 
         Set<String> implicitLockedFiles = getImplicitLockedFiles(metadataFilesEligibleToDelete, pinnedTimestamps);
+        allLockFiles.addAll(implicitLockedFiles);
 
         List<String> metadataFilesToBeDeleted = metadataFilesEligibleToDelete.stream()
             .filter(metadataFile -> allLockFiles.contains(metadataFile) == false)
-            .filter(metadataFile -> implicitLockedFiles.contains(metadataFile) == false)
             .collect(Collectors.toList());
 
         logger.debug(
