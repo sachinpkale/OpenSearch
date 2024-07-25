@@ -324,6 +324,13 @@ public class ClusterModule extends AbstractModule {
                 DecommissionAttributeMetadata::fromXContent
             )
         );
+        entries.add(
+            new NamedXContentRegistry.Entry(
+                Metadata.Custom.class,
+                new ParseField(PinnedTimestampMetadata.TYPE),
+                PinnedTimestampMetadata::fromXContent
+            )
+        );
         return entries;
     }
 

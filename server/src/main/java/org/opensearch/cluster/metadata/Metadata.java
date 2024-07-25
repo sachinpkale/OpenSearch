@@ -1417,6 +1417,23 @@ public class Metadata implements Iterable<IndexMetadata>, Diffable<Metadata>, To
             return views(replacementViews);
         }
 
+        public Builder pinnedTimestamps(Map<Long, List<String>> pinnedTimestamps) {
+            this.customs.put(PinnedTimestampMetadata.TYPE, new PinnedTimestampMetadata(pinnedTimestamps));
+            return this;
+        }
+
+        public Builder pinTimestamp(Long timestamp, String acquirer) {
+            PinnedTimestampMetadata pinnedTimestampMetadata = ((PinnedTimestampMetadata)this.customs.getOrDefault(PinnedTimestampMetadata.TYPE, new PinnedTimestampMetadata(new HashMap<>())));
+            this.customs.put(PinnedTimestampMetadata.TYPE, pinnedTimestampMetadata.pinTimestamp(timestamp, acquirer));
+            return this;
+        }
+
+        public Builder unpinTimestamp(Long timestamp, String acquirer) {
+            PinnedTimestampMetadata pinnedTimestampMetadata = ((PinnedTimestampMetadata)this.customs.getOrDefault(PinnedTimestampMetadata.TYPE, new PinnedTimestampMetadata(new HashMap<>())));
+            this.customs.put(PinnedTimestampMetadata.TYPE, pinnedTimestampMetadata.unpinTimestamp(timestamp, acquirer));
+            return this;
+        }
+
         public Custom getCustom(String type) {
             return customs.get(type);
         }

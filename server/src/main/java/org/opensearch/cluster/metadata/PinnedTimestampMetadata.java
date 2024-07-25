@@ -68,12 +68,21 @@ public class PinnedTimestampMetadata extends AbstractNamedDiffable<Custom> imple
         this.pinnedTimestampMap = in.readMapOfLists(StreamInput::readLong, StreamInput::readString);
     }
 
-    public PinnedTimestampMetadata withUpdatedTimestamp(long timestamp, String acquirer) {
+    public PinnedTimestampMetadata pinTimestamp(long timestamp, String acquirer) {
         Map<Long, List<String>> updatedPinnedTimestampMap = new HashMap<>(pinnedTimestampMap);
         if (updatedPinnedTimestampMap.containsKey(timestamp) == false) {
            updatedPinnedTimestampMap.put(timestamp, new ArrayList<>());
         }
         updatedPinnedTimestampMap.get(timestamp).add(acquirer);
+        return new PinnedTimestampMetadata(updatedPinnedTimestampMap);
+    }
+
+    public PinnedTimestampMetadata unpinTimestamp(long timestamp, String acquirer) {
+        Map<Long, List<String>> updatedPinnedTimestampMap = new HashMap<>(pinnedTimestampMap);
+        if (updatedPinnedTimestampMap.containsKey(timestamp) == false) {
+            throw new IllegalArgumentException("Timestamp: " + timestamp + " is not pinned");
+        }
+        updatedPinnedTimestampMap.get(timestamp).remove(acquirer);
         return new PinnedTimestampMetadata(updatedPinnedTimestampMap);
     }
 
@@ -141,11 +150,9 @@ public class PinnedTimestampMetadata extends AbstractNamedDiffable<Custom> imple
 
     @Override
     public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
-        builder.startObject(PINNED_TIMESTAMPS.getPreferredName());
         for (Map.Entry<Long, List<String>> pinnedTimestamp : pinnedTimestampMap.entrySet()) {
             builder.field(String.valueOf(pinnedTimestamp.getKey()), pinnedTimestamp.getValue());
         }
-        builder.endObject();
         return builder;
     }
 

@@ -67,6 +67,7 @@ import org.opensearch.cluster.metadata.IndexMetadata;
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver;
 import org.opensearch.cluster.metadata.Metadata;
 import org.opensearch.cluster.metadata.RepositoriesMetadata;
+import org.opensearch.cluster.metadata.PinnedTimestampMetadata;
 import org.opensearch.cluster.node.DiscoveryNode;
 import org.opensearch.cluster.node.DiscoveryNodes;
 import org.opensearch.cluster.routing.IndexRoutingTable;
@@ -368,8 +369,13 @@ public class SnapshotsService extends AbstractLifecycleComponent implements Clus
                 );
                 final List<SnapshotsInProgress.Entry> newEntries = new ArrayList<>(runningSnapshots);
                 newEntries.add(newEntry);
+
+                Metadata.Builder metadataBuilder = Metadata.builder(currentState.metadata());
+                metadataBuilder.pinTimestamp(System.currentTimeMillis(), newEntry.snapshot().getSnapshotId().getName());
+
                 return ClusterState.builder(currentState)
                     .putCustom(SnapshotsInProgress.TYPE, SnapshotsInProgress.of(new ArrayList<>(newEntries)))
+                    .metadata(metadataBuilder.build())
                     .build();
             }
 
