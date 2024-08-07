@@ -49,6 +49,7 @@ import java.util.stream.Collectors;
 
 import static org.opensearch.index.translog.transfer.FileSnapshot.TransferFileSnapshot;
 import static org.opensearch.index.translog.transfer.FileSnapshot.TranslogFileSnapshot;
+import static org.opensearch.index.translog.transfer.TranslogTransferMetadata.METADATA_SEPARATOR;
 
 /**
  * The class responsible for orchestrating the transfer of a {@link TransferSnapshot} via a {@link TransferService}
@@ -357,6 +358,37 @@ public class TranslogTransferManager {
             }
         }
         return translogTransferMetadata;
+    }
+
+    public TranslogTransferMetadata readMetadata(long timestamp) throws IOException {
+        if (timestamp < 0) {
+            return readMetadata();
+        }
+        SetOnce<TranslogTransferMetadata> metadata = new SetOnce<>();
+        listTranslogMetadataFilesAsync(new ActionListener<>() {
+            @Override
+            public void onResponse(List<BlobMetadata> blobMetadata) {
+                List<String> metadataFiles = blobMetadata.stream().map(BlobMetadata::name).collect(Collectors.toList());
+                Set<String> metadataFilesMatchingTimestamp = RemoteStoreUtils.getPinnedTimestampLockedFiles(
+                    metadataFiles,
+                    Set.of(timestamp),
+                    new HashMap<>(),
+                    file -> RemoteStoreUtils.invertLong(file.split(METADATA_SEPARATOR)[3])
+                );
+                assert metadataFilesMatchingTimestamp.size() == 1 : "There should be only 1 metadata file matching given timestamp";
+                try {
+                    metadata.set(readMetadata(metadataFilesMatchingTimestamp.stream().findFirst().get()));
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                // Handle exception
+            }
+        });
+        return metadata.get();
     }
 
     public TranslogTransferMetadata readMetadata() throws IOException {
