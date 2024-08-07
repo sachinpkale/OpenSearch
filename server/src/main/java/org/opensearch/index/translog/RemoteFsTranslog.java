@@ -11,17 +11,23 @@ package org.opensearch.index.translog;
 import org.apache.logging.log4j.Logger;
 import org.opensearch.cluster.service.ClusterService;
 import org.opensearch.common.SetOnce;
+import org.opensearch.common.blobstore.BlobMetadata;
 import org.opensearch.common.blobstore.BlobPath;
+import org.opensearch.common.collect.Tuple;
 import org.opensearch.common.lease.Releasable;
 import org.opensearch.common.lease.Releasables;
 import org.opensearch.common.logging.Loggers;
+import org.opensearch.common.unit.TimeValue;
 import org.opensearch.common.util.concurrent.ReleasableLock;
 import org.opensearch.common.util.io.IOUtils;
+import org.opensearch.core.action.ActionListener;
 import org.opensearch.core.index.shard.ShardId;
 import org.opensearch.core.util.FileSystemUtils;
 import org.opensearch.index.remote.RemoteStorePathStrategy;
+import org.opensearch.index.remote.RemoteStoreUtils;
 import org.opensearch.index.remote.RemoteTranslogTransferTracker;
 import org.opensearch.index.seqno.SequenceNumbers;
+import org.opensearch.index.store.RemoteSegmentStoreDirectory;
 import org.opensearch.index.translog.transfer.BlobStoreTransferService;
 import org.opensearch.index.translog.transfer.FileTransferTracker;
 import org.opensearch.index.translog.transfer.TransferSnapshot;
@@ -39,11 +45,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -51,6 +60,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import java.util.function.LongConsumer;
 import java.util.function.LongSupplier;
+import java.util.stream.Collectors;
 
 import static org.opensearch.index.remote.RemoteStoreEnums.DataCategory.TRANSLOG;
 import static org.opensearch.index.remote.RemoteStoreEnums.DataType.DATA;
@@ -92,6 +102,8 @@ public class RemoteFsTranslog extends Translog {
     private final Semaphore syncPermit = new Semaphore(SYNC_PERMIT);
     private final AtomicBoolean pauseSync = new AtomicBoolean(false);
     private final boolean isTranslogMetadataEnabled;
+    private final Map<Long, String> metadataFilePinnedTimestampMap;
+    private final Map<String, Tuple<Long, Long>> metadataFileGenerationMap;
 
     public RemoteFsTranslog(
         TranslogConfig config,
@@ -112,6 +124,8 @@ public class RemoteFsTranslog extends Translog {
         this.remoteTranslogTransferTracker = remoteTranslogTransferTracker;
         fileTransferTracker = new FileTransferTracker(shardId, remoteTranslogTransferTracker);
         isTranslogMetadataEnabled = indexSettings().isTranslogMetadataEnabled();
+        this.metadataFilePinnedTimestampMap = new HashMap<>();
+        this.metadataFileGenerationMap = new HashMap<>();
         this.translogTransferManager = buildTranslogTransferManager(
             blobStoreRepository,
             threadPool,
@@ -561,7 +575,7 @@ public class RemoteFsTranslog extends Translog {
             generationsToDelete.add(generation);
         }
         if (generationsToDelete.isEmpty() == false) {
-            deleteRemoteGeneration(generationsToDelete);
+            deleteRemoteGenerations(generationsToDelete);
             translogTransferManager.deleteStaleTranslogMetadataFilesAsync(remoteGenerationDeletionPermits::release);
             deleteStaleRemotePrimaryTerms();
         } else {
@@ -569,11 +583,144 @@ public class RemoteFsTranslog extends Translog {
         }
     }
 
+    public void trimUnreferencedReadersImproved() throws IOException {
+        // clean up local translog files and updates readers
+        super.trimUnreferencedReaders();
+
+        // This is to ensure that after the permits are acquired during primary relocation, there are no further modification on remote
+        // store.
+        if (startedPrimarySupplier.getAsBoolean() == false || pauseSync.get()) {
+            return;
+        }
+
+        // Since remote generation deletion is async, this ensures that only one generation deletion happens at a time.
+        // Remote generations involves 2 async operations - 1) Delete translog generation files 2) Delete metadata files
+        // We try to acquire 2 permits and if we can not, we return from here itself.
+        if (remoteGenerationDeletionPermits.tryAcquire(REMOTE_DELETION_PERMITS) == false) {
+            return;
+        }
+
+        // ToDo: Check last fetch status of pinned timestamps. If stale, return.
+
+        ActionListener<List<BlobMetadata>> listMetadataFilesListener = new ActionListener<>() {
+            @Override
+            public void onResponse(List<BlobMetadata> blobMetadata) {
+                List<String> metadataFiles = blobMetadata.stream().map(BlobMetadata::name).collect(Collectors.toList());
+
+                // ToDo: 1. Check last fetch status of pinned timestamps. If stale, return.
+
+                // 2. Filter out last x mins of files
+                metadataFiles = RemoteStoreUtils.filterOutMetadataFilesBasedOnAge(
+                    metadataFiles,
+                    RemoteSegmentStoreDirectory.MetadataFilenameUtils::getTimestamp,
+                    TimeValue.timeValueMinutes(5)
+                );
+
+                // 3. Get md files matching pinned timestamps
+                Set<Long> pinnedTimestamps = new HashSet<>();
+                Set<String> implicitLockedFiles = RemoteStoreUtils.getPinnedTimestampLockedFiles(
+                    metadataFiles,
+                    pinnedTimestamps,
+                    metadataFilePinnedTimestampMap,
+                    RemoteSegmentStoreDirectory.MetadataFilenameUtils::getTimestamp
+                );
+
+                // 4. For new pinned timestamp, read matching file to get min and max generations
+                try {
+                    readAndCacheGenerationForPinnedTimestamp(implicitLockedFiles);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+
+                // 5. Filter out metadata files matching pinned timestamps
+                metadataFiles.removeAll(implicitLockedFiles);
+
+                // 6. From the remaining files, read oldest and latest
+                String oldestMetadataFileToBeDeleted = metadataFiles.get(metadataFiles.size() - 1);
+                String latestMetadataFileToBeDeleted = metadataFiles.get(0);
+
+                // 7. Delete generations
+                long minGenerationToBeDeleted;
+                long maxGenerationToBeDeleted;
+                try {
+                    if (metadataFileGenerationMap.containsKey(latestMetadataFileToBeDeleted) == false) {
+                        TranslogTransferMetadata metadata = translogTransferManager.readMetadata(latestMetadataFileToBeDeleted);
+                        maxGenerationToBeDeleted = metadata.getMinTranslogGeneration() - 1;
+                    } else {
+                        maxGenerationToBeDeleted = metadataFileGenerationMap.get(latestMetadataFileToBeDeleted).v1() - 1;
+                    }
+                    long minGenerationToKeep = minRemoteGenReferenced - 1 - indexSettings().getRemoteTranslogExtraKeep();
+                    maxGenerationToBeDeleted = Math.min(maxGenerationToBeDeleted, minGenerationToKeep);
+
+                    if (metadataFileGenerationMap.containsKey(oldestMetadataFileToBeDeleted) == false) {
+                        TranslogTransferMetadata metadata = translogTransferManager.readMetadata(oldestMetadataFileToBeDeleted);
+                        minGenerationToBeDeleted = metadata.getMinTranslogGeneration() - 1;
+                    } else {
+                        minGenerationToBeDeleted = metadataFileGenerationMap.get(oldestMetadataFileToBeDeleted).v1() - 1;
+                    }
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+                Set<Long> generationsToDelete = new HashSet<>();
+                TreeSet<Tuple<Long, Long>> pinnedGenerations = getOrderedPinnedMetadataGenerations();
+                for (long generation = maxGenerationToBeDeleted; generation >= minGenerationToBeDeleted; generation--) {
+                    // 8. Check if the generation is not referred by metadata file matching pinned timestamps
+                    Tuple<Long, Long> ceilingGenerationRange = pinnedGenerations.ceiling(new Tuple<>(generation, generation));
+                    if (ceilingGenerationRange != null
+                        && generation >= ceilingGenerationRange.v1()
+                        && generation <= ceilingGenerationRange.v2()) {
+                        continue;
+                    }
+                    generationsToDelete.add(generation);
+                }
+                if (generationsToDelete.isEmpty() == false) {
+                    // 9. Delete stale generations
+                    deleteRemoteGenerations(generationsToDelete);
+                    // 10. Delete stale metadata files
+                    translogTransferManager.deleteMetadataFilesAsync(metadataFiles, remoteGenerationDeletionPermits::release);
+                    // 11. Delete primary terms
+                    deleteStaleRemotePrimaryTerms();
+                } else {
+                    remoteGenerationDeletionPermits.release(REMOTE_DELETION_PERMITS);
+                }
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+
+            }
+        };
+        translogTransferManager.listTranslogMetadataFilesAsync(listMetadataFilesListener);
+    }
+
+    private TreeSet<Tuple<Long, Long>> getOrderedPinnedMetadataGenerations() {
+        TreeSet<Tuple<Long, Long>> pinnedGenerations = new TreeSet<>((o1, o2) -> {
+            if (Objects.equals(o1.v1(), o2.v1()) == false) {
+                return o1.v1().compareTo(o2.v1());
+            } else {
+                return o1.v2().compareTo(o2.v2());
+            }
+        });
+        pinnedGenerations.addAll(metadataFileGenerationMap.values());
+        return pinnedGenerations;
+    }
+
+    private void readAndCacheGenerationForPinnedTimestamp(Set<String> implicitLockedFiles) throws IOException {
+        Set<String> nonCachedMetadataFiles = implicitLockedFiles.stream()
+            .filter(f -> metadataFileGenerationMap.containsKey(f) == false)
+            .collect(Collectors.toSet());
+        metadataFileGenerationMap.keySet().retainAll(implicitLockedFiles);
+        for (String metadataFile : nonCachedMetadataFiles) {
+            TranslogTransferMetadata metadata = translogTransferManager.readMetadata(metadataFile);
+            metadataFileGenerationMap.put(metadataFile, new Tuple<>(metadata.getMinTranslogGeneration(), metadata.getGeneration()));
+        }
+    }
+
     /**
      * Deletes remote translog and metadata files asynchronously corresponding to the generations.
      * @param generations generations to be deleted.
      */
-    private void deleteRemoteGeneration(Set<Long> generations) {
+    private void deleteRemoteGenerations(Set<Long> generations) {
         translogTransferManager.deleteGenerationAsync(
             primaryTermSupplier.getAsLong(),
             generations,

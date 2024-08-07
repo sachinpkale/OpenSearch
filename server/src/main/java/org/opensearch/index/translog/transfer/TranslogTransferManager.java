@@ -337,6 +337,28 @@ public class TranslogTransferManager {
         }
     }
 
+    public TranslogTransferMetadata readMetadata(String metadataFilename) throws IOException {
+        boolean downloadStatus = false;
+        TranslogTransferMetadata translogTransferMetadata = null;
+        long downloadStartTime = System.nanoTime(), bytesToRead = 0;
+        try (InputStream inputStream = transferService.downloadBlob(remoteMetadataTransferPath, metadataFilename)) {
+            // Capture number of bytes for stats before reading
+            bytesToRead = inputStream.available();
+            IndexInput indexInput = new ByteArrayIndexInput("metadata file", inputStream.readAllBytes());
+            translogTransferMetadata = metadataStreamWrapper.readStream(indexInput);
+            downloadStatus = true;
+        } catch (IOException e) {
+            logger.error(() -> new ParameterizedMessage("Exception while reading metadata file: {}", metadataFilename), e);
+        } finally {
+            remoteTranslogTransferTracker.addDownloadTimeInMillis((System.nanoTime() - downloadStartTime) / 1_000_000L);
+            logger.debug("translogMetadataDownloadStatus={}", downloadStatus);
+            if (downloadStatus) {
+                remoteTranslogTransferTracker.addDownloadBytesSucceeded(bytesToRead);
+            }
+        }
+        return translogTransferMetadata;
+    }
+
     public TranslogTransferMetadata readMetadata() throws IOException {
         SetOnce<TranslogTransferMetadata> metadataSetOnce = new SetOnce<>();
         SetOnce<IOException> exceptionSetOnce = new SetOnce<>();
@@ -549,6 +571,20 @@ public class TranslogTransferManager {
         });
     }
 
+    public void listTranslogMetadataFilesAsync(ActionListener<List<BlobMetadata>> listener) {
+        try {
+            transferService.listAllInSortedOrderAsync(
+                ThreadPool.Names.REMOTE_PURGE,
+                remoteMetadataTransferPath,
+                TranslogTransferMetadata.METADATA_PREFIX,
+                Integer.MAX_VALUE,
+                listener
+            );
+        } catch (Exception e) {
+            logger.error("Exception occurred while listing translog metadata files from remote store", e);
+        }
+    }
+
     public void deleteStaleTranslogMetadataFilesAsync(Runnable onCompletion) {
         try {
             transferService.listAllInSortedOrderAsync(
@@ -635,7 +671,7 @@ public class TranslogTransferManager {
      * @param files list of metadata files to be deleted.
      * @param onCompletion runnable to run on completion of deletion regardless of success/failure.
      */
-    private void deleteMetadataFilesAsync(List<String> files, Runnable onCompletion) {
+    public void deleteMetadataFilesAsync(List<String> files, Runnable onCompletion) {
         try {
             transferService.deleteBlobsAsync(ThreadPool.Names.REMOTE_PURGE, remoteMetadataTransferPath, files, new ActionListener<>() {
                 @Override
