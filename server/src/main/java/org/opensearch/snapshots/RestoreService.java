@@ -256,10 +256,12 @@ public class RestoreService implements ClusterStateApplier {
             }
             // Read snapshot info and metadata from the repository
             final String repositoryName = request.repository();
+            logger.info("Reading it now");
             Repository repository = repositoriesService.repository(repositoryName);
             final StepListener<RepositoryData> repositoryDataListener = new StepListener<>();
             repository.getRepositoryData(repositoryDataListener);
             repositoryDataListener.whenComplete(repositoryData -> {
+                logger.info("Read it now");
                 final String snapshotName = request.snapshot();
                 final Optional<SnapshotId> matchingSnapshotId = repositoryData.getSnapshotIds()
                     .stream()
@@ -427,7 +429,8 @@ public class RestoreService implements ClusterStateApplier {
                                     snapshotIndexId,
                                     isSearchableSnapshot,
                                     isRemoteStoreShallowCopy,
-                                    request.getSourceRemoteStoreRepository()
+                                    request.getSourceRemoteStoreRepository(),
+                                    snapshotInfo.getPinnedTimestamp()
                                 );
                                 final Version minIndexCompatibilityVersion;
                                 if (isSearchableSnapshot && isSearchableSnapshotsExtendedCompatibilityEnabled()) {

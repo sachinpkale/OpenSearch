@@ -281,6 +281,7 @@ public class SnapshotsService extends AbstractLifecycleComponent implements Clus
             remoteStoreIndexShallowCopy = false;
         }
         if (remoteStoreIndexShallowCopy && isShallowSnapV2 && request.indices().length == 0) {
+            logger.info("Taking v2 snapshot");
             createShallowSnapshotV2(request, listener);
         } else {
             createSnapshot(

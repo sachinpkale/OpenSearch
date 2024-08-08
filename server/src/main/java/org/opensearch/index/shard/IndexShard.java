@@ -2892,7 +2892,12 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
             assert recoveryState.getRecoverySource().getType() == RecoverySource.Type.SNAPSHOT : "invalid recovery type: "
                 + recoveryState.getRecoverySource();
             StoreRecovery storeRecovery = new StoreRecovery(shardId, logger);
-            storeRecovery.recoverFromSnapshotAndRemoteStore(this, repository, repositoriesService, listener, threadPool);
+            SnapshotRecoverySource recoverySource = (SnapshotRecoverySource) recoveryState().getRecoverySource();
+            if (recoverySource.getPinnedTimestamp() > 0) {
+                storeRecovery.recoverShallowSnapshotV2(this, repository, repositoriesService, listener, threadPool);
+            } else {
+                storeRecovery.recoverFromSnapshotAndRemoteStore(this, repository, repositoriesService, listener, threadPool);
+            }
         } catch (Exception e) {
             listener.onFailure(e);
         }
@@ -3749,12 +3754,12 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
                     executeRecovery("from snapshot (remote)", recoveryState, recoveryListener, this::recoverFromStore);
                 } else if (recoverySource.remoteStoreIndexShallowCopy()) {
                     final String repo = recoverySource.snapshot().getRepository();
-                    executeRecovery(
-                        "from snapshot and remote store",
-                        recoveryState,
-                        recoveryListener,
-                        l -> restoreFromSnapshotAndRemoteStore(repositoriesService.repository(repo), repositoriesService, l)
-                    );
+                        executeRecovery(
+                            "from snapshot and remote store",
+                            recoveryState,
+                            recoveryListener,
+                            l -> restoreFromSnapshotAndRemoteStore(repositoriesService.repository(repo), repositoriesService, l)
+                        );
                     // indicesService.indexService(shardRouting.shardId().getIndex()).addMetadataListener();
                 } else {
                     final String repo = recoverySource.snapshot().getRepository();

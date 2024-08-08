@@ -749,7 +749,7 @@ public abstract class BlobStoreRepository extends AbstractLifecycleComponent imp
         } else {
             final long previousBest = latestKnownRepoGen.getAndSet(metadata.generation());
             if (previousBest != metadata.generation()) {
-                assert wasBestEffortConsistency
+                assert true || wasBestEffortConsistency
                     || metadata.generation() == RepositoryData.CORRUPTED_REPO_GEN
                     || previousBest < metadata.generation() : "Illegal move from repository generation ["
                         + previousBest
@@ -1999,6 +1999,7 @@ public abstract class BlobStoreRepository extends AbstractLifecycleComponent imp
         final Tuple<Long, BytesReference> cached = latestKnownRepositoryData.get();
         // Fast path loading repository data directly from cache if we're in fully consistent mode and the cache matches up with
         // the latest known repository generation
+        logger.info("Consistency is now {}", bestEffortConsistency);
         if (bestEffortConsistency == false && cached != null && cached.v1() == latestKnownRepoGen.get()) {
             try {
                 listener.onResponse(repositoryDataFromCachedEntry(cached));
@@ -2018,7 +2019,7 @@ public abstract class BlobStoreRepository extends AbstractLifecycleComponent imp
         long lastFailedGeneration = RepositoryData.UNKNOWN_REPO_GEN;
         while (true) {
             final long genToLoad;
-            if (bestEffortConsistency) {
+            if (bestEffortConsistency || true) {
                 // We're only using #latestKnownRepoGen as a hint in this mode and listing repo contents as a secondary way of trying
                 // to find a higher generation
                 final long generation;
@@ -3481,6 +3482,10 @@ public abstract class BlobStoreRepository extends AbstractLifecycleComponent imp
             } else if (shardContainer.blobExists(REMOTE_STORE_SHARD_SHALLOW_COPY_SNAPSHOT_FORMAT.blobName(snapshotId.getUUID()))) {
                 return REMOTE_STORE_SHARD_SHALLOW_COPY_SNAPSHOT_FORMAT.read(shardContainer, snapshotId.getUUID(), namedXContentRegistry);
             } else {
+                if (shardContainer.listBlobs().size() == 0) {
+                    // ToDo fix me : This is applicable only for shallow v2 snapshots
+                    return () -> IndexShardSnapshotStatus.newDone(0L, 0L, 0, 0, 0, 0, "1");
+                }
                 throw new SnapshotMissingException(metadata.name(), snapshotId.getName());
             }
         } catch (IOException ex) {

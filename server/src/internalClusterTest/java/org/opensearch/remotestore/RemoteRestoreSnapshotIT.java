@@ -40,6 +40,7 @@ import org.opensearch.test.InternalTestCluster;
 import org.opensearch.test.OpenSearchIntegTestCase;
 import org.junit.After;
 import org.junit.Before;
+import org.opensearch.test.junit.annotations.TestLogging;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -61,6 +62,7 @@ import static org.opensearch.index.remote.RemoteStoreEnums.DataCategory.TRANSLOG
 import static org.opensearch.index.remote.RemoteStoreEnums.DataType.DATA;
 import static org.opensearch.index.remote.RemoteStoreEnums.DataType.METADATA;
 import static org.opensearch.indices.RemoteStoreSettings.CLUSTER_REMOTE_STORE_PATH_TYPE_SETTING;
+import static org.opensearch.snapshots.SnapshotsService.SHALLOW_SNAPSHOT_V2;
 import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertAcked;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
@@ -747,9 +749,10 @@ public class RemoteRestoreSnapshotIT extends AbstractSnapshotIntegTestCase {
         assertTrue(exception.getMessage().contains("cannot remove setting [index.remote_store.segment.repository]" + " on restore"));
     }
 
+    @TestLogging(value = "org.opensearch.snapshots:TRACE", reason = "to ensure we log connection events on DEBUG level")
     public void testCreateShallowCopyV2() throws Exception {
 
-        Settings snapshotSettings = Settings.builder().put("snapshot.shallow_snapshot_v2", true).build();
+        Settings snapshotSettings = Settings.builder().put(SHALLOW_SNAPSHOT_V2.getKey(), true).build();
         internalCluster().startClusterManagerOnlyNode(Settings.builder().put(snapshotSettings).build());
         internalCluster().startDataOnlyNode(Settings.builder().put(snapshotSettings).build());
         String indexName1 = "testindex1";
@@ -784,21 +787,76 @@ public class RemoteRestoreSnapshotIT extends AbstractSnapshotIntegTestCase {
         assertThat(snapshotInfo.successfulShards(), equalTo(snapshotInfo.totalShards()));
 
         // // delete indices
-        // DeleteResponse deleteResponse = client().prepareDelete(indexName1, "0").execute().actionGet();
-        // assertEquals(deleteResponse.getResult(), DocWriteResponse.Result.DELETED);
-        // RestoreSnapshotResponse restoreSnapshotResponse1 = client.admin()
-        // .cluster()
-        // .prepareRestoreSnapshot(snapshotRepoName, snapshotName1)
-        // .setWaitForCompletion(false)
-        // .setIndices(indexName1)
-        // .setRenamePattern(indexName1)
-        // .setRenameReplacement(restoredIndexName1)
-        // .get();
-        //
-        // assertEquals(restoreSnapshotResponse1.status(), RestStatus.ACCEPTED);
-        // ensureYellowAndNoInitializingShards(restoredIndexName1);
-        // ensureGreen(restoredIndexName1);
-        // assertDocsPresentInIndex(client(), restoredIndexName1, numDocsInIndex1);
+//         DeleteResponse deleteResponse = client().prepareDelete(indexName1, "0").execute().actionGet();
+//         assertEquals(deleteResponse.getResult(), DocWriteResponse.Result.DELETED);
+         RestoreSnapshotResponse restoreSnapshotResponse1 = client.admin()
+         .cluster()
+         .prepareRestoreSnapshot(snapshotRepoName, snapshotName1)
+         .setWaitForCompletion(false)
+         .setIndices(indexName1)
+         .setRenamePattern(indexName1)
+         .setRenameReplacement(restoredIndexName1)
+         .get();
+
+         assertEquals(restoreSnapshotResponse1.status(), RestStatus.ACCEPTED);
+         ensureYellowAndNoInitializingShards(restoredIndexName1);
+         ensureGreen(restoredIndexName1);
+         assertDocsPresentInIndex(client(), restoredIndexName1, numDocsInIndex1);
+    }
+
+    @TestLogging(value = "org.opensearch.snapshots:TRACE", reason = "to ensure we log connection events on DEBUG level")
+    public void testCreateShallowCopyV2_No() throws Exception {
+
+        Settings snapshotSettings = Settings.builder().put(SHALLOW_SNAPSHOT_V2.getKey(), false).build();
+        internalCluster().startClusterManagerOnlyNode(Settings.builder().put(snapshotSettings).build());
+        internalCluster().startDataOnlyNode(Settings.builder().put(snapshotSettings).build());
+        String indexName1 = "testindex1";
+        String indexName2 = "testindex2";
+        String snapshotRepoName = "test-create-snapshot-repo";
+        String snapshotName1 = "test-create-snapshot1";
+        Path absolutePath1 = randomRepoPath().toAbsolutePath();
+        logger.info("Snapshot Path [{}]", absolutePath1);
+        String restoredIndexName1 = indexName1 + "-restored";
+
+        createRepository(snapshotRepoName, "fs", getRepositorySettings(absolutePath1, true));
+
+        Client client = client();
+        Settings indexSettings = getIndexSettings(20, 0).build();
+        createIndex(indexName1, indexSettings);
+
+        Settings indexSettings2 = getIndexSettings(15, 0).build();
+        createIndex(indexName2, indexSettings2);
+
+        final int numDocsInIndex1 = 10;
+        final int numDocsInIndex2 = 20;
+        indexDocuments(client, indexName1, numDocsInIndex1);
+        indexDocuments(client, indexName2, numDocsInIndex2);
+        ensureGreen(indexName1, indexName2);
+
+        internalCluster().startDataOnlyNode(Settings.builder().put(snapshotSettings).build());
+        logger.info("--> snapshot");
+
+        SnapshotInfo snapshotInfo = createSnapshot(snapshotRepoName, snapshotName1, Collections.emptyList());
+        assertThat(snapshotInfo.state(), equalTo(SnapshotState.SUCCESS));
+        assertThat(snapshotInfo.successfulShards(), greaterThan(0));
+        assertThat(snapshotInfo.successfulShards(), equalTo(snapshotInfo.totalShards()));
+
+        // // delete indices
+        DeleteResponse deleteResponse = client().prepareDelete(indexName1, "0").execute().actionGet();
+        assertEquals(deleteResponse.getResult(), DocWriteResponse.Result.DELETED);
+        RestoreSnapshotResponse restoreSnapshotResponse1 = client.admin()
+            .cluster()
+            .prepareRestoreSnapshot(snapshotRepoName, snapshotName1)
+            .setWaitForCompletion(false)
+            .setIndices(indexName1)
+            .setRenamePattern(indexName1)
+            .setRenameReplacement(restoredIndexName1)
+            .get();
+
+        assertEquals(restoreSnapshotResponse1.status(), RestStatus.ACCEPTED);
+        ensureYellowAndNoInitializingShards(restoredIndexName1);
+        ensureGreen(restoredIndexName1);
+        assertDocsPresentInIndex(client(), restoredIndexName1, numDocsInIndex1);
     }
 
 }
