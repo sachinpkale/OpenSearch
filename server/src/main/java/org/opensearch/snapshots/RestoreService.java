@@ -256,7 +256,6 @@ public class RestoreService implements ClusterStateApplier {
             }
             // Read snapshot info and metadata from the repository
             final String repositoryName = request.repository();
-            logger.info("Reading it now");
             Repository repository = repositoriesService.repository(repositoryName);
             final StepListener<RepositoryData> repositoryDataListener = new StepListener<>();
             repository.getRepositoryData(repositoryDataListener);

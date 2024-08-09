@@ -113,6 +113,8 @@ public class InternalSnapshotsInfoService implements ClusterStateListener, Snaps
 
     private final Object mutex;
 
+    private volatile SnapshotInfo snapshotInfo;
+
     public InternalSnapshotsInfoService(
         final Settings settings,
         final ClusterService clusterService,
@@ -134,6 +136,7 @@ public class InternalSnapshotsInfoService implements ClusterStateListener, Snaps
         if (DiscoveryNode.isClusterManagerNode(settings)) {
             clusterService.addListener(this);
         }
+        snapshotInfo = null;
     }
 
     private void setMaxConcurrentFetches(Integer maxConcurrentFetches) {
@@ -167,6 +170,9 @@ public class InternalSnapshotsInfoService implements ClusterStateListener, Snaps
                     if (knownSnapshotShards.containsKey(snapshotShard) == false && failedSnapshotShards.contains(snapshotShard) == false) {
                         // check if already fetching snapshot info in progress
                         if (unknownSnapshotShards.add(snapshotShard)) {
+                            if (snapshotInfo == null || snapshotShard.snapshot.getSnapshotId() != snapshotInfo.snapshotId() ) {
+                                snapshotInfo = repositoriesService.get().repository(snapshotShard.snapshot.getRepository()).getSnapshotInfo(snapshotShard.snapshot.getSnapshotId());
+                            }
                             queue.add(snapshotShard);
                             unknownShards += 1;
                         }
@@ -238,14 +244,13 @@ public class InternalSnapshotsInfoService implements ClusterStateListener, Snaps
             final Repository repository = repositories.repository(snapshotShard.snapshot.getRepository());
 
             logger.debug("fetching snapshot shard size for {}", snapshotShard);
-            final long snapshotShardSize = repository.getShardSnapshotStatus(
-                snapshotShard.snapshot().getSnapshotId(),
+            long snapshotShardSize  = repository.getShardSnapshotStatusV2(
+                snapshotInfo,
                 snapshotShard.index(),
                 snapshotShard.shardId()
-            ).asCopy().getTotalSize();
+            ).asCopy().getTotalSize();;
 
             logger.debug("snapshot shard size for {}: {} bytes", snapshotShard, snapshotShardSize);
-
             boolean updated = false;
             synchronized (mutex) {
                 removed = unknownSnapshotShards.remove(snapshotShard);

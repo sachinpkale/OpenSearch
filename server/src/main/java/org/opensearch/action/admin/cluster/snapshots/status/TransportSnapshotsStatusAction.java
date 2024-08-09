@@ -447,7 +447,7 @@ public class TransportSnapshotsStatusAction extends TransportClusterManagerNodeA
                             // could not be taken due to partial being set to false.
                             shardSnapshotStatus = IndexShardSnapshotStatus.newFailed("skipped");
                         } else {
-                            shardSnapshotStatus = repository.getShardSnapshotStatus(snapshotInfo.snapshotId(), indexId, shardId);
+                            shardSnapshotStatus = repository.getShardSnapshotStatusV2(snapshotInfo, indexId, shardId);
                         }
                         shardStatus.put(shardId, shardSnapshotStatus);
                     }
