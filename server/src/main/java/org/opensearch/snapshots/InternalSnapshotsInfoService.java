@@ -113,7 +113,6 @@ public class InternalSnapshotsInfoService implements ClusterStateListener, Snaps
 
     private final Object mutex;
 
-    private volatile SnapshotInfo snapshotInfo;
 
     public InternalSnapshotsInfoService(
         final Settings settings,
@@ -136,7 +135,6 @@ public class InternalSnapshotsInfoService implements ClusterStateListener, Snaps
         if (DiscoveryNode.isClusterManagerNode(settings)) {
             clusterService.addListener(this);
         }
-        snapshotInfo = null;
     }
 
     private void setMaxConcurrentFetches(Integer maxConcurrentFetches) {
@@ -170,9 +168,6 @@ public class InternalSnapshotsInfoService implements ClusterStateListener, Snaps
                     if (knownSnapshotShards.containsKey(snapshotShard) == false && failedSnapshotShards.contains(snapshotShard) == false) {
                         // check if already fetching snapshot info in progress
                         if (unknownSnapshotShards.add(snapshotShard)) {
-                            if (snapshotInfo == null || snapshotShard.snapshot.getSnapshotId() != snapshotInfo.snapshotId() ) {
-                                snapshotInfo = repositoriesService.get().repository(snapshotShard.snapshot.getRepository()).getSnapshotInfo(snapshotShard.snapshot.getSnapshotId());
-                            }
                             queue.add(snapshotShard);
                             unknownShards += 1;
                         }
@@ -244,11 +239,16 @@ public class InternalSnapshotsInfoService implements ClusterStateListener, Snaps
             final Repository repository = repositories.repository(snapshotShard.snapshot.getRepository());
 
             logger.debug("fetching snapshot shard size for {}", snapshotShard);
-            long snapshotShardSize  = repository.getShardSnapshotStatusV2(
-                snapshotInfo,
-                snapshotShard.index(),
-                snapshotShard.shardId()
-            ).asCopy().getTotalSize();;
+            long snapshotShardSize;
+            if (snapshotShard.pinnedTimestamp > 0) {
+                snapshotShardSize = 0;
+            } else {
+                snapshotShardSize = repository.getShardSnapshotStatus(
+                    snapshotShard.snapshot().getSnapshotId(),
+                    snapshotShard.index(),
+                    snapshotShard.shardId()
+                ).asCopy().getTotalSize();
+            }
 
             logger.debug("snapshot shard size for {}: {} bytes", snapshotShard, snapshotShardSize);
             boolean updated = false;
@@ -359,7 +359,8 @@ public class InternalSnapshotsInfoService implements ClusterStateListener, Snaps
                 final SnapshotShard snapshotShard = new SnapshotShard(
                     snapshotRecoverySource.snapshot(),
                     snapshotRecoverySource.index(),
-                    shardRouting.shardId()
+                    shardRouting.shardId(),
+                    snapshotRecoverySource.getPinnedTimestamp()
                 );
                 snapshotShards.add(snapshotShard);
             }
@@ -379,10 +380,17 @@ public class InternalSnapshotsInfoService implements ClusterStateListener, Snaps
         private final IndexId index;
         private final ShardId shardId;
 
+        private long pinnedTimestamp;
+
         public SnapshotShard(Snapshot snapshot, IndexId index, ShardId shardId) {
+            this(snapshot, index, shardId, 0L);
+        }
+
+        public SnapshotShard(Snapshot snapshot, IndexId index, ShardId shardId, long pinnedTimestamp) {
             this.snapshot = snapshot;
             this.index = index;
             this.shardId = shardId;
+            this.pinnedTimestamp = pinnedTimestamp;
         }
 
         public Snapshot snapshot() {
