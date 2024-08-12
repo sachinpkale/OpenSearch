@@ -831,6 +831,7 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory implement
             return;
         }
 
+        // ToDo: instead of keep last N files, we need to keep files since last successful run of scheduler
         List<String> metadataFilesEligibleToDelete = new ArrayList<>(
             sortedMetadataFileList.subList(lastNMetadataFilesToKeep, sortedMetadataFileList.size())
         );
