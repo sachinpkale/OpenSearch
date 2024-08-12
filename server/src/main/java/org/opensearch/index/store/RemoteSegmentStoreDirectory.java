@@ -196,7 +196,6 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory implement
         Set<String> lockedMetadataFiles = RemoteStoreUtils.getPinnedTimestampLockedFiles(
             metadataFiles,
             Set.of(timestamp),
-            metadataFilePinnedTimestampMap,
             MetadataFilenameUtils::getTimestamp,
             MetadataFilenameUtils::getNodeIdByPrimaryTermAndGen
         );

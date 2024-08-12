@@ -381,6 +381,27 @@ public class RemoteStoreUtils {
     /**
      * Determines and returns a set of metadata files that match provided pinned timestamps.
      *
+     * This method is an overloaded version of getPinnedTimestampLockedFiles and do not use cached entries to find
+     * the metadata file
+     *
+     * @param metadataFiles A list of metadata file names. Expected to be sorted in descending order of timestamp.
+     * @param pinnedTimestampSet A set of timestamps representing pinned points in time.
+     * @param getTimestampFunction A function that extracts the timestamp from a metadata file name.
+     * @param prefixFunction A function that extracts a tuple of prefix information from a metadata file name.
+     * @return A set of metadata file names that are implicitly locked based on the pinned timestamps.
+     */
+    public static Set<String> getPinnedTimestampLockedFiles(
+        List<String> metadataFiles,
+        Set<Long> pinnedTimestampSet,
+        Function<String, Long> getTimestampFunction,
+        Function<String, Tuple<String, String>> prefixFunction
+    ) {
+        return getPinnedTimestampLockedFiles(metadataFiles, pinnedTimestampSet, new HashMap<>(), getTimestampFunction, prefixFunction);
+    }
+
+    /**
+     * Determines and returns a set of metadata files that match provided pinned timestamps.
+     *
      * This method identifies metadata files that are considered implicitly locked due to their timestamps
      * matching or being the closest preceding timestamp to the pinned timestamps. It uses a caching mechanism
      * to improve performance for previously processed timestamps.
@@ -394,6 +415,9 @@ public class RemoteStoreUtils {
      *
      * @param metadataFiles A list of metadata file names. Expected to be sorted in descending order of timestamp.
      * @param pinnedTimestampSet A set of timestamps representing pinned points in time.
+     * @param metadataFilePinnedTimestampMap A map used for caching processed timestamps and their corresponding metadata files.
+     * @param getTimestampFunction A function that extracts the timestamp from a metadata file name.
+     * @param prefixFunction A function that extracts a tuple of prefix information from a metadata file name.
      * @return A set of metadata file names that are implicitly locked based on the pinned timestamps.
      *
      */
