@@ -586,25 +586,28 @@ public class SnapshotsService extends AbstractLifecycleComponent implements Clus
         long timestampToPin,
         ActionListener<RepositoryData> listener
     ) {
-        listener.onResponse(repositoryData);
-        // remoteStorePinnedTimestampService.pinTimestamp(
-        // timestampToPin,
-        // snapshot.getRepository() + "__" + snapshot.getSnapshotId(),
-        // new ActionListener<Void>() {
-        // @Override
-        // public void onResponse(Void unused) {
-        // logger.debug("Timestamp pinned successfully for snapshot {}", snapshot.getSnapshotId().getName());
-        // listener.onResponse(repositoryData);
-        // }
-        //
-        // @Override
-        // public void onFailure(Exception e) {
-        // logger.error("Failed to pin timestamp for snapshot {} with exception {}", snapshot.getSnapshotId().getName(), e);
-        // listener.onFailure(e);
-        //
-        // }
-        // }
-        // );
+        try {
+            remoteStorePinnedTimestampService.pinTimestamp(
+                timestampToPin,
+                snapshot.getRepository() + "__" + snapshot.getSnapshotId(),
+                new ActionListener<>() {
+                    @Override
+                    public void onResponse(Void unused) {
+                        logger.debug("Timestamp pinned successfully for snapshot {}", snapshot.getSnapshotId().getName());
+                        listener.onResponse(repositoryData);
+                    }
+
+                    @Override
+                    public void onFailure(Exception e) {
+                        logger.error("Failed to pin timestamp for snapshot {} with exception {}", snapshot.getSnapshotId().getName(), e);
+                        listener.onFailure(e);
+
+                    }
+                }
+            );
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private static void ensureSnapshotNameNotRunning(
