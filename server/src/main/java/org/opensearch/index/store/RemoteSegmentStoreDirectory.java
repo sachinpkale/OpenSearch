@@ -58,7 +58,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -862,8 +861,14 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory implement
 
         // Along with last N files, we need to keep files since last successful run of scheduler
         long lastSuccessfulFetchOfPinnedTimestamps = pinnedTimestampsState.v1();
-        long minimumAgeInMillis = lastSuccessfulFetchOfPinnedTimestamps + RemoteStorePinnedTimestampService.getPinnedTimestampsLookbackInterval().getMillis();
-        metadataFilesEligibleToDelete = RemoteStoreUtils.filterOutMetadataFilesBasedOnAge(metadataFilesEligibleToDelete, MetadataFilenameUtils::getTimestamp, TimeValue.timeValueMillis(minimumAgeInMillis));
+        long minimumAgeInMillis = lastSuccessfulFetchOfPinnedTimestamps + RemoteStorePinnedTimestampService
+            .getPinnedTimestampsLookbackInterval()
+            .getMillis();
+        metadataFilesEligibleToDelete = RemoteStoreUtils.filterOutMetadataFilesBasedOnAge(
+            metadataFilesEligibleToDelete,
+            MetadataFilenameUtils::getTimestamp,
+            TimeValue.timeValueMillis(minimumAgeInMillis)
+        );
 
         List<String> metadataFilesToBeDeleted = metadataFilesEligibleToDelete.stream()
             .filter(metadataFile -> allLockFiles.contains(metadataFile) == false)
