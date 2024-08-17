@@ -271,6 +271,7 @@ public class RemoteStorePinnedTimestampService implements Closeable {
                 @Override
                 public void onResponse(List<BlobMetadata> blobMetadata) {
                     if (blobMetadata.isEmpty()) {
+                        pinnedTimestampsSet = new Tuple<>(triggerTimestamp, Set.of());
                         return;
                     }
                     PinnedTimestamps pinnedTimestamps = readExistingPinnedTimestamps(blobMetadata.get(0).name(), remotePinnedTimestamps);

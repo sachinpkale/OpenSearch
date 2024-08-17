@@ -27,6 +27,7 @@ import org.opensearch.common.blobstore.BlobMetadata;
 import org.opensearch.common.blobstore.support.PlainBlobMetadata;
 import org.opensearch.common.collect.Tuple;
 import org.opensearch.common.settings.Settings;
+import org.opensearch.common.unit.TimeValue;
 import org.opensearch.core.index.Index;
 import org.opensearch.core.index.shard.ShardId;
 import org.opensearch.index.shard.IndexShardTestUtils;
@@ -951,5 +952,67 @@ public class RemoteStoreUtilsTests extends OpenSearchTestCase {
         assertTrue(implicitLockedFiles.contains(metadataFiles.get(6999L)));
         // Now we cache all the matches except the last one.
         assertEquals(0, metadataFilePinnedTimestampCache.size());
+    }
+
+    public void testFilterOutMetadataFilesBasedOnAge_AllFilesOldEnough() {
+        List<String> metadataFiles = Arrays.asList(
+            (System.currentTimeMillis() - 150000) + "_file1.txt",
+            (System.currentTimeMillis() - 300000) + "_file2.txt",
+            (System.currentTimeMillis() - 450000) + "_file3.txt"
+        );
+
+        TimeValue minimumAge = TimeValue.timeValueSeconds(10);
+
+        List<String> result = RemoteStoreUtils.filterOutMetadataFilesBasedOnAge(
+            metadataFiles,
+            file -> Long.valueOf(file.split("_")[0]),
+            minimumAge
+        );
+        assertEquals(metadataFiles, result);
+    }
+
+    public void testFilterOutMetadataFilesBasedOnAge_SomeFilesTooNew() {
+        String file1 = (System.currentTimeMillis() - 150000) + "_file1.txt";
+        String file2 = (System.currentTimeMillis() - 300000) + "_file2.txt";
+        String file3 = (System.currentTimeMillis() + 450000) + "_file3.txt";
+
+        List<String> metadataFiles = Arrays.asList(file1, file2, file3);
+        TimeValue minimumAge = TimeValue.timeValueSeconds(10);
+
+        List<String> result = RemoteStoreUtils.filterOutMetadataFilesBasedOnAge(
+            metadataFiles,
+            file -> Long.valueOf(file.split("_")[0]),
+            minimumAge
+        );
+        List<String> expected = Arrays.asList(file1, file2);
+        assertEquals(expected, result);
+    }
+
+    public void testFilterOutMetadataFilesBasedOnAge_AllFilesTooNew() {
+        String file1 = (System.currentTimeMillis() + 150000) + "_file1.txt";
+        String file2 = (System.currentTimeMillis() + 300000) + "_file2.txt";
+        String file3 = (System.currentTimeMillis() + 450000) + "_file3.txt";
+
+        List<String> metadataFiles = Arrays.asList(file1, file2, file3);
+        TimeValue minimumAge = TimeValue.timeValueSeconds(10);
+
+        List<String> result = RemoteStoreUtils.filterOutMetadataFilesBasedOnAge(
+            metadataFiles,
+            file -> Long.valueOf(file.split("_")[0]),
+            minimumAge
+        );
+        assertTrue(result.isEmpty());
+    }
+
+    public void testFilterOutMetadataFilesBasedOnAge_EmptyInputList() {
+        List<String> metadataFiles = Arrays.asList();
+        TimeValue minimumAge = TimeValue.timeValueSeconds(10);
+
+        List<String> result = RemoteStoreUtils.filterOutMetadataFilesBasedOnAge(
+            metadataFiles,
+            file -> Long.valueOf(file.split("_")[0]),
+            minimumAge
+        );
+        assertTrue(result.isEmpty());
     }
 }

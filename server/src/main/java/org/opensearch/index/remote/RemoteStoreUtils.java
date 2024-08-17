@@ -20,10 +20,13 @@ import org.opensearch.cluster.node.DiscoveryNodes;
 import org.opensearch.cluster.routing.RoutingTable;
 import org.opensearch.common.collect.Tuple;
 import org.opensearch.common.settings.Settings;
+import org.opensearch.common.unit.TimeValue;
 import org.opensearch.node.remotestore.RemoteStoreNodeAttribute;
 import org.opensearch.node.remotestore.RemoteStoreNodeService;
+import org.opensearch.node.remotestore.RemoteStorePinnedTimestampService;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collection;
@@ -38,6 +41,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -484,5 +488,29 @@ public class RemoteStoreUtils {
         }
 
         return implicitLockedFiles;
+    }
+
+    /**
+     * Filters out metadata files based on their age.
+     *
+     * @param metadataFiles        List of metadata file names to filter.
+     * @param getTimestampFunction Function to extract timestamp from a file name.
+     * @param minimumAge           Minimum age threshold for filtering.
+     * @return A list of metadata file names that are older than the minimum age.
+     */
+    public static List<String> filterOutMetadataFilesBasedOnAge(
+        List<String> metadataFiles,
+        Function<String, Long> getTimestampFunction,
+        TimeValue minimumAge
+    ) {
+        long maxTimestampAllowed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime()) - minimumAge.getMillis();
+        List<String> metadataFilesWithMinAge = new ArrayList<>();
+        for (String metadataFileName : metadataFiles) {
+            long metadataTimestamp = getTimestampFunction.apply(metadataFileName);
+            if (metadataTimestamp < maxTimestampAllowed) {
+                metadataFilesWithMinAge.add(metadataFileName);
+            }
+        }
+        return metadataFilesWithMinAge;
     }
 }
