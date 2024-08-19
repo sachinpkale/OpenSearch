@@ -40,7 +40,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -502,7 +501,7 @@ public class RemoteStoreUtils {
         Function<String, Long> getTimestampFunction,
         TimeValue minimumAge
     ) {
-        long maxTimestampAllowed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime()) - minimumAge.getMillis();
+        long maxTimestampAllowed = System.currentTimeMillis() - minimumAge.getMillis();
         List<String> metadataFilesWithMinAge = new ArrayList<>();
         for (String metadataFileName : metadataFiles) {
             long metadataTimestamp = getTimestampFunction.apply(metadataFileName);
