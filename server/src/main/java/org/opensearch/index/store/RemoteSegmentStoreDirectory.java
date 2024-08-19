@@ -40,6 +40,7 @@ import org.opensearch.index.store.lockmanager.RemoteStoreLockManager;
 import org.opensearch.index.store.lockmanager.RemoteStoreMetadataLockManager;
 import org.opensearch.index.store.remote.metadata.RemoteSegmentMetadata;
 import org.opensearch.index.store.remote.metadata.RemoteSegmentMetadataHandler;
+import org.opensearch.indices.RemoteStoreSettings;
 import org.opensearch.indices.replication.checkpoint.ReplicationCheckpoint;
 import org.opensearch.node.remotestore.RemoteStorePinnedTimestampService;
 import org.opensearch.threadpool.ThreadPool;
@@ -830,7 +831,7 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory implement
         }
 
         // Check last fetch status of pinned timestamps. If stale, return.
-        if (RemoteStorePinnedTimestampService.isPinnedTimestampStateStale()) {
+        if (RemoteStoreUtils.isPinnedTimestampStateStale()) {
             logger.warn("Skipping remote segment store garbage collection as last fetch of pinned timestamp is stale");
             return;
         }
@@ -861,8 +862,7 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory implement
 
         // Along with last N files, we need to keep files since last successful run of scheduler
         long lastSuccessfulFetchOfPinnedTimestamps = pinnedTimestampsState.v1();
-        long minimumAgeInMillis = lastSuccessfulFetchOfPinnedTimestamps + RemoteStorePinnedTimestampService
-            .getPinnedTimestampsLookbackInterval()
+        long minimumAgeInMillis = lastSuccessfulFetchOfPinnedTimestamps + RemoteStoreSettings.getPinnedTimestampsLookbackInterval()
             .getMillis();
         metadataFilesEligibleToDelete = RemoteStoreUtils.filterOutMetadataFilesBasedOnAge(
             metadataFilesEligibleToDelete,

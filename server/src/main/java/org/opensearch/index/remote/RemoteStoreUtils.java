@@ -21,8 +21,10 @@ import org.opensearch.cluster.routing.RoutingTable;
 import org.opensearch.common.collect.Tuple;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.common.unit.TimeValue;
+import org.opensearch.indices.RemoteStoreSettings;
 import org.opensearch.node.remotestore.RemoteStoreNodeAttribute;
 import org.opensearch.node.remotestore.RemoteStoreNodeService;
+import org.opensearch.node.remotestore.RemoteStorePinnedTimestampService;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -510,5 +512,25 @@ public class RemoteStoreUtils {
             }
         }
         return metadataFilesWithMinAge;
+    }
+
+    /**
+     * Determines if the pinned timestamp state is stale based on the provided remote store settings.
+     *
+     * This method checks if the last successful fetch timestamp is older than a calculated stale buffer time.
+     * The stale buffer time is computed using the pinned timestamps scheduler interval and lookback interval
+     * from the remote store settings.
+     *
+     * @return true if the pinned timestamp state is considered stale, false otherwise.
+     *
+     * @throws NullPointerException if remoteStoreSettings is null.
+     * @throws IllegalStateException if unable to retrieve the pinned timestamps.
+     */
+    public static boolean isPinnedTimestampStateStale() {
+        long lastSuccessfulFetchTimestamp = RemoteStorePinnedTimestampService.getPinnedTimestamps().v1();
+        long staleBufferInMillis = (RemoteStoreSettings.getPinnedTimestampsSchedulerInterval().millis() * 3) + RemoteStoreSettings
+            .getPinnedTimestampsLookbackInterval()
+            .millis();
+        return lastSuccessfulFetchTimestamp < (System.currentTimeMillis() - staleBufferInMillis);
     }
 }
