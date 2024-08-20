@@ -605,7 +605,7 @@ public class SnapshotsService extends AbstractLifecycleComponent implements Clus
                     }
                 }
             );
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
