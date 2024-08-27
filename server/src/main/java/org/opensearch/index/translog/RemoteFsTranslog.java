@@ -171,7 +171,9 @@ public class RemoteFsTranslog extends Translog {
             isTranslogMetadataEnabled
         );
         try {
-            download(translogTransferManager, location, logger, config.shouldSeedRemote(), timestamp);
+            if (config.getPinnedTimestamp() == 0) {
+                download(translogTransferManager, location, logger, config.shouldSeedRemote(), 0);
+            }
             Checkpoint checkpoint = readCheckpoint(location);
             logger.info("Downloaded data from remote translog till maxSeqNo = {}", checkpoint.maxSeqNo);
             this.readers.addAll(recoverFromFiles(checkpoint));
@@ -179,6 +181,9 @@ public class RemoteFsTranslog extends Translog {
                 String errorMsg = String.format(Locale.ROOT, "%s at least one reader must be recovered", shardId);
                 logger.error(errorMsg);
                 throw new IllegalStateException(errorMsg);
+            }
+            if (config.getPinnedTimestamp() > 0) {
+                translogTransferManager.populateFileTrackerWithLocalState(this.readers);
             }
             boolean success = false;
             current = null;
@@ -210,31 +215,6 @@ public class RemoteFsTranslog extends Translog {
     // visible for testing
     RemoteTranslogTransferTracker getRemoteTranslogTracker() {
         return remoteTranslogTransferTracker;
-    }
-
-    public static void download(
-        Repository repository,
-        ShardId shardId,
-        ThreadPool threadPool,
-        Path location,
-        RemoteStorePathStrategy pathStrategy,
-        RemoteStoreSettings remoteStoreSettings,
-        Logger logger,
-        boolean seedRemote,
-        boolean isTranslogMetadataEnabled
-    ) throws IOException {
-        download(
-            repository,
-            shardId,
-            threadPool,
-            location,
-            pathStrategy,
-            remoteStoreSettings,
-            logger,
-            seedRemote,
-            isTranslogMetadataEnabled,
-            0
-        );
     }
 
     public static void download(

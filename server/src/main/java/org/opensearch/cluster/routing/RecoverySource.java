@@ -48,6 +48,8 @@ import org.opensearch.snapshots.Snapshot;
 import java.io.IOException;
 import java.util.Objects;
 
+import static org.opensearch.Version.CURRENT;
+
 /**
  * Represents the recovery source of a shard. Available recovery types are:
  * <p>
@@ -265,8 +267,14 @@ public abstract class RecoverySource implements Writeable, ToXContentObject {
         private final boolean remoteStoreIndexShallowCopy;
         private final String sourceRemoteStoreRepository;
 
+        private final long pinnedTimestamp;
+
         public SnapshotRecoverySource(String restoreUUID, Snapshot snapshot, Version version, IndexId indexId) {
-            this(restoreUUID, snapshot, version, indexId, false, false, null);
+            this(restoreUUID, snapshot, version, indexId, false, false, null, 0L);
+        }
+
+        public SnapshotRecoverySource(String restoreUUID, Snapshot snapshot, Version version, IndexId indexId, long pinnedTimestamp) {
+            this(restoreUUID, snapshot, version, indexId, false, false, null, pinnedTimestamp);
         }
 
         public SnapshotRecoverySource(
@@ -285,6 +293,27 @@ public abstract class RecoverySource implements Writeable, ToXContentObject {
             this.isSearchableSnapshot = isSearchableSnapshot;
             this.remoteStoreIndexShallowCopy = remoteStoreIndexShallowCopy;
             this.sourceRemoteStoreRepository = sourceRemoteStoreRepository;
+            this.pinnedTimestamp = 0L;
+        }
+
+        public SnapshotRecoverySource(
+            String restoreUUID,
+            Snapshot snapshot,
+            Version version,
+            IndexId indexId,
+            boolean isSearchableSnapshot,
+            boolean remoteStoreIndexShallowCopy,
+            @Nullable String sourceRemoteStoreRepository,
+            long pinnedTimestamp
+        ) {
+            this.restoreUUID = restoreUUID;
+            this.snapshot = Objects.requireNonNull(snapshot);
+            this.version = Objects.requireNonNull(version);
+            this.index = Objects.requireNonNull(indexId);
+            this.isSearchableSnapshot = isSearchableSnapshot;
+            this.remoteStoreIndexShallowCopy = remoteStoreIndexShallowCopy;
+            this.sourceRemoteStoreRepository = sourceRemoteStoreRepository;
+            this.pinnedTimestamp = pinnedTimestamp;
         }
 
         SnapshotRecoverySource(StreamInput in) throws IOException {
@@ -303,6 +332,11 @@ public abstract class RecoverySource implements Writeable, ToXContentObject {
             } else {
                 remoteStoreIndexShallowCopy = false;
                 sourceRemoteStoreRepository = null;
+            }
+            if (in.getVersion().onOrAfter(CURRENT)) {
+                pinnedTimestamp = in.readLong();
+            } else {
+                pinnedTimestamp = 0L;
             }
         }
 
@@ -340,6 +374,10 @@ public abstract class RecoverySource implements Writeable, ToXContentObject {
             return remoteStoreIndexShallowCopy;
         }
 
+        public long getPinnedTimestamp() {
+            return pinnedTimestamp;
+        }
+
         @Override
         protected void writeAdditionalFields(StreamOutput out) throws IOException {
             out.writeString(restoreUUID);
@@ -353,6 +391,10 @@ public abstract class RecoverySource implements Writeable, ToXContentObject {
                 out.writeBoolean(remoteStoreIndexShallowCopy);
                 out.writeOptionalString(sourceRemoteStoreRepository);
             }
+            if (out.getVersion().onOrAfter(CURRENT)) {
+                out.writeLong(pinnedTimestamp);
+            }
+
         }
 
         @Override

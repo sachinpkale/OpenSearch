@@ -60,6 +60,7 @@ public final class TranslogConfig {
     private final ByteSizeValue bufferSize;
     private final String nodeId;
     private final boolean seedRemote;
+    private long pinnedTimestamp = 0;
 
     /**
      * Creates a new TranslogConfig instance
@@ -139,5 +140,13 @@ public final class TranslogConfig {
 
     public boolean shouldSeedRemote() {
         return seedRemote;
+    }
+
+    public long getPinnedTimestamp() {
+        return pinnedTimestamp;
+    }
+
+    public void setPinnedTimestamp(long pinnedTimestamp) {
+        this.pinnedTimestamp = pinnedTimestamp;
     }
 }
