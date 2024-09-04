@@ -8,8 +8,10 @@
 
 package org.opensearch.index.translog;
 
+import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.opensearch.cluster.service.ClusterService;
+import org.opensearch.common.SetOnce;
 import org.opensearch.common.blobstore.BlobMetadata;
 import org.opensearch.common.collect.Tuple;
 import org.opensearch.common.logging.Loggers;
@@ -52,6 +54,7 @@ import static org.opensearch.index.translog.transfer.TranslogTransferMetadata.ME
  */
 public class RemoteFsTimestampAwareTranslog extends RemoteFsTranslog {
 
+    private static Logger staticLogger = LogManager.getLogger(RemoteFsTimestampAwareTranslog.class);
     private final Logger logger;
     private final Map<Long, String> metadataFilePinnedTimestampMap;
     // For metadata files, with no min generation in the name, we cache generation data to avoid multiple reads.
@@ -165,7 +168,7 @@ public class RemoteFsTimestampAwareTranslog extends RemoteFsTranslog {
                         return;
                     }
 
-                    List<String> metadataFilesToBeDeleted = getMetadataFilesToBeDeleted(metadataFiles);
+                    List<String> metadataFilesToBeDeleted = getMetadataFilesToBeDeleted(metadataFiles, metadataFilePinnedTimestampMap, logger);
 
                     // If index is not deleted, make sure to keep latest metadata file
                     if (indexDeleted == false) {
@@ -260,7 +263,7 @@ public class RemoteFsTimestampAwareTranslog extends RemoteFsTranslog {
     }
 
     // Visible for testing
-    protected List<String> getMetadataFilesToBeDeleted(List<String> metadataFiles) {
+    protected static List<String> getMetadataFilesToBeDeleted(List<String> metadataFiles, Map<Long, String> metadataFilePinnedTimestampMap, Logger logger) {
         Tuple<Long, Set<Long>> pinnedTimestampsState = RemoteStorePinnedTimestampService.getPinnedTimestamps();
 
         // Keep files since last successful run of scheduler
@@ -357,7 +360,7 @@ public class RemoteFsTimestampAwareTranslog extends RemoteFsTranslog {
      * <br>
      * This will also delete all stale translog metadata files from remote except the latest basis the metadata file comparator.
      */
-    private void deleteStaleRemotePrimaryTerms(List<String> metadataFiles) {
+    private static void deleteStaleRemotePrimaryTerms(TranslogTransferManager translogTransferManager, List<String> metadataFiles, SetOnce<Boolean> olderPrimaryCleaned, Logger logger) {
         // The deletion of older translog files in remote store is on best-effort basis, there is a possibility that there
         // are older files that are no longer needed and should be cleaned up. In here, we delete all files that are part
         // of older primary term.
@@ -374,4 +377,44 @@ public class RemoteFsTimestampAwareTranslog extends RemoteFsTranslog {
             translogTransferManager.deletePrimaryTermsAsync(minimumReferencedPrimaryTerm);
         }
     }
+
+    public static void cleanup(TranslogTransferManager translogTransferManager) throws IOException {
+        ActionListener<List<BlobMetadata>> listMetadataFilesListener = new ActionListener<>() {
+            @Override
+            public void onResponse(List<BlobMetadata> blobMetadata) {
+                List<String> metadataFiles = blobMetadata.stream().map(BlobMetadata::name).collect(Collectors.toList());
+
+                try {
+                    if (metadataFiles.isEmpty()) {
+                        return;
+                    }
+
+                    List<String> metadataFilesToBeDeleted = getMetadataFilesToBeDeleted(metadataFiles, new HashMap<>(), staticLogger);
+
+                    if (metadataFilesToBeDeleted.isEmpty()) {
+                        return;
+                    }
+
+                    // For all the files that we are keeping, fetch min and max generations
+                    List<String> metadataFilesNotToBeDeleted = new ArrayList<>(metadataFiles);
+                    metadataFilesNotToBeDeleted.removeAll(metadataFilesToBeDeleted);
+
+                    // Delete stale metadata files
+                    translogTransferManager.deleteMetadataFilesAsync(
+                        metadataFilesToBeDeleted,
+                        // Delete stale primary terms
+                        () -> deleteStaleRemotePrimaryTerms(metadataFiles));
+                } catch (Exception e) {
+                    //
+                }
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                //
+            }
+        };
+        translogTransferManager.listTranslogMetadataFilesAsync(listMetadataFilesListener);
+    }
+
 }

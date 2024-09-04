@@ -114,6 +114,7 @@ import org.opensearch.index.remote.RemoteStoreEnums.PathType;
 import org.opensearch.index.remote.RemoteStorePathStrategy;
 import org.opensearch.index.remote.RemoteStorePathStrategy.PathInput;
 import org.opensearch.index.remote.RemoteStorePathStrategy.SnapshotShardPathInput;
+import org.opensearch.index.remote.RemoteTranslogTransferTracker;
 import org.opensearch.index.snapshots.IndexShardRestoreFailedException;
 import org.opensearch.index.snapshots.IndexShardSnapshotStatus;
 import org.opensearch.index.snapshots.blobstore.BlobStoreIndexShardSnapshot;
@@ -130,6 +131,7 @@ import org.opensearch.index.store.StoreFileMetadata;
 import org.opensearch.index.store.lockmanager.FileLockInfo;
 import org.opensearch.index.store.lockmanager.RemoteStoreLockManager;
 import org.opensearch.index.store.lockmanager.RemoteStoreLockManagerFactory;
+import org.opensearch.index.translog.RemoteBlobStoreInternalTranslogFactory;
 import org.opensearch.indices.RemoteStoreSettings;
 import org.opensearch.indices.recovery.RecoverySettings;
 import org.opensearch.indices.recovery.RecoveryState;
@@ -1312,6 +1314,17 @@ public abstract class BlobStoreRepository extends AbstractLifecycleComponent imp
                 ThreadPool.Names.REMOTE_PURGE,
                 remoteStoreShardShallowCopySnapshot.getRemoteStorePathStrategy()
             );
+
+            RemoteBlobStoreInternalTranslogFactory internalTranslogFactory = new RemoteBlobStoreInternalTranslogFactory(
+                remoteStoreLockManagerFactory.getRepositoriesService(),
+                threadPool,
+                remoteStoreRepoForIndex,
+                new RemoteTranslogTransferTracker(new ShardId(Index.UNKNOWN_INDEX_NAME, indexUUID, Integer.parseInt(shardId)), 1000),
+                remoteStoreSettings
+            );
+
+            internalTranslogFactory.newTranslog()
+
         }
     }
 
