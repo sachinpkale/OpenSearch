@@ -475,9 +475,11 @@ public class RemoteStoreUtils {
         // Add cached entries and collect new timestamps
         Set<Long> newPinnedTimestamps = new TreeSet<>(Collections.reverseOrder());
         for (Long pinnedTimestamp : pinnedTimestampSet) {
-            String cachedFile = metadataFilePinnedTimestampMap.get(pinnedTimestamp);
-            if (cachedFile != null) {
-                implicitLockedFiles.add(cachedFile);
+            if (metadataFilePinnedTimestampMap.containsKey(pinnedTimestamp)) {
+                String cachedFile = metadataFilePinnedTimestampMap.get(pinnedTimestamp);
+                if (cachedFile != null) {
+                    implicitLockedFiles.add(cachedFile);
+                }
             } else {
                 newPinnedTimestamps.add(pinnedTimestamp);
             }
@@ -516,6 +518,12 @@ public class RemoteStoreUtils {
                 currentPinnedTimestamp = timestampIterator.next();
             }
             prevMdTimestamp = currentMdTimestamp;
+        }
+        if (metadataFilePinnedTimestampMap.containsKey(currentPinnedTimestamp) == false) {
+            metadataFilePinnedTimestampMap.put(currentPinnedTimestamp, null);
+        }
+        while (timestampIterator.hasNext()) {
+            metadataFilePinnedTimestampMap.put(timestampIterator.next(), null);
         }
 
         return implicitLockedFiles;

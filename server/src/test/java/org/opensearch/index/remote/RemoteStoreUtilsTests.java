@@ -693,7 +693,9 @@ public class RemoteStoreUtilsTests extends OpenSearchTestCase {
         Set<String> implicitLockedFiles = metadataAndLocks.v2();
 
         assertEquals(0, implicitLockedFiles.size());
-        assertEquals(0, metadataFilePinnedTimestampCache.size());
+        assertEquals(2, metadataFilePinnedTimestampCache.size());
+        assertNull(metadataFilePinnedTimestampCache.get(800L));
+        assertNull(metadataFilePinnedTimestampCache.get(900L));
 
         // Pinned timestamps 800, 900, 1000
         // Metadata with timestamp 990
@@ -710,7 +712,9 @@ public class RemoteStoreUtilsTests extends OpenSearchTestCase {
         assertEquals(1, implicitLockedFiles.size());
         assertTrue(implicitLockedFiles.contains(metadataFiles.get(990L)));
         // This is still 0 as we don't cache the latest metadata file as it can change (explained in the next test case)
-        assertEquals(0, metadataFilePinnedTimestampCache.size());
+        assertEquals(2, metadataFilePinnedTimestampCache.size());
+        assertNull(metadataFilePinnedTimestampCache.get(800L));
+        assertNull(metadataFilePinnedTimestampCache.get(900L));
 
         // Pinned timestamps 800, 900, 1000
         // Metadata with timestamp 990, 995
@@ -727,7 +731,9 @@ public class RemoteStoreUtilsTests extends OpenSearchTestCase {
         assertEquals(1, implicitLockedFiles.size());
         assertTrue(implicitLockedFiles.contains(metadataFiles.get(995L)));
         // This is still 0 as we don't cache the latest metadata file as it can change
-        assertEquals(0, metadataFilePinnedTimestampCache.size());
+        assertEquals(2, metadataFilePinnedTimestampCache.size());
+        assertNull(metadataFilePinnedTimestampCache.get(800L));
+        assertNull(metadataFilePinnedTimestampCache.get(900L));
 
         // Pinned timestamps 800, 900, 1000
         // Metadata with timestamp 990, 995, 1000
@@ -744,7 +750,9 @@ public class RemoteStoreUtilsTests extends OpenSearchTestCase {
         assertEquals(1, implicitLockedFiles.size());
         assertTrue(implicitLockedFiles.contains(metadataFiles.get(1000L)));
         // This is still 0 as we don't cache the latest metadata file as it can change
-        assertEquals(0, metadataFilePinnedTimestampCache.size());
+        assertEquals(2, metadataFilePinnedTimestampCache.size());
+        assertNull(metadataFilePinnedTimestampCache.get(800L));
+        assertNull(metadataFilePinnedTimestampCache.get(900L));
 
         // Pinned timestamps 800, 900, 1000, 2000
         // Metadata with timestamp 990, 995, 1000, 1001
@@ -763,8 +771,10 @@ public class RemoteStoreUtilsTests extends OpenSearchTestCase {
         assertTrue(implicitLockedFiles.contains(metadataFiles.get(1000L)));
         assertTrue(implicitLockedFiles.contains(metadataFiles.get(1001L)));
         // Now we cache all the matches except the last one.
-        assertEquals(1, metadataFilePinnedTimestampCache.size());
+        assertEquals(3, metadataFilePinnedTimestampCache.size());
         assertEquals(metadataFiles.get(1000L), metadataFilePinnedTimestampCache.get(1000L));
+        assertNull(metadataFilePinnedTimestampCache.get(800L));
+        assertNull(metadataFilePinnedTimestampCache.get(900L));
 
         // Pinned timestamps 800, 900, 1000, 2000, 3000, 4000, 5000
         // Metadata with timestamp 990, 995, 1000, 1001
@@ -786,8 +796,10 @@ public class RemoteStoreUtilsTests extends OpenSearchTestCase {
         assertTrue(implicitLockedFiles.contains(metadataFiles.get(1000L)));
         assertTrue(implicitLockedFiles.contains(metadataFiles.get(1001L)));
         // Now we cache all the matches except the last one.
-        assertEquals(1, metadataFilePinnedTimestampCache.size());
+        assertEquals(3, metadataFilePinnedTimestampCache.size());
         assertEquals(metadataFiles.get(1000L), metadataFilePinnedTimestampCache.get(1000L));
+        assertNull(metadataFilePinnedTimestampCache.get(800L));
+        assertNull(metadataFilePinnedTimestampCache.get(900L));
 
         // Pinned timestamps 800, 900, 1000, 2000, 3000, 4000, 5000
         // Metadata with timestamp 990, 995, 1000, 1001, 1900, 2300
@@ -810,7 +822,7 @@ public class RemoteStoreUtilsTests extends OpenSearchTestCase {
         assertTrue(implicitLockedFiles.contains(metadataFiles.get(1900L)));
         assertTrue(implicitLockedFiles.contains(metadataFiles.get(2300L)));
         // Now we cache all the matches except the last one.
-        assertEquals(2, metadataFilePinnedTimestampCache.size());
+        assertEquals(4, metadataFilePinnedTimestampCache.size());
         assertEquals(metadataFiles.get(1000L), metadataFilePinnedTimestampCache.get(1000L));
         assertEquals(metadataFiles.get(1900L), metadataFilePinnedTimestampCache.get(2000L));
 
