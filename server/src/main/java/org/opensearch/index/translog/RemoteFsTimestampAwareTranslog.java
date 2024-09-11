@@ -472,7 +472,7 @@ public class RemoteFsTimestampAwareTranslog extends RemoteFsTranslog {
         }
     }
 
-    public static void cleanup(TranslogTransferManager translogTransferManager) throws IOException {
+    public static void cleanup(TranslogTransferManager translogTransferManager, boolean force, String pinningEntity) throws IOException {
         ActionListener<List<BlobMetadata>> listMetadataFilesListener = new ActionListener<>() {
             @Override
             public void onResponse(List<BlobMetadata> blobMetadata) {
