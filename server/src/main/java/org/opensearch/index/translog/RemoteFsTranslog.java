@@ -30,6 +30,7 @@ import org.opensearch.index.translog.transfer.TranslogTransferManager;
 import org.opensearch.index.translog.transfer.TranslogTransferMetadata;
 import org.opensearch.index.translog.transfer.listener.TranslogTransferListener;
 import org.opensearch.indices.RemoteStoreSettings;
+import org.opensearch.node.remotestore.RemoteStorePinnedTimestampService;
 import org.opensearch.repositories.Repository;
 import org.opensearch.repositories.blobstore.BlobStoreRepository;
 import org.opensearch.threadpool.ThreadPool;
@@ -124,7 +125,7 @@ public class RemoteFsTranslog extends Translog {
         );
         try {
             if (config.downloadRemoteTranslogOnInit()) {
-                download(translogTransferManager, location, logger, config.shouldSeedRemote(), 0);
+                download(translogTransferManager, location, logger, config.shouldSeedRemote(), RemoteStorePinnedTimestampService.NO_PINNED_TIMESTAMP);
             }
             Checkpoint checkpoint = readCheckpoint(location);
             logger.info("Downloaded data from remote translog till maxSeqNo = {}", checkpoint.maxSeqNo);

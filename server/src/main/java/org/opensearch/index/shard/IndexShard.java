@@ -193,6 +193,7 @@ import org.opensearch.indices.recovery.RecoveryTarget;
 import org.opensearch.indices.replication.checkpoint.ReplicationCheckpoint;
 import org.opensearch.indices.replication.checkpoint.SegmentReplicationCheckpointPublisher;
 import org.opensearch.indices.replication.common.ReplicationTimer;
+import org.opensearch.node.remotestore.RemoteStorePinnedTimestampService;
 import org.opensearch.repositories.RepositoriesService;
 import org.opensearch.repositories.Repository;
 import org.opensearch.search.suggest.completion.CompletionStats;
@@ -2623,7 +2624,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
 
     private boolean isSnapshotV2Restore() {
         return routingEntry().recoverySource().getType() == RecoverySource.Type.SNAPSHOT
-            && ((SnapshotRecoverySource) routingEntry().recoverySource()).pinnedTimestamp() > 0;
+            && ((SnapshotRecoverySource) routingEntry().recoverySource()).pinnedTimestamp() != RemoteStorePinnedTimestampService.NO_PINNED_TIMESTAMP;
     }
 
     private boolean assertSequenceNumbersInCommit() throws IOException {
@@ -2912,7 +2913,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
                 + recoveryState.getRecoverySource();
             StoreRecovery storeRecovery = new StoreRecovery(shardId, logger);
             SnapshotRecoverySource recoverySource = (SnapshotRecoverySource) recoveryState().getRecoverySource();
-            if (recoverySource.pinnedTimestamp() != 0) {
+            if (recoverySource.pinnedTimestamp() != RemoteStorePinnedTimestampService.NO_PINNED_TIMESTAMP) {
                 storeRecovery.recoverShallowSnapshotV2(
                     this,
                     repository,

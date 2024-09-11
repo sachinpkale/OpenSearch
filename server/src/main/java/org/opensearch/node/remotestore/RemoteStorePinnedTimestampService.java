@@ -47,6 +47,7 @@ import java.util.stream.Collectors;
 public class RemoteStorePinnedTimestampService implements Closeable {
     private static final Logger logger = LogManager.getLogger(RemoteStorePinnedTimestampService.class);
     private static Tuple<Long, Set<Long>> pinnedTimestampsSet = new Tuple<>(-1L, Set.of());
+    public static final Long NO_PINNED_TIMESTAMP = 0L;
     public static final String PINNED_TIMESTAMPS_PATH_TOKEN = "pinned_timestamps";
     public static final String PINNED_TIMESTAMPS_FILENAME_SEPARATOR = "__";
 

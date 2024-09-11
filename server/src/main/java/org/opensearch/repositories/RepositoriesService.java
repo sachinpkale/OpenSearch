@@ -85,6 +85,7 @@ import java.util.stream.Stream;
 
 import static org.opensearch.repositories.blobstore.BlobStoreRepository.REMOTE_STORE_INDEX_SHALLOW_COPY;
 import static org.opensearch.repositories.blobstore.BlobStoreRepository.SYSTEM_REPOSITORY_SETTING;
+import static org.opensearch.repositories.blobstore.BlobStoreRepository.SHALLOW_SNAPSHOT_V2;
 
 /**
  * Service responsible for maintaining and providing access to snapshot repositories on nodes.
@@ -699,6 +700,20 @@ public class RepositoriesService extends AbstractLifecycleComponent implements C
                     + minVersionInCluster
             );
         }
+        if (SHALLOW_SNAPSHOT_V2.get(repositoryMetadataSettings) && !minVersionInCluster.onOrAfter(Version.V_2_17_0)) {
+            throw new RepositoryException(
+                repositoryName,
+                "setting "
+                    + SHALLOW_SNAPSHOT_V2.getKey()
+                    + " cannot be enabled as some of the nodes in cluster are on version older than "
+                    + Version.V_2_17_0
+                    + ". Minimum node version in cluster is: "
+                    + minVersionInCluster
+            );
+        }
+        if (SHALLOW_SNAPSHOT_V2.get(repositoryMetadataSettings)) {
+            if
+        }
         // Validation to not allow users to create system repository via put repository call.
         if (isSystemRepositorySettingPresent(repositoryMetadataSettings)) {
             throw new RepositoryException(
@@ -709,6 +724,8 @@ public class RepositoriesService extends AbstractLifecycleComponent implements C
             );
         }
     }
+
+    private boolean shallowV2SettingPresent()
 
     private static void ensureRepositoryNotInUse(ClusterState clusterState, String repository) {
         if (isRepositoryInUse(clusterState, repository)) {

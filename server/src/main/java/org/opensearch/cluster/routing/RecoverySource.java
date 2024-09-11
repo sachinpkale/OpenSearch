@@ -42,6 +42,7 @@ import org.opensearch.core.common.io.stream.Writeable;
 import org.opensearch.core.xcontent.ToXContent;
 import org.opensearch.core.xcontent.ToXContentObject;
 import org.opensearch.core.xcontent.XContentBuilder;
+import org.opensearch.node.remotestore.RemoteStorePinnedTimestampService;
 import org.opensearch.repositories.IndexId;
 import org.opensearch.snapshots.Snapshot;
 
@@ -290,7 +291,7 @@ public abstract class RecoverySource implements Writeable, ToXContentObject {
                 remoteStoreIndexShallowCopy,
                 sourceRemoteStoreRepository,
                 null,
-                0L
+                RemoteStorePinnedTimestampService.NO_PINNED_TIMESTAMP
             );
         }
 
@@ -338,7 +339,7 @@ public abstract class RecoverySource implements Writeable, ToXContentObject {
                 pinnedTimestamp = in.readLong();
             } else {
                 sourceRemoteTranslogRepository = null;
-                pinnedTimestamp = 0L;
+                pinnedTimestamp = RemoteStorePinnedTimestampService.NO_PINNED_TIMESTAMP;
             }
         }
 

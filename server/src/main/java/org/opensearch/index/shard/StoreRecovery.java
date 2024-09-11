@@ -72,6 +72,7 @@ import org.opensearch.index.translog.Translog;
 import org.opensearch.index.translog.TranslogHeader;
 import org.opensearch.indices.recovery.RecoveryState;
 import org.opensearch.indices.replication.common.ReplicationLuceneIndex;
+import org.opensearch.node.remotestore.RemoteStorePinnedTimestampService;
 import org.opensearch.repositories.IndexId;
 import org.opensearch.repositories.RepositoriesService;
 import org.opensearch.repositories.Repository;
@@ -463,7 +464,7 @@ final class StoreRecovery {
                 SnapshotRecoverySource recoverySource = (SnapshotRecoverySource) indexShard.recoveryState().getRecoverySource();
                 indexShard.prepareForIndexRecovery();
 
-                assert recoverySource.pinnedTimestamp() != 0;
+                assert recoverySource.pinnedTimestamp() != RemoteStorePinnedTimestampService.NO_PINNED_TIMESTAMP;
                 final StepListener<RepositoryData> repositoryDataListener = new StepListener<>();
                 repository.getRepositoryData(repositoryDataListener);
                 repositoryDataListener.whenComplete(repositoryData -> {

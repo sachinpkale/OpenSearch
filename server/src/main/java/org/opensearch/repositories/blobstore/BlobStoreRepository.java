@@ -2078,7 +2078,7 @@ public abstract class BlobStoreRepository extends AbstractLifecycleComponent imp
                 deleteResult = deleteResult.add(cleanUpStaleSnapshotShardPathsFile(matchingShardPaths, snapshotShardPaths));
 
                 if (remoteSegmentStoreDirectoryFactory != null) {
-                    cleanRemoteStoreDirectoryIfNeeded(deletedSnapshots, indexSnId, oldRepoData, remoteSegmentStoreDirectoryFactory);
+                    cleanRemoteStoreDirectoryIfNeeded(deletedSnapshots, indexSnId, oldRepoData, remoteSegmentStoreDirectoryFactory, true);
                 }
 
                 // Finally, we delete the [base_path]/indexId folder
@@ -2114,6 +2114,14 @@ public abstract class BlobStoreRepository extends AbstractLifecycleComponent imp
             }
         }));
     }
+    private void cleanRemoteStoreDirectoryIfNeeded(
+        Collection<SnapshotId> deletedSnapshots,
+        String indexSnId,
+        RepositoryData oldRepoData,
+        RemoteSegmentStoreDirectoryFactory remoteSegmentStoreDirectoryFactory
+    ) {
+        cleanRemoteStoreDirectoryIfNeeded(deletedSnapshots, indexSnId, oldRepoData, remoteSegmentStoreDirectoryFactory, false);
+    }
 
     /**
      * Cleans up the remote store directory if needed.
@@ -2135,7 +2143,8 @@ public abstract class BlobStoreRepository extends AbstractLifecycleComponent imp
         Collection<SnapshotId> deletedSnapshots,
         String indexSnId,
         RepositoryData oldRepoData,
-        RemoteSegmentStoreDirectoryFactory remoteSegmentStoreDirectoryFactory
+        RemoteSegmentStoreDirectoryFactory remoteSegmentStoreDirectoryFactory,
+        boolean forceCleanup
     ) {
         assert (indexSnId != null);
 

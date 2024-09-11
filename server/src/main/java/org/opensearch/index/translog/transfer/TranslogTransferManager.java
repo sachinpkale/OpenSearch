@@ -31,6 +31,7 @@ import org.opensearch.index.translog.Translog;
 import org.opensearch.index.translog.TranslogReader;
 import org.opensearch.index.translog.transfer.listener.TranslogTransferListener;
 import org.opensearch.indices.RemoteStoreSettings;
+import org.opensearch.node.remotestore.RemoteStorePinnedTimestampService;
 import org.opensearch.threadpool.ThreadPool;
 
 import java.io.IOException;
@@ -341,7 +342,7 @@ public class TranslogTransferManager {
     }
 
     public TranslogTransferMetadata readMetadata(long pinnedTimestamp) throws IOException {
-        if (pinnedTimestamp <= 0) {
+        if (pinnedTimestamp == RemoteStorePinnedTimestampService.NO_PINNED_TIMESTAMP) {
             return readMetadata();
         }
         return readMetadata((blobMetadataList) -> {
