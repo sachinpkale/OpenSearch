@@ -196,7 +196,6 @@ import java.util.stream.Stream;
 import static org.opensearch.index.remote.RemoteStoreEnums.PathHashAlgorithm.FNV_1A_COMPOSITE_1;
 import static org.opensearch.index.snapshots.blobstore.BlobStoreIndexShardSnapshot.FileInfo.canonicalName;
 import static org.opensearch.repositories.blobstore.ChecksumBlobStoreFormat.SNAPSHOT_ONLY_FORMAT_PARAMS;
-import static org.opensearch.snapshots.SnapshotsService.SNAPSHOT_PINNED_TIMESTAMP_DELIMITER;
 
 /**
  * BlobStore - based implementation of Snapshot Repository
@@ -1264,7 +1263,8 @@ public abstract class BlobStoreRepository extends AbstractLifecycleComponent imp
                     snapshotIds,
                     writeShardMetaDataAndComputeDeletesStep.result(),
                     remoteSegmentStoreDirectoryFactory,
-                    afterCleanupsListener
+                    afterCleanupsListener,
+                    snapshotIdPinnedTimestampMap
                 );
             } else {
                 asyncCleanupUnlinkedShardLevelBlobs(
@@ -1283,8 +1283,8 @@ public abstract class BlobStoreRepository extends AbstractLifecycleComponent imp
         Collection<SnapshotId> snapshotIds,
         Collection<ShardSnapshotMetaDeleteResult> result,
         RemoteSegmentStoreDirectoryFactory remoteSegmentStoreDirectoryFactory,
-        ActionListener<Void> afterCleanupsListener
-    ) {
+        ActionListener<Void> afterCleanupsListener,
+        Map<SnapshotId, Long> snapshotIdPinnedTimestampMap) {
         try {
             Set<String> uniqueIndexIds = new HashSet<>();
             for (ShardSnapshotMetaDeleteResult shardSnapshotMetaDeleteResult : result) {
@@ -1292,7 +1292,7 @@ public abstract class BlobStoreRepository extends AbstractLifecycleComponent imp
             }
             // iterate through all the indices and trigger remote store directory cleanup for deleted index segments
             for (String indexId : uniqueIndexIds) {
-                cleanRemoteStoreDirectoryIfNeeded(snapshotIds, indexId, repositoryData, remoteSegmentStoreDirectoryFactory);
+                cleanRemoteStoreDirectoryIfNeeded(snapshotIds, indexId, repositoryData, remoteSegmentStoreDirectoryFactory, snapshotIdPinnedTimestampMap, false);
             }
             afterCleanupsListener.onResponse(null);
         } catch (Exception e) {
@@ -1340,7 +1340,7 @@ public abstract class BlobStoreRepository extends AbstractLifecycleComponent imp
     ) {
         remoteStorePinnedTimestampService.unpinTimestamp(
             timestampToUnpin,
-            repository + SNAPSHOT_PINNED_TIMESTAMP_DELIMITER + snapshotId.getUUID(),
+            SnapshotsService.getPinningEntity(repository, snapshotId.getUUID()),
             new ActionListener<Void>() {
                 @Override
                 public void onResponse(Void unused) {
@@ -2078,7 +2078,7 @@ public abstract class BlobStoreRepository extends AbstractLifecycleComponent imp
                 deleteResult = deleteResult.add(cleanUpStaleSnapshotShardPathsFile(matchingShardPaths, snapshotShardPaths));
 
                 if (remoteSegmentStoreDirectoryFactory != null) {
-                    cleanRemoteStoreDirectoryIfNeeded(deletedSnapshots, indexSnId, oldRepoData, remoteSegmentStoreDirectoryFactory);
+                    cleanRemoteStoreDirectoryIfNeeded(deletedSnapshots, indexSnId, oldRepoData, remoteSegmentStoreDirectoryFactory, new HashMap<>(), true);
                 }
 
                 // Finally, we delete the [base_path]/indexId folder
@@ -2135,7 +2135,9 @@ public abstract class BlobStoreRepository extends AbstractLifecycleComponent imp
         Collection<SnapshotId> deletedSnapshots,
         String indexSnId,
         RepositoryData oldRepoData,
-        RemoteSegmentStoreDirectoryFactory remoteSegmentStoreDirectoryFactory
+        RemoteSegmentStoreDirectoryFactory remoteSegmentStoreDirectoryFactory,
+        Map<SnapshotId, Long> snapshotIdPinnedTimestampMap,
+        boolean forceClean
     ) {
         assert (indexSnId != null);
 
@@ -2178,6 +2180,8 @@ public abstract class BlobStoreRepository extends AbstractLifecycleComponent imp
                             prevIndexMetadata
                         );
 
+                        String pinnginEntity = SnapshotsService.getPinningEntity(getMetadata().name(), snapshotId.getUUID());
+
                         for (int shardId = 0; shardId < prevIndexMetadata.getNumberOfShards(); shardId++) {
                             ShardId shard = new ShardId(Index.UNKNOWN_INDEX_NAME, prevIndexMetadata.getIndexUUID(), shardId);
                             remoteDirectoryCleanupAsync(
@@ -2189,7 +2193,7 @@ public abstract class BlobStoreRepository extends AbstractLifecycleComponent imp
                                 ThreadPool.Names.REMOTE_PURGE,
                                 remoteStorePathStrategy
                             );
-                            remoteTranslogCleanupAsync(remoteTranslogRepository, shard, remoteStorePathStrategy, prevIndexMetadata);
+                            remoteTranslogCleanupAsync(remoteTranslogRepository, shard, remoteStorePathStrategy, prevIndexMetadata, forceClean, pinnginEntity, snapshotIdPinnedTimestampMap.get(snapshotId));
                         }
                     }
                 } catch (Exception e) {
@@ -2213,7 +2217,10 @@ public abstract class BlobStoreRepository extends AbstractLifecycleComponent imp
         Repository remoteTranslogRepository,
         ShardId shardId,
         RemoteStorePathStrategy remoteStorePathStrategy,
-        IndexMetadata prevIndexMetadata
+        IndexMetadata prevIndexMetadata,
+        boolean forceClean,
+        String pinningEntity,
+        Long pinnedTimestamp
     ) {
         assert remoteTranslogRepository instanceof BlobStoreRepository;
         boolean indexMetadataEnabled = RemoteStoreUtils.determineTranslogMetadataEnabled(prevIndexMetadata);
@@ -2230,7 +2237,7 @@ public abstract class BlobStoreRepository extends AbstractLifecycleComponent imp
             indexMetadataEnabled
         );
         try {
-            RemoteFsTimestampAwareTranslog.cleanup(translogTransferManager);
+            RemoteFsTimestampAwareTranslog.cleanup(translogTransferManager, forceClean, pinningEntity, pinnedTimestamp);
         } catch (IOException e) {
             logger.error("Exception while cleaning up remote translog for shard: " + shardId, e);
         }

@@ -135,7 +135,7 @@ public class RemoteFsTimestampAwareTranslog extends RemoteFsTranslog {
 
         // This is to ensure that after the permits are acquired during primary relocation, there are no further modification on remote
         // store.
-        if (startedPrimarySupplier.getAsBoolean() == false || pauseSync.get()) {
+        if (indexDeleted == false && (startedPrimarySupplier.getAsBoolean() == false || pauseSync.get())) {
             return;
         }
 
@@ -273,13 +273,23 @@ public class RemoteFsTimestampAwareTranslog extends RemoteFsTranslog {
         return getMetadataFilesToBeDeleted(metadataFiles, metadataFilePinnedTimestampMap, logger);
     }
 
-    // Visible for testing
     protected static List<String> getMetadataFilesToBeDeleted(
         List<String> metadataFiles,
         Map<Long, String> metadataFilePinnedTimestampMap,
         Logger logger
     ) {
-        Tuple<Long, Set<Long>> pinnedTimestampsState = RemoteStorePinnedTimestampService.getPinnedTimestamps();
+        return getMetadataFilesToBeDeleted(metadataFiles, metadataFilePinnedTimestampMap, null, null, logger);
+    }
+
+    // Visible for testing
+    protected static List<String> getMetadataFilesToBeDeleted(
+        List<String> metadataFiles,
+        Map<Long, String> metadataFilePinnedTimestampMap,
+        String pinningEntityToSkip,
+        Long pinnedTimestampToSkip,
+        Logger logger
+    ) {
+        Tuple<Long, Set<Long>> pinnedTimestampsState = RemoteStorePinnedTimestampService.getPinnedTimestamps(pinningEntityToSkip, pinnedTimestampToSkip);
 
         // Keep files since last successful run of scheduler
         List<String> metadataFilesToBeDeleted = RemoteStoreUtils.filterOutMetadataFilesBasedOnAge(
@@ -472,50 +482,55 @@ public class RemoteFsTimestampAwareTranslog extends RemoteFsTranslog {
         }
     }
 
-    public static void cleanup(TranslogTransferManager translogTransferManager) throws IOException {
-        ActionListener<List<BlobMetadata>> listMetadataFilesListener = new ActionListener<>() {
-            @Override
-            public void onResponse(List<BlobMetadata> blobMetadata) {
-                List<String> metadataFiles = blobMetadata.stream().map(BlobMetadata::name).collect(Collectors.toList());
+    public static void cleanup(TranslogTransferManager translogTransferManager, boolean forceClean, String pinningEntity, Long pinnedTimestamp) throws IOException {
+        if (forceClean) {
+            translogTransferManager.delete();
+        } else {
+            ActionListener<List<BlobMetadata>> listMetadataFilesListener = new ActionListener<>() {
+                @Override
+                public void onResponse(List<BlobMetadata> blobMetadata) {
+                    List<String> metadataFiles = blobMetadata.stream().map(BlobMetadata::name).collect(Collectors.toList());
 
-                try {
-                    if (metadataFiles.isEmpty()) {
-                        staticLogger.debug("No stale translog metadata files found");
-                        return;
+                    try {
+                        if (metadataFiles.isEmpty()) {
+                            staticLogger.debug("No stale translog metadata files found");
+                            return;
+                        }
+                        List<String> metadataFilesToBeDeleted = getMetadataFilesToBeDeleted(metadataFiles, new HashMap<>(), /*pinningEntity, pinnedTimestamp,*/ staticLogger);
+                        if (metadataFilesToBeDeleted.isEmpty()) {
+                            staticLogger.debug("No metadata files to delete");
+                            return;
+                        }
+                        staticLogger.debug(() -> "metadataFilesToBeDeleted = " + metadataFilesToBeDeleted);
+
+                        // For all the files that we are keeping, fetch min and max generations
+                        List<String> metadataFilesNotToBeDeleted = new ArrayList<>(metadataFiles);
+                        metadataFilesNotToBeDeleted.removeAll(metadataFilesToBeDeleted);
+                        staticLogger.debug(() -> "metadataFilesNotToBeDeleted = " + metadataFilesNotToBeDeleted);
+
+                        // Delete stale metadata files
+                        translogTransferManager.deleteMetadataFilesAsync(metadataFilesToBeDeleted, () -> {
+                        });
+
+                        // Delete stale primary terms
+                        deleteStaleRemotePrimaryTerms(
+                            metadataFilesNotToBeDeleted,
+                            translogTransferManager,
+                            new HashMap<>(),
+                            new AtomicLong(Long.MAX_VALUE),
+                            staticLogger
+                        );
+                    } catch (Exception e) {
+                        staticLogger.error("Exception while cleaning up metadata and primary terms", e);
                     }
-                    List<String> metadataFilesToBeDeleted = getMetadataFilesToBeDeleted(metadataFiles, new HashMap<>(), staticLogger);
-                    if (metadataFilesToBeDeleted.isEmpty()) {
-                        staticLogger.debug("No metadata files to delete");
-                        return;
-                    }
-                    staticLogger.debug(() -> "metadataFilesToBeDeleted = " + metadataFilesToBeDeleted);
+                }
 
-                    // For all the files that we are keeping, fetch min and max generations
-                    List<String> metadataFilesNotToBeDeleted = new ArrayList<>(metadataFiles);
-                    metadataFilesNotToBeDeleted.removeAll(metadataFilesToBeDeleted);
-                    staticLogger.debug(() -> "metadataFilesNotToBeDeleted = " + metadataFilesNotToBeDeleted);
-
-                    // Delete stale metadata files
-                    translogTransferManager.deleteMetadataFilesAsync(metadataFilesToBeDeleted, () -> {});
-
-                    // Delete stale primary terms
-                    deleteStaleRemotePrimaryTerms(
-                        metadataFilesNotToBeDeleted,
-                        translogTransferManager,
-                        new HashMap<>(),
-                        new AtomicLong(Long.MAX_VALUE),
-                        staticLogger
-                    );
-                } catch (Exception e) {
+                @Override
+                public void onFailure(Exception e) {
                     staticLogger.error("Exception while cleaning up metadata and primary terms", e);
                 }
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-                staticLogger.error("Exception while cleaning up metadata and primary terms", e);
-            }
-        };
-        translogTransferManager.listTranslogMetadataFilesAsync(listMetadataFilesListener);
+            };
+            translogTransferManager.listTranslogMetadataFilesAsync(listMetadataFilesListener);
+        }
     }
 }
