@@ -240,6 +240,7 @@ public class RemoteFsTimestampAwareTranslog extends RemoteFsTranslog {
                         remoteGenerationDeletionPermits.release();
                     }
                 } catch (Exception e) {
+                    logger.error("Exception in trimUnreferencedReaders", e);
                     remoteGenerationDeletionPermits.release(REMOTE_DELETION_PERMITS);
                 }
             }
@@ -441,7 +442,7 @@ public class RemoteFsTimestampAwareTranslog extends RemoteFsTranslog {
         }
         Optional<Long> minPrimaryTermFromMetadataFiles = metadataFilesNotToBeDeleted.stream().map(file -> {
             try {
-                return getMinMaxPrimaryTermFromMetadataFile(file, translogTransferManager, oldFormatMetadataFilePrimaryTermMap).v1();
+                return getMinMaxPrimaryTermFromMetadataFile(file, translogTransferManager, oldFormatMetadataFilePrimaryTermMap, logger).v1();
             } catch (IOException e) {
                 return Long.MIN_VALUE;
             }
@@ -482,7 +483,8 @@ public class RemoteFsTimestampAwareTranslog extends RemoteFsTranslog {
     protected static Tuple<Long, Long> getMinMaxPrimaryTermFromMetadataFile(
         String metadataFile,
         TranslogTransferManager translogTransferManager,
-        Map<String, Tuple<Long, Long>> oldFormatMetadataFilePrimaryTermMap
+        Map<String, Tuple<Long, Long>> oldFormatMetadataFilePrimaryTermMap,
+        Logger logger
     ) throws IOException {
         Tuple<Long, Long> minMaxPrimaryTermFromFileName = TranslogTransferMetadata.getMinMaxPrimaryTermFromFilename(metadataFile);
         if (minMaxPrimaryTermFromFileName != null) {
@@ -504,6 +506,8 @@ public class RemoteFsTimestampAwareTranslog extends RemoteFsTranslog {
                     if (primaryTerm.isPresent()) {
                         minPrimaryTem = primaryTerm.get();
                     }
+                } else {
+                   logger.warn("No primary term found from GenerationToPrimaryTermMap for file [{}]", metadataFile);
                 }
                 Tuple<Long, Long> minMaxPrimaryTermTuple = new Tuple<>(minPrimaryTem, maxPrimaryTem);
                 oldFormatMetadataFilePrimaryTermMap.put(metadataFile, minMaxPrimaryTermTuple);
