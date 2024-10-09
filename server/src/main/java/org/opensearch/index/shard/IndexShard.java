@@ -5123,6 +5123,11 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
                     remoteSegmentMetadata.getSegmentInfosBytes(),
                     remoteSegmentMetadata.getGeneration()
                 );
+
+                logger.info("=========================================================================");
+                logger.info(infosSnapshot.files(true));
+                logger.info("=========================================================================");
+
                 long processedLocalCheckpoint = Long.parseLong(infosSnapshot.getUserData().get(LOCAL_CHECKPOINT_KEY));
                 // delete any other commits, we want to start the engine only from a new commit made with the downloaded infos bytes.
                 // Extra segments will be wiped on engine open.

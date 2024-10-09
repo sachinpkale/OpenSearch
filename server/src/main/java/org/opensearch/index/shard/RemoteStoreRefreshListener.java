@@ -401,6 +401,14 @@ public final class RemoteStoreRefreshListener extends ReleasableRetryableRefresh
 
     void uploadMetadata(Collection<String> localSegmentsPostRefresh, SegmentInfos segmentInfos, ReplicationCheckpoint replicationCheckpoint)
         throws IOException {
+
+        logger.info("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+        logger.info("Uploading metadata with: " + localSegmentsPostRefresh);
+        for (StackTraceElement e: Thread.currentThread().getStackTrace()) {
+            System.out.println(e);
+        }
+        logger.info("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+
         final long maxSeqNo = ((InternalEngine) indexShard.getEngine()).currentOngoingRefreshCheckpoint();
         SegmentInfos segmentInfosSnapshot = segmentInfos.clone();
         Map<String, String> userData = segmentInfosSnapshot.getUserData();

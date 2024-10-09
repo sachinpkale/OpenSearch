@@ -8,16 +8,21 @@
 
 package org.opensearch.remotestore;
 
+import org.apache.lucene.index.SegmentInfos;
+import org.apache.lucene.store.Directory;
 import org.opensearch.OpenSearchException;
 import org.opensearch.action.admin.cluster.health.ClusterHealthResponse;
+import org.opensearch.action.admin.cluster.remotestore.restore.RestoreRemoteStoreRequest;
 import org.opensearch.action.admin.cluster.settings.ClusterUpdateSettingsRequest;
 import org.opensearch.action.admin.cluster.snapshots.restore.RestoreSnapshotResponse;
 import org.opensearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.opensearch.action.admin.indices.flush.FlushRequest;
 import org.opensearch.action.admin.indices.recovery.RecoveryResponse;
 import org.opensearch.action.admin.indices.settings.put.UpdateSettingsRequest;
+import org.opensearch.action.admin.indices.stats.ShardStats;
 import org.opensearch.action.index.IndexResponse;
 import org.opensearch.action.search.SearchPhaseExecutionException;
+import org.opensearch.action.support.PlainActionFuture;
 import org.opensearch.client.Requests;
 import org.opensearch.cluster.health.ClusterHealthStatus;
 import org.opensearch.cluster.metadata.IndexMetadata;
@@ -28,9 +33,14 @@ import org.opensearch.common.blobstore.BlobPath;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.common.unit.TimeValue;
 import org.opensearch.common.util.concurrent.BufferedAsyncIOProcessor;
+import org.opensearch.core.index.Index;
+import org.opensearch.index.IndexService;
 import org.opensearch.index.IndexSettings;
+import org.opensearch.index.mapper.MapperService;
 import org.opensearch.index.shard.IndexShard;
 import org.opensearch.index.shard.IndexShardClosedException;
+import org.opensearch.index.store.RemoteSegmentStoreDirectory;
+import org.opensearch.index.store.remote.metadata.RemoteSegmentMetadata;
 import org.opensearch.index.translog.Translog;
 import org.opensearch.index.translog.Translog.Durability;
 import org.opensearch.indices.IndicesService;
@@ -39,6 +49,7 @@ import org.opensearch.indices.recovery.PeerRecoveryTargetService;
 import org.opensearch.indices.recovery.RecoverySettings;
 import org.opensearch.indices.recovery.RecoveryState;
 import org.opensearch.plugins.Plugin;
+import org.opensearch.test.BackgroundIndexer;
 import org.opensearch.test.InternalTestCluster;
 import org.opensearch.test.OpenSearchIntegTestCase;
 import org.opensearch.test.transport.MockTransportService;
@@ -48,11 +59,14 @@ import org.hamcrest.MatcherAssert;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -67,12 +81,11 @@ import static org.opensearch.index.remote.RemoteStoreEnums.DataType.DATA;
 import static org.opensearch.index.remote.RemoteStoreEnums.DataType.METADATA;
 import static org.opensearch.index.shard.IndexShardTestCase.getTranslog;
 import static org.opensearch.indices.RemoteStoreSettings.CLUSTER_REMOTE_TRANSLOG_BUFFER_INTERVAL_SETTING;
-import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertAcked;
-import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertHitCount;
 import static org.hamcrest.Matchers.comparesEqualTo;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.oneOf;
+import static org.opensearch.test.hamcrest.OpenSearchAssertions.*;
 
 @OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST, numDataNodes = 0)
 public class RemoteStoreIT extends RemoteStoreBaseIntegTestCase {
@@ -1077,5 +1090,73 @@ public class RemoteStoreIT extends RemoteStoreBaseIntegTestCase {
         client().admin().indices().close(Requests.closeIndexRequest(INDEX_NAME)).actionGet();
         Thread.sleep(10000);
         ensureGreen(INDEX_NAME);
+    }
+
+    public void testSplittingShardHavingNonEmptyCommit() throws Exception {
+        //internalCluster().startClusterManagerOnlyNode();
+        internalCluster().startNodes(2);
+        prepareCreate("test", Settings.builder().put("index.number_of_shards", 1)
+            .put("index.number_of_replicas", 0)).get();
+        ensureGreen();
+        int numDocs = scaledRandomIntBetween(200, 300);
+        try (BackgroundIndexer indexer = new BackgroundIndexer("test", MapperService.SINGLE_MAPPING_NAME, client(), numDocs)) {
+            indexer.setIgnoreIndexingFailures(false);
+            logger.info("--> waiting for {} docs to be indexed ...", numDocs);
+
+            Thread.sleep(5000);
+            flushAndRefresh("test");
+
+            Index indexObj = clusterService().state().metadata().indices().get("test").getIndex();
+            IndicesService indicesService = internalCluster().getInstance(IndicesService.class, primaryNodeName("test"));
+            IndexService indexService = indicesService.indexService(indexObj);
+            IndexShard indexShard = indexService.getShard(0);
+
+            // Check restore flow
+            Directory storeDirectory = indexShard.store().directory();
+            for (String file: storeDirectory.listAll()) {
+                storeDirectory.deleteFile(file);
+            }
+
+            //internalCluster().stopRandomNode(InternalTestCluster.nameFilter(primaryNodeName("test")));
+            //ensureRed("test");
+
+            client().admin().indices().prepareClose("test").get();
+            client().admin()
+                .cluster()
+                .restoreRemoteStore(
+                    new RestoreRemoteStoreRequest().indices("test").restoreAllShards(false),
+                    PlainActionFuture.newFuture()
+                );
+
+            ensureGreen("test");
+
+            assertBusy(() -> {
+                long searchCount = client().prepareSearch("test").setSize(0).get().getHits().getTotalHits().value;
+                logger.info(searchCount);
+                assertEquals(searchCount, numDocs);
+                },
+                30,
+                TimeUnit.SECONDS
+            );
+
+
+//            RemoteSegmentStoreDirectory remoteSegmentStoreDirectory = indexShard.getRemoteDirectory();
+//            SegmentInfos segmentInfos = indexShard.store().readLastCommittedSegmentsInfo();
+//            RemoteSegmentMetadata remoteSegmentMetadata = remoteSegmentStoreDirectory.readMetadataAgainstSpecificCommit(indexShard.getOperationPrimaryTerm(), segmentInfos.getGeneration());
+//
+//            Set<String> remoteFiles = remoteSegmentMetadata.getMetadata().keySet();
+//            Set<String> localCommittedFiles = new HashSet<>(segmentInfos.files(true));
+//            logger.info("#################################################################################");
+//            logger.info(remoteFiles);
+//            logger.info(localCommittedFiles);
+//            for (String localFile : localCommittedFiles) {
+//                if (remoteFiles.contains(localFile) == false) {
+//                    logger.info(localFile);
+//                }
+//            }
+//            logger.info("#################################################################################");
+//
+//            assertTrue(remoteFiles.containsAll(localCommittedFiles));
+        }
     }
 }

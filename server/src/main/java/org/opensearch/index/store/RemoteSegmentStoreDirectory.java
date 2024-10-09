@@ -180,6 +180,13 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory implement
         return remoteSegmentMetadata;
     }
 
+    public RemoteSegmentMetadata readMetadataAgainstSpecificCommit(long primaryTerm, long commitGeneration) throws IOException {
+        String metadataFilePrefix = MetadataFilenameUtils.getMetadataFilePrefixForCommit(primaryTerm, commitGeneration);
+        String metadataFile = remoteMetadataDirectory.listFilesByPrefixInLexicographicOrder(metadataFilePrefix, 1).get(0);
+
+        return readMetadataFile(metadataFile);
+    }
+
     /**
      * Initializes the remote segment metadata to a specific timestamp.
      *

@@ -1872,16 +1872,17 @@ public class InternalEngine extends Engine {
                             ? acquireLastIndexCommit(false)
                             : null;
                         commitIndexWriter(indexWriter, translogManager.getTranslogUUID());
-                        logger.trace("finished commit for flush");
+                        logger.info("finished commit for flush");
 
                         // a temporary debugging to investigate test failure - issue#32827. Remove when the issue is resolved
-                        logger.debug(
+                        logger.info(
                             "new commit on flush, hasUncommittedChanges:{}, force:{}, shouldPeriodicallyFlush:{}",
                             hasUncommittedChanges,
                             force,
                             shouldPeriodicallyFlush
                         );
 
+                        Thread.sleep(2000);
                         // we need to refresh in order to clear older version values
                         refresh("version_table_flush", SearcherScope.INTERNAL, true);
 
@@ -1905,6 +1906,9 @@ public class InternalEngine extends Engine {
             } finally {
                 flushLock.unlock();
             }
+            try {
+                Thread.sleep(2000);
+            } catch (InterruptedException e) {}
         }
         // We don't have to do this here; we do it defensively to make sure that even if wall clock time is misbehaving
         // (e.g., moves backwards) we will at least still sometimes prune deleted tombstones:
