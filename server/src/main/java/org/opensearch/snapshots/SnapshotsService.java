@@ -646,24 +646,32 @@ public class SnapshotsService extends AbstractLifecycleComponent implements Clus
     }
 
     private void cleanOrphanTimestamp(String repoName, RepositoryData repositoryData) {
-        Collection<String> snapshotUUIDs = repositoryData.getSnapshotIds().stream().map(SnapshotId::getUUID).collect(Collectors.toSet());
-        Map<String, List<Long>> pinnedEntities = RemoteStorePinnedTimestampService.getPinnedEntities();
+        boolean enterRepo = false;
+        try {
+            if (tryEnterRepoLoop(repoName) == false) {
+                logger.error("Concurrent snapshot . Bailing out");
+                return;
+            }
+            enterRepo = true;
+            Collection<String> snapshotUUIDs = repositoryData.getSnapshotIds().stream().map(SnapshotId::getUUID).collect(Collectors.toSet());
+            Map<String, List<Long>> pinnedEntities = RemoteStorePinnedTimestampService.getPinnedEntities();
 
-        List<String> orphanPinnedEntities = pinnedEntities.keySet()
-            .stream()
-            .filter(pinnedEntity -> isOrphanPinnedEntity(repoName, snapshotUUIDs, pinnedEntity))
-            .collect(Collectors.toList());
+            List<String> orphanPinnedEntities = pinnedEntities.keySet()
+                .stream()
+                .filter(pinnedEntity -> isOrphanPinnedEntity(repoName, snapshotUUIDs, pinnedEntity))
+                .collect(Collectors.toList());
 
-        if (orphanPinnedEntities.isEmpty()) {
-            return;
-        }
+            if (orphanPinnedEntities.isEmpty()) {
+                return;
+            }
 
-        logger.info("Found {} orphan timestamps. Cleaning it up now", orphanPinnedEntities.size());
-        if (tryEnterRepoLoop(repoName)) {
+            // Repo data old
+            logger.info("Found {} orphan timestamps. Cleaning it up now", orphanPinnedEntities.size());
             deleteOrphanTimestamps(pinnedEntities, orphanPinnedEntities);
-            leaveRepoLoop(repoName);
-        } else {
-            logger.info("Concurrent snapshot create/delete is happening. Skipping clean up of orphan timestamps");
+        } finally {
+            if (enterRepo) {
+                leaveRepoLoop(repoName);
+            }
         }
     }
 

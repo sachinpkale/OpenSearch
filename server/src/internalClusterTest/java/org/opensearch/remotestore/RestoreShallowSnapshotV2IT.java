@@ -8,6 +8,8 @@
 
 package org.opensearch.remotestore;
 
+import com.carrotsearch.randomizedtesting.annotations.TimeoutSuite;
+import org.apache.lucene.tests.util.TimeUnits;
 import org.opensearch.action.DocWriteResponse;
 import org.opensearch.action.admin.cluster.remotestore.restore.RestoreRemoteStoreRequest;
 import org.opensearch.action.admin.cluster.repositories.get.GetRepositoriesRequest;
@@ -51,6 +53,7 @@ import org.opensearch.test.InternalTestCluster;
 import org.opensearch.test.OpenSearchIntegTestCase;
 import org.junit.After;
 import org.junit.Before;
+import org.opensearch.test.junit.annotations.TestIssueLogging;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -81,6 +84,7 @@ import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 
+@TimeoutSuite(millis = 120 * TimeUnits.MINUTE)
 @OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST, numDataNodes = 0)
 public class RestoreShallowSnapshotV2IT extends AbstractSnapshotIntegTestCase {
 
@@ -893,6 +897,7 @@ public class RestoreShallowSnapshotV2IT extends AbstractSnapshotIntegTestCase {
         assertDocsPresentInIndex(client, indexName1, 3 * numDocsInIndex1);
     }
 
+    @TestIssueLogging(value = "_root:DEBUG", issueUrl = "")
     public void testContinuousIndexing() throws Exception {
         internalCluster().startClusterManagerOnlyNode();
         internalCluster().startDataOnlyNode();
@@ -927,7 +932,7 @@ public class RestoreShallowSnapshotV2IT extends AbstractSnapshotIntegTestCase {
         int numDocs = randomIntBetween(200, 300);
         totalDocs += numDocs;
         try (BackgroundIndexer indexer = new BackgroundIndexer(index, MapperService.SINGLE_MAPPING_NAME, client(), numDocs)) {
-            int numberOfSnapshots = 2;
+            int numberOfSnapshots = 10;
             for (int i = 0; i < numberOfSnapshots; i++) {
                 logger.info("--> waiting for {} docs to be indexed ...", numDocs);
                 long finalTotalDocs1 = totalDocs;
@@ -977,6 +982,7 @@ public class RestoreShallowSnapshotV2IT extends AbstractSnapshotIntegTestCase {
         }
     }
 
+    @TestIssueLogging(value = "_root:DEBUG", issueUrl = "")
     public void testHashedPrefixTranslogMetadataCombination() throws Exception {
         Settings settings = Settings.builder()
             .put(RemoteStoreSettings.CLUSTER_REMOTE_STORE_PATH_TYPE_SETTING.getKey(), randomFrom(RemoteStoreEnums.PathType.values()))
@@ -1016,7 +1022,7 @@ public class RestoreShallowSnapshotV2IT extends AbstractSnapshotIntegTestCase {
         int numDocs = randomIntBetween(200, 300);
         totalDocs += numDocs;
         try (BackgroundIndexer indexer = new BackgroundIndexer(index, MapperService.SINGLE_MAPPING_NAME, client(), numDocs)) {
-            int numberOfSnapshots = 2;
+            int numberOfSnapshots = 10;
             for (int i = 0; i < numberOfSnapshots; i++) {
                 logger.info("--> waiting for {} docs to be indexed ...", numDocs);
                 long finalTotalDocs1 = totalDocs;
