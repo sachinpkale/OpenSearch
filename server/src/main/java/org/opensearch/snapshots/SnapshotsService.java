@@ -617,12 +617,12 @@ public class SnapshotsService extends AbstractLifecycleComponent implements Clus
                                 );
                                 return;
                             }
-                            cleanOrphanTimestamp(repositoryName, repositoryData);
-                            logger.info("created snapshot-v2 [{}] in repository [{}]", repositoryName, snapshotName);
                             listener.onResponse(snapshotInfo);
+                            logger.info("created snapshot-v2 [{}] in repository [{}]", repositoryName, snapshotName);
                             // For snapshot-v2, we don't allow concurrent snapshots . But meanwhile non-v2 snapshot operations
                             // can get queued . This is triggering them.
                             runNextQueuedOperation(repositoryData, repositoryName, true);
+                            cleanOrphanTimestamp(repositoryName, repositoryData);
                         }
 
                         @Override
@@ -657,8 +657,14 @@ public class SnapshotsService extends AbstractLifecycleComponent implements Clus
         if (orphanPinnedEntities.isEmpty()) {
             return;
         }
+
         logger.info("Found {} orphan timestamps. Cleaning it up now", orphanPinnedEntities.size());
-        deleteOrphanTimestamps(pinnedEntities, orphanPinnedEntities);
+        if (tryEnterRepoLoop(repoName)) {
+            deleteOrphanTimestamps(pinnedEntities, orphanPinnedEntities);
+            leaveRepoLoop(repoName);
+        } else {
+            logger.info("Concurrent snapshot create/delete is happening. Skipping clean up of orphan timestamps");
+        }
     }
 
     private boolean isOrphanPinnedEntity(String repoName, Collection<String> snapshotUUIDs, String pinnedEntity) {
