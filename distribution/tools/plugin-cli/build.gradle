@@ -38,7 +38,7 @@ dependencies {
   compileOnly project(":server")
   compileOnly project(":libs:opensearch-cli")
   api "org.bouncycastle:bcpg-fips:2.0.9"
-  api "org.bouncycastle:bc-fips:2.0.0"
+  api "org.bouncycastle:bc-fips:2.1.0"
   testImplementation(project(":test:framework")) {
     exclude group: 'org.bouncycastle'
   }
