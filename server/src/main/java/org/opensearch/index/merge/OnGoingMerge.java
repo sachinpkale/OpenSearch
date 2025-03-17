@@ -45,7 +45,7 @@ import java.util.List;
 public class OnGoingMerge {
 
     private final String id;
-    private final MergePolicy.OneMerge oneMerge;
+    public final MergePolicy.OneMerge oneMerge;
 
     public OnGoingMerge(MergePolicy.OneMerge merge) {
         this.id = Integer.toString(System.identityHashCode(merge));

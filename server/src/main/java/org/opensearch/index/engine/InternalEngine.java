@@ -41,11 +41,13 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexableField;
+import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.LiveIndexWriterConfig;
 import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentCommitInfo;
 import org.apache.lucene.index.SegmentInfos;
+import org.apache.lucene.index.SimpleMergedSegmentWarmer;
 import org.apache.lucene.index.SoftDeletesRetentionMergePolicy;
 import org.apache.lucene.index.StandardDirectoryReader;
 import org.apache.lucene.index.StoredFields;
@@ -251,7 +253,7 @@ public class InternalEngine extends Engine {
         boolean success = false;
         try {
             this.lastDeleteVersionPruneTimeMSec = engineConfig.getThreadPool().relativeTimeInMillis();
-            mergeScheduler = scheduler = new EngineMergeScheduler(engineConfig.getShardId(), engineConfig.getIndexSettings());
+            mergeScheduler = scheduler = new EngineMergeScheduler(this, engineConfig.getShardId(), engineConfig.getIndexSettings());
             throttle = new IndexThrottle();
             try {
                 store.trimUnsafeCommits(engineConfig.getTranslogConfig().getTranslogPath());
@@ -2376,6 +2378,7 @@ public class InternalEngine extends Engine {
         iwc.setRAMBufferSizeMB(engineConfig.getIndexingBufferSize().getMbFrac());
         iwc.setCodec(engineConfig.getCodec());
         iwc.setUseCompoundFile(engineConfig.useCompoundFile());
+        iwc.setMergedSegmentWarmer(new SlowIndexReaderWarmer(InfoStream.NO_OUTPUT));
         if (config().getIndexSort() != null) {
             iwc.setIndexSort(config().getIndexSort());
         }
@@ -2383,6 +2386,23 @@ public class InternalEngine extends Engine {
             iwc.setLeafSorter(config().getLeafSorter()); // The default segment search order
         }
         return iwc;
+    }
+
+    class SlowIndexReaderWarmer extends SimpleMergedSegmentWarmer {
+        public SlowIndexReaderWarmer(InfoStream infoStream) {
+            super(infoStream);
+        }
+
+        @Override
+        public void warm(LeafReader reader) throws IOException {
+            try {
+                // Set merged vs refreshed segments
+
+                super.warm(reader);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     /**
@@ -2451,6 +2471,9 @@ public class InternalEngine extends Engine {
         return engineConfig.getIndexSettings().getGcDeletesInMillis();
     }
 
+    public Map<String, List<String>> mergedToRefreshedSegments = new HashMap<>();
+    public Map<String, byte[]> mergedSegmentIDs = new HashMap<>();
+
     LiveIndexWriterConfig getCurrentIndexWriterConfig() {
         return indexWriter.getConfig();
     }
@@ -2458,9 +2481,11 @@ public class InternalEngine extends Engine {
     private final class EngineMergeScheduler extends OpenSearchConcurrentMergeScheduler {
         private final AtomicInteger numMergesInFlight = new AtomicInteger(0);
         private final AtomicBoolean isThrottling = new AtomicBoolean();
+        private final InternalEngine engine;
 
-        EngineMergeScheduler(ShardId shardId, IndexSettings indexSettings) {
+        EngineMergeScheduler(InternalEngine engine, ShardId shardId, IndexSettings indexSettings) {
             super(shardId, indexSettings);
+            this.engine = engine;
         }
 
         @Override
@@ -2472,10 +2497,22 @@ public class InternalEngine extends Engine {
                     activateThrottling();
                 }
             }
+            logger.info("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+            logger.info("Merging following segments: ");
+            for(SegmentCommitInfo sci: merge.oneMerge.segments) {
+                logger.info(sci.info.name);
+            }
+            logger.info("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
         }
 
         @Override
         public synchronized void afterMerge(OnGoingMerge merge) {
+            logger.info("@@@@@@@@@@@@@@@@@@@@@@@@@@");
+            engine.mergedToRefreshedSegments.put(merge.oneMerge.getMergeInfo().info.name, merge.oneMerge.segments.stream().map(sci -> sci.info.name).collect(Collectors.toList()));
+            engine.mergedSegmentIDs.put(merge.oneMerge.getMergeInfo().info.name, merge.oneMerge.getMergeInfo().info.getId());
+            logger.info("Merged Segment: {}", merge.oneMerge.getMergeInfo().info.name);
+            logger.info("@@@@@@@@@@@@@@@@@@@@@@@@@@");
+
             int maxNumMerges = mergeScheduler.getMaxMergeCount();
             if (numMergesInFlight.decrementAndGet() < maxNumMerges) {
                 if (isThrottling.getAndSet(false)) {

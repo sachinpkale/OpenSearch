@@ -126,6 +126,7 @@ import org.opensearch.index.engine.EngineConfig;
 import org.opensearch.index.engine.EngineConfigFactory;
 import org.opensearch.index.engine.EngineException;
 import org.opensearch.index.engine.EngineFactory;
+import org.opensearch.index.engine.InternalEngine;
 import org.opensearch.index.engine.NRTReplicationEngine;
 import org.opensearch.index.engine.ReadOnlyEngine;
 import org.opensearch.index.engine.RefreshFailedEngineException;
@@ -1794,6 +1795,10 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
             getEngine().config().getCodec().getName(),
             metadataMap
         );
+        if(getEngine() instanceof InternalEngine) {
+            checkpoint.mergedToRefreshedSegments = ((InternalEngine) getEngine()).mergedToRefreshedSegments;
+            checkpoint.mergedSegmentIDs = ((InternalEngine) getEngine()).mergedSegmentIDs;
+        }
         logger.trace("Recomputed ReplicationCheckpoint for shard {}", checkpoint);
         return checkpoint;
     }

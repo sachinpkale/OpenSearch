@@ -36,6 +36,7 @@ import org.opensearch.indices.replication.common.ReplicationTarget;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -245,6 +246,11 @@ public class SegmentReplicationTarget extends ReplicationTarget {
                 ).getFormattedMessage()
             );
         }
+
+        logger.info("**********************************************************");
+        logger.info(checkpoint.mergedToRefreshedSegments);
+        logger.info(checkpoint.mergedSegmentIDs);
+        logger.info("**********************************************************");
 
         for (StoreFileMetadata file : missingFiles) {
             state.getIndex().addFileDetail(file.name(), file.length(), false);

@@ -20,6 +20,8 @@ import org.opensearch.index.store.StoreFileMetadata;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -39,6 +41,8 @@ public class ReplicationCheckpoint implements Writeable, Comparable<ReplicationC
     private final String codec;
     private final Map<String, StoreFileMetadata> metadataMap;
     private final long createdTimeStamp;
+    public Map<String, List<String>> mergedToRefreshedSegments = new HashMap<>();
+    public Map<String, byte[]> mergedSegmentIDs = new HashMap<>();
 
     public static ReplicationCheckpoint empty(ShardId shardId) {
         return empty(shardId, "");
@@ -121,6 +125,8 @@ public class ReplicationCheckpoint implements Writeable, Comparable<ReplicationC
         }
         if (in.getVersion().onOrAfter(Version.V_3_0_0)) {
             this.createdTimeStamp = in.readLong();
+            this.mergedToRefreshedSegments = in.readMapOfLists(StreamInput::readString, StreamInput::readString);
+            this.mergedSegmentIDs = in.readMap(StreamInput::readString, StreamInput::readByteArray);
         } else {
             this.createdTimeStamp = 0;
         }
@@ -189,6 +195,8 @@ public class ReplicationCheckpoint implements Writeable, Comparable<ReplicationC
         }
         if (out.getVersion().onOrAfter(Version.V_3_0_0)) {
             out.writeLong(createdTimeStamp);
+            out.writeMapOfLists(mergedToRefreshedSegments, StreamOutput::writeString, StreamOutput::writeString);
+            out.writeMap(mergedSegmentIDs, StreamOutput::writeString, StreamOutput::writeByteArray);
         }
     }
 
