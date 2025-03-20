@@ -41,6 +41,7 @@ import org.apache.lucene.index.FilterDirectoryReader;
 import org.apache.lucene.index.IndexCommit;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.SegmentCommitInfo;
 import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Query;
@@ -213,6 +214,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -1709,6 +1711,16 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
         }
     }
 
+    private long processedSegmentInfosVersion = -1;
+
+    public void setSegmentInfosVersion(long version) {
+        processedSegmentInfosVersion = version;
+    }
+
+    public long getSegmentInfosVersion() {
+        return processedSegmentInfosVersion;
+    }
+
     /**
      * Snapshots the most recent safe index commit from the currently running engine.
      * All index files referenced by this index commit won't be freed until the commit/snapshot is closed.
@@ -1797,7 +1809,10 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
         );
         if(getEngine() instanceof InternalEngine) {
             checkpoint.mergedToRefreshedSegments = ((InternalEngine) getEngine()).mergedToRefreshedSegments;
-            checkpoint.mergedSegmentIDs = ((InternalEngine) getEngine()).mergedSegmentIDs;
+            checkpoint.segmentIDs = ((InternalEngine) getEngine()).segmentIDs;
+            for (SegmentCommitInfo sci: segmentInfos) {
+                checkpoint.segmentIDs.put(sci.info.name, InternalEngine.getString(sci));
+            }
         }
         logger.trace("Recomputed ReplicationCheckpoint for shard {}", checkpoint);
         return checkpoint;
@@ -1854,12 +1869,17 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
             return false;
         }
         final ReplicationCheckpoint localCheckpoint = getLatestReplicationCheckpoint();
+        logger.info(
+            () -> new ParameterizedMessage(
+                "Shard is on checkpoint {}. Received Checkpoint {}",
+                localCheckpoint,
+                requestCheckpoint
+            )
+        );
         if (requestCheckpoint.isAheadOf(localCheckpoint) == false) {
-            logger.trace(
+            logger.info(
                 () -> new ParameterizedMessage(
-                    "Ignoring new replication checkpoint - Shard is already on checkpoint {} that is ahead of {}",
-                    localCheckpoint,
-                    requestCheckpoint
+                    "Ignoring new replication checkpoint - Shard is already on checkpoint"
                 )
             );
             return false;
@@ -3752,7 +3772,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
         recoveryState.getVerifyIndex().checkIndexTime(Math.max(0, TimeValue.nsecToMSec(System.nanoTime() - timeNS)));
     }
 
-    Engine getEngine() {
+    public Engine getEngine() {
         Engine engine = getEngineOrNull();
         if (engine == null) {
             throw new AlreadyClosedException("engine is closed");
@@ -5154,8 +5174,8 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
             if (remoteSegmentMetadata != null) {
                 final SegmentInfos infosSnapshot = store.buildSegmentInfos(
                     remoteSegmentMetadata.getSegmentInfosBytes(),
-                    remoteSegmentMetadata.getGeneration()
-                );
+                    remoteSegmentMetadata.getGeneration(),
+                    new HashMap<>(), new HashMap<>());
                 long processedLocalCheckpoint = Long.parseLong(infosSnapshot.getUserData().get(LOCAL_CHECKPOINT_KEY));
                 // delete any other commits, we want to start the engine only from a new commit made with the downloaded infos bytes.
                 // Extra segments will be wiped on engine open.
@@ -5231,8 +5251,8 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
             if (pinnedTimestamp) {
                 final SegmentInfos infosSnapshot = store.buildSegmentInfos(
                     remoteSegmentMetadata.getSegmentInfosBytes(),
-                    remoteSegmentMetadata.getGeneration()
-                );
+                    remoteSegmentMetadata.getGeneration(),
+                    new HashMap<>(), new HashMap<>());
                 long processedLocalCheckpoint = Long.parseLong(infosSnapshot.getUserData().get(LOCAL_CHECKPOINT_KEY));
                 // delete any other commits, we want to start the engine only from a new commit made with the downloaded infos bytes.
                 // Extra segments will be wiped on engine open.

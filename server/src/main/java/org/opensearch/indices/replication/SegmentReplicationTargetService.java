@@ -280,7 +280,7 @@ public class SegmentReplicationTargetService extends AbstractLifecycleComponent 
      * @param replicaShard       replica shard on which checkpoint is received
      */
     public synchronized void onNewCheckpoint(final ReplicationCheckpoint receivedCheckpoint, final IndexShard replicaShard) {
-        logger.debug(() -> new ParameterizedMessage("Replica received new replication checkpoint from primary [{}]", receivedCheckpoint));
+        logger.info(() -> new ParameterizedMessage("Replica received new replication checkpoint from primary [{}]", receivedCheckpoint));
         // if the shard is in any state
         if (replicaShard.state().equals(IndexShardState.CLOSED)) {
             // ignore if shard is closed
@@ -315,7 +315,8 @@ public class SegmentReplicationTargetService extends AbstractLifecycleComponent 
                 }
             }
             final Thread thread = Thread.currentThread();
-            if (replicaShard.shouldProcessCheckpoint(receivedCheckpoint)) {
+
+            if (replicaShard.getSegmentInfosVersion() < receivedCheckpoint.getSegmentInfosVersion()) {
                 startReplication(replicaShard, receivedCheckpoint, new SegmentReplicationListener() {
                     @Override
                     public void onReplicationDone(SegmentReplicationState state) {

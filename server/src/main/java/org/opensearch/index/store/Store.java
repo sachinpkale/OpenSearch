@@ -63,6 +63,7 @@ import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.Version;
 import org.opensearch.ExceptionsHelper;
 import org.opensearch.common.UUIDs;
@@ -103,9 +104,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.io.UncheckedIOException;
+import java.nio.ByteBuffer;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -382,6 +385,11 @@ public class Store extends AbstractIndexShardComponent implements Closeable, Ref
         assert indexSettings.isSegRepEnabledOrRemoteNode();
         failIfCorrupted();
         try {
+            logger.error("||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||");
+            logger.error(segmentInfos.files(true));
+            logger.error("||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||");
+            logger.error(Arrays.stream(directory.listAll()).toList());
+            logger.error("||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||");
             return loadMetadata(segmentInfos, directory, logger, true).fileMetadata;
         } catch (NoSuchFileException | CorruptIndexException | IndexFormatTooOldException | IndexFormatTooNewException ex) {
             markStoreCorrupted(ex);
@@ -805,13 +813,103 @@ public class Store extends AbstractIndexShardComponent implements Closeable, Ref
      * This method takes the segment info bytes to build SegmentInfos. It inc'refs files pointed by passed in SegmentInfos
      * bytes to ensure they are not deleted.
      *
-     * @param infosBytes bytes[] of SegmentInfos supposed to be sent over by primary excluding segment_N file
-     * @param segmentsGen segment generation number
+     * @param infosBytes                bytes[] of SegmentInfos supposed to be sent over by primary excluding segment_N file
+     * @param segmentsGen               segment generation number
+     * @param mergedToRefreshedSegments
+     * @param mergedSegmentIDs
      * @throws IOException Exception while reading store and building segment infos
      */
-    public SegmentInfos buildSegmentInfos(byte[] infosBytes, long segmentsGen) throws IOException {
+    public SegmentInfos buildSegmentInfos(byte[] infosBytes, long segmentsGen, Map<String, List<String>> mergedToRefreshedSegments, Map<String, byte[]> mergedSegmentIDs) throws IOException {
         try (final ChecksumIndexInput input = toIndexInput(infosBytes)) {
-            return SegmentInfos.readCommit(directory, input, segmentsGen);
+            if (mergedToRefreshedSegments.isEmpty()) {
+                return SegmentInfos.readCommit(directory, input, segmentsGen);
+            } else {
+                return SegmentInfos.readCommit(new MergeAwareDirectory(directory, mergedToRefreshedSegments, mergedSegmentIDs), input, segmentsGen);
+            }
+        }
+    }
+
+    static class MergeAwareDirectory extends FilterDirectory {
+        Map<String, List<String>> mergedToRefreshedSegments;
+        Map<String, byte[]> mergedSegmentIDs;
+
+        public MergeAwareDirectory(Directory directory, Map<String, List<String>> mergedToRefreshedSegments, Map<String, byte[]> mergedSegmentIDs) {
+            super(directory);
+            this.mergedToRefreshedSegments = mergedToRefreshedSegments;
+            this.mergedSegmentIDs = mergedSegmentIDs;
+        }
+
+        @Override
+        public IndexInput openInput(String name, IOContext context) throws IOException {
+            String[] tokens = name.split("\\.");
+            if (mergedToRefreshedSegments.containsKey(tokens[0])) {
+                name = mergedToRefreshedSegments.get(tokens[0]).get(0) + "." + tokens[1];
+                return new MergeAwareIndexInput(super.openInput(name, IOContext.READONCE), mergedSegmentIDs.get(tokens[0]));
+            } else {
+                return super.openInput(name, context);
+            }
+        }
+
+        @Override
+        public ChecksumIndexInput openChecksumInput(String name) throws IOException {
+            String[] tokens = name.split("\\.");
+            if (mergedToRefreshedSegments.containsKey(tokens[0])) {
+                name = mergedToRefreshedSegments.get(tokens[0]).get(0) + "." + tokens[1];
+                return new BufferedChecksumIndexInput(new MergeAwareIndexInput(openInput(name, IOContext.READONCE), mergedSegmentIDs.get(tokens[0])));
+            } else {
+                return new BufferedChecksumIndexInput(openInput(name, IOContext.READONCE));
+            }
+        }
+    }
+
+    static class MergeAwareIndexInput extends IndexInput {
+
+        IndexInput indexInput;
+        byte[] segmentIdBytes;
+
+        MergeAwareIndexInput(IndexInput indexInput, byte[] segmentIdBytes) {
+            super("MergeAwareIndexInput");
+            this.indexInput = indexInput;
+            this.segmentIdBytes = segmentIdBytes;
+        }
+
+        @Override
+        public void close() throws IOException {
+            indexInput.close();
+        }
+
+        @Override
+        public long getFilePointer() {
+            return indexInput.getFilePointer();
+        }
+
+        @Override
+        public void seek(long pos) throws IOException {
+            indexInput.seek(pos);
+        }
+
+        @Override
+        public long length() {
+            return indexInput.length();
+        }
+
+        @Override
+        public IndexInput slice(String sliceDescription, long offset, long length) throws IOException {
+            return indexInput.slice(sliceDescription, offset, length);
+        }
+
+        @Override
+        public byte readByte() throws IOException {
+
+            return indexInput.readByte();
+        }
+
+        @Override
+        public void readBytes(byte[] b, int offset, int len) throws IOException {
+            indexInput.readBytes(b, offset, len);
+            if (len == StringHelper.ID_LENGTH && (indexInput.length() - indexInput.getFilePointer() != CodecUtil.footerLength())) {
+                System.arraycopy(segmentIdBytes, offset, b, offset, len);
+            }
         }
     }
 
@@ -911,7 +1009,7 @@ public class Store extends AbstractIndexShardComponent implements Closeable, Ref
      *
      * @opensearch.internal
      */
-    static final class StoreDirectory extends FilterDirectory {
+    static class StoreDirectory extends FilterDirectory {
         private final Logger deletesLogger;
 
         public final DirectoryFileTransferTracker directoryFileTransferTracker;

@@ -62,11 +62,13 @@ public class NRTReplicationReaderManager extends OpenSearchReaderManager {
 
     @Override
     protected OpenSearchDirectoryReader refreshIfNeeded(OpenSearchDirectoryReader referenceToRefresh) throws IOException {
+        logger.info("In NRTReplicationReaderManager.refreshIfNeeded");
         Objects.requireNonNull(referenceToRefresh);
         // checks if an actual refresh (change in segments) happened
-        if (unwrapStandardReader(referenceToRefresh).getSegmentInfos().version == currentInfos.version) {
-            return null;
-        }
+//        if (unwrapStandardReader(referenceToRefresh).getSegmentInfos().version == currentInfos.version) {
+//            logger.info("%%%%%%%%%%%%%%%%%%%%%% Returning from NRTReplicationReaderManager.refreshIfNeeded: " + unwrapStandardReader(referenceToRefresh).getSegmentInfos().version + " and " + currentInfos.version);
+//            return null;
+//        }
         final List<LeafReader> subs = new ArrayList<>();
         final StandardDirectoryReader standardDirectoryReader = unwrapStandardReader(referenceToRefresh);
         for (LeafReaderContext ctx : standardDirectoryReader.leaves()) {
@@ -80,8 +82,8 @@ public class NRTReplicationReaderManager extends OpenSearchReaderManager {
             innerReader,
             Lucene.SOFT_DELETES_FIELD
         );
-        logger.trace(
-            () -> new ParameterizedMessage("updated to SegmentInfosVersion=" + currentInfos.getVersion() + " reader=" + innerReader)
+        logger.info(
+            () -> new ParameterizedMessage("updated to SegmentInfosVersion=" + currentInfos.getVersion() + " reader=" + innerReader + " files=" + files)
         );
         final OpenSearchDirectoryReader reader = OpenSearchDirectoryReader.wrap(
             softDeletesDirectoryReaderWrapper,

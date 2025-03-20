@@ -67,11 +67,13 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.LockObtainFailedException;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.InfoStream;
+import org.apache.lucene.util.StringHelper;
 import org.opensearch.ExceptionsHelper;
 import org.opensearch.action.index.IndexRequest;
 import org.opensearch.common.Booleans;
 import org.opensearch.common.Nullable;
 import org.opensearch.common.SuppressForbidden;
+import org.opensearch.common.collect.Tuple;
 import org.opensearch.common.concurrent.GatedCloseable;
 import org.opensearch.common.lease.Releasable;
 import org.opensearch.common.lucene.LoggerInfoStream;
@@ -119,6 +121,8 @@ import org.opensearch.threadpool.ThreadPool;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -2453,6 +2457,16 @@ public class InternalEngine extends Engine {
         }
     }
 
+    public static List<byte[]> getString(SegmentCommitInfo segmentCommitInfo) {
+        try {
+            return List.of((segmentCommitInfo.getDelCount() + "__" + segmentCommitInfo.getSoftDelCount() + "__" +
+                segmentCommitInfo.getDelGen() + "__" + segmentCommitInfo.getFieldInfosGen() + "__" +
+                segmentCommitInfo.getDocValuesGen()).getBytes(StandardCharsets.UTF_8), segmentCommitInfo.info.getId(), segmentCommitInfo.getId());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     @Override
     public boolean isThrottled() {
         return throttle.isThrottled();
@@ -2472,7 +2486,7 @@ public class InternalEngine extends Engine {
     }
 
     public Map<String, List<String>> mergedToRefreshedSegments = new HashMap<>();
-    public Map<String, byte[]> mergedSegmentIDs = new HashMap<>();
+    public Map<String, List<byte[]>> segmentIDs = new HashMap<>();
 
     LiveIndexWriterConfig getCurrentIndexWriterConfig() {
         return indexWriter.getConfig();
@@ -2509,7 +2523,10 @@ public class InternalEngine extends Engine {
         public synchronized void afterMerge(OnGoingMerge merge) {
             logger.info("@@@@@@@@@@@@@@@@@@@@@@@@@@");
             engine.mergedToRefreshedSegments.put(merge.oneMerge.getMergeInfo().info.name, merge.oneMerge.segments.stream().map(sci -> sci.info.name).collect(Collectors.toList()));
-            engine.mergedSegmentIDs.put(merge.oneMerge.getMergeInfo().info.name, merge.oneMerge.getMergeInfo().info.getId());
+            //engine.segmentIDs.put(merge.oneMerge.getMergeInfo().info.name, merge.oneMerge.getMergeInfo().info.getId());
+            for (SegmentCommitInfo sci: merge.oneMerge.segments) {
+                engine.segmentIDs.put(sci.info.name, getString(sci));
+            }
             logger.info("Merged Segment: {}", merge.oneMerge.getMergeInfo().info.name);
             logger.info("@@@@@@@@@@@@@@@@@@@@@@@@@@");
 

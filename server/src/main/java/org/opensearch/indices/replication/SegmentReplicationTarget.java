@@ -10,16 +10,22 @@ package org.opensearch.indices.replication;
 
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.apache.lucene.codecs.CodecUtil;
+import org.apache.lucene.codecs.SegmentInfoFormat;
+import org.apache.lucene.codecs.lucene99.Lucene99SegmentInfoFormat;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.IndexFormatTooNewException;
 import org.apache.lucene.index.IndexFormatTooOldException;
+import org.apache.lucene.index.SegmentCommitInfo;
+import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.util.StringHelper;
 import org.opensearch.OpenSearchCorruptionException;
 import org.opensearch.action.StepListener;
 import org.opensearch.common.UUIDs;
+import org.opensearch.common.concurrent.GatedCloseable;
 import org.opensearch.common.lucene.Lucene;
 import org.opensearch.common.util.CancellableThreads;
 import org.opensearch.core.action.ActionListener;
@@ -36,8 +42,10 @@ import org.opensearch.indices.replication.common.ReplicationTarget;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -249,8 +257,19 @@ public class SegmentReplicationTarget extends ReplicationTarget {
 
         logger.info("**********************************************************");
         logger.info(checkpoint.mergedToRefreshedSegments);
-        logger.info(checkpoint.mergedSegmentIDs);
+        logger.info(checkpoint.segmentIDs);
         logger.info("**********************************************************");
+
+        List<StoreFileMetadata> filesNotToBeCopied = new ArrayList<>();
+        for (StoreFileMetadata file : missingFiles) {
+            for(String mergedSegment: checkpoint.mergedToRefreshedSegments.keySet()) {
+                if (file.name().startsWith(mergedSegment)) {
+                    filesNotToBeCopied.add(file);
+                    break;
+                }
+            }
+        }
+        missingFiles.removeAll(filesNotToBeCopied);
 
         for (StoreFileMetadata file : missingFiles) {
             state.getIndex().addFileDetail(file.name(), file.length(), false);
@@ -296,6 +315,15 @@ public class SegmentReplicationTarget extends ReplicationTarget {
         setLastAccessTime();
     }
 
+    SegmentInfoFormat segmentInfoFormat = new Lucene99SegmentInfoFormat();
+
+
+//    public static String getString(SegmentCommitInfo segmentCommitInfo) {
+//        return segmentCommitInfo.getDelCount() + "__" + segmentCommitInfo.getSoftDelCount() + "__" +
+//            segmentCommitInfo.getDelGen() + "__" + segmentCommitInfo.getFieldInfosGen() + "__" +
+//            segmentCommitInfo.getDocValuesGen() + "__" + StringHelper.idToString(segmentCommitInfo.info.getId());
+//    }
+
     private void finalizeReplication(CheckpointInfoResponse checkpointInfoResponse) throws OpenSearchCorruptionException {
         cancellableThreads.checkForCancel();
         state.setStage(SegmentReplicationState.Stage.FINALIZE_REPLICATION);
@@ -308,11 +336,51 @@ public class SegmentReplicationTarget extends ReplicationTarget {
             store = store();
             store.incRef();
             multiFileWriter.renameAllTempFiles();
-            final SegmentInfos infos = store.buildSegmentInfos(
-                checkpointInfoResponse.getInfosBytes(),
-                checkpointInfoResponse.getCheckpoint().getSegmentsGen()
-            );
+
+            final SegmentInfos infos;
+            if (checkpoint.mergedToRefreshedSegments.isEmpty() == false) {
+                try (final GatedCloseable<SegmentInfos> snapshot = indexShard.getSegmentInfosSnapshot()) {
+                    infos = snapshot.get();
+                }
+                long infosVersion = infos.version;
+                logger.error("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&& Pre Infos.version: {}", infos.version);
+                Set<String> commitedSegmentCommitInfo = infos.asList().stream().map(sci -> sci.info.name).collect(Collectors.toSet());
+                logger.error("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
+                logger.error(checkpointInfoResponse.getMetadataMap());
+                logger.error("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
+                boolean modified = false;
+                for (String segment : checkpoint.segmentIDs.keySet()) {
+                    logger.error("===========================  Checking for segment: " + segment + " and " + (commitedSegmentCommitInfo.contains(segment) == false) + " and " + checkpointInfoResponse.getMetadataMap().containsKey(segment + ".si"));
+                    if (commitedSegmentCommitInfo.contains(segment) == false && checkpointInfoResponse.getMetadataMap().containsKey(segment + ".si")) {
+                        try {
+                            List<byte[]> info = checkpoint.segmentIDs.get(segment);
+                            String[] tokens = new String(info.get(0), StandardCharsets.UTF_8).split("__");
+                            SegmentInfo segmentInfo = segmentInfoFormat.read(store.directory(), segment,
+                                info.get(1), IOContext.DEFAULT);
+                            segmentInfo.setCodec(indexShard.getEngine().config().getCodec());
+                            SegmentCommitInfo sci = new SegmentCommitInfo(segmentInfo, Integer.parseInt(tokens[0]),
+                                Integer.parseInt(tokens[1]), Long.parseLong(tokens[2]), Long.parseLong(tokens[3]),
+                                Long.parseLong(tokens[4]), info.get(2));
+                            infos.add(sci);
+                            modified = true;
+                        } catch (Exception e) {
+                            logger.error("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                            logger.error("Exception while adding segment: {}, skipping", segment, e);
+                            logger.error("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                        }
+                    }
+                }
+                if (modified) {
+                    infos.version = infosVersion + 1;
+                }
+                logger.error("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&& Post Infos.version: {}", infos.version);
+
+            } else {
+                infos = store.buildSegmentInfos(checkpointInfoResponse.getInfosBytes(), checkpointInfoResponse.getCheckpoint().getSegmentsGen(), new HashMap<>(), new HashMap<>());
+            }
+
             indexShard.finalizeReplication(infos);
+            indexShard.setSegmentInfosVersion(checkpointInfoResponse.getCheckpoint().getSegmentInfosVersion());
         } catch (CorruptIndexException | IndexFormatTooNewException | IndexFormatTooOldException ex) {
             // this is a fatal exception at this stage.
             // this means we transferred files from the remote that have not be checksummed and they are

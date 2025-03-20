@@ -42,7 +42,7 @@ public class ReplicationCheckpoint implements Writeable, Comparable<ReplicationC
     private final Map<String, StoreFileMetadata> metadataMap;
     private final long createdTimeStamp;
     public Map<String, List<String>> mergedToRefreshedSegments = new HashMap<>();
-    public Map<String, byte[]> mergedSegmentIDs = new HashMap<>();
+    public Map<String, List<byte[]>> segmentIDs = new HashMap<>();
 
     public static ReplicationCheckpoint empty(ShardId shardId) {
         return empty(shardId, "");
@@ -126,7 +126,7 @@ public class ReplicationCheckpoint implements Writeable, Comparable<ReplicationC
         if (in.getVersion().onOrAfter(Version.V_3_0_0)) {
             this.createdTimeStamp = in.readLong();
             this.mergedToRefreshedSegments = in.readMapOfLists(StreamInput::readString, StreamInput::readString);
-            this.mergedSegmentIDs = in.readMap(StreamInput::readString, StreamInput::readByteArray);
+            this.segmentIDs = in.readMapOfLists(StreamInput::readString, StreamInput::readByteArray);
         } else {
             this.createdTimeStamp = 0;
         }
@@ -196,7 +196,7 @@ public class ReplicationCheckpoint implements Writeable, Comparable<ReplicationC
         if (out.getVersion().onOrAfter(Version.V_3_0_0)) {
             out.writeLong(createdTimeStamp);
             out.writeMapOfLists(mergedToRefreshedSegments, StreamOutput::writeString, StreamOutput::writeString);
-            out.writeMap(mergedSegmentIDs, StreamOutput::writeString, StreamOutput::writeByteArray);
+            out.writeMapOfLists(segmentIDs, StreamOutput::writeString, StreamOutput::writeByteArray);
         }
     }
 

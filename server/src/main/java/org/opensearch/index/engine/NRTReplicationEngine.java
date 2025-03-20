@@ -170,11 +170,12 @@ public class NRTReplicationEngine extends Engine {
             // We do not compare against the last local commit gen here because it is possible to receive
             // a lower gen from a newly elected primary shard that is behind this shard's last commit gen.
             // In that case we still commit into the next local generation.
-            if (incomingGeneration != this.lastReceivedPrimaryGen) {
-                flush(false, true);
-                translogManager.getDeletionPolicy().setLocalCheckpointOfSafeCommit(maxSeqNo);
-                translogManager.rollTranslogGeneration();
-            }
+//            if (incomingGeneration > (this.lastReceivedPrimaryGen + 1)) {
+//                logger.error("******************************************************* Flushing: incomingGeneration = {}, lastReceivedPrimaryGen = {}", incomingGeneration, lastReceivedPrimaryGen);
+//                flush(false, true);
+//                translogManager.getDeletionPolicy().setLocalCheckpointOfSafeCommit(maxSeqNo);
+//                translogManager.rollTranslogGeneration();
+//            }
             this.lastReceivedPrimaryGen = incomingGeneration;
             localCheckpointTracker.fastForwardProcessedSeqNo(maxSeqNo);
         }

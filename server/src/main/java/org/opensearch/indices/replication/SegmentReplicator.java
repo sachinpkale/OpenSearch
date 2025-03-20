@@ -275,7 +275,7 @@ public class SegmentReplicator {
         target.startReplication(new ActionListener<>() {
             @Override
             public void onResponse(Void o) {
-                logger.debug(() -> new ParameterizedMessage("Finished replicating {} marking as done.", target.description()));
+                logger.info(() -> new ParameterizedMessage("Finished replicating {} marking as done.", target.description()));
                 pruneCheckpointsUpToLastSync(target.indexShard());
                 onGoingReplications.markAsDone(replicationId);
                 if (target.state().getIndex().recoveredFileCount() != 0 && target.state().getIndex().recoveredBytes() != 0) {
@@ -285,7 +285,7 @@ public class SegmentReplicator {
 
             @Override
             public void onFailure(Exception e) {
-                logger.debug("Replication failed {}", target.description());
+                logger.info("Replication failed {}", target.description());
                 if (isStoreCorrupt(target) || e instanceof CorruptIndexException || e instanceof OpenSearchCorruptionException) {
                     onGoingReplications.fail(replicationId, new ReplicationFailedException("Store corruption during replication", e), true);
                     return;
