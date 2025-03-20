@@ -33,12 +33,18 @@
 package org.opensearch.index;
 
 import org.apache.lucene.index.FilterMergePolicy;
+import org.apache.lucene.index.MergeTrigger;
 import org.apache.lucene.index.SegmentCommitInfo;
 import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.index.TieredMergePolicy;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import org.apache.logging.log4j.Logger;
+import org.opensearch.common.logging.Loggers;
+import org.opensearch.core.index.shard.ShardId;
 
 /**
  * Wrapper around {@link TieredMergePolicy} which doesn't respect
@@ -51,12 +57,47 @@ final class OpenSearchTieredMergePolicy extends FilterMergePolicy {
 
     final TieredMergePolicy regularMergePolicy;
     final TieredMergePolicy forcedMergePolicy;
+    final Logger logger;
 
     OpenSearchTieredMergePolicy() {
         super(new TieredMergePolicy());
         regularMergePolicy = (TieredMergePolicy) in;
         forcedMergePolicy = new TieredMergePolicy();
         forcedMergePolicy.setMaxMergedSegmentMB(Double.POSITIVE_INFINITY); // unlimited
+        logger = Loggers.getLogger(getClass(), new ShardId("dummy1", "dummy2", 0));
+    }
+
+    public boolean isGreater(SegmentCommitInfo s1, SegmentCommitInfo s2) {
+        long s1Long = Long.parseLong(s1.info.name.substring(1), Character.MAX_RADIX);
+        long s2Long = Long.parseLong(s2.info.name.substring(1), Character.MAX_RADIX);
+
+        return s1Long > s2Long;
+    }
+
+    @Override
+    public MergeSpecification findFullFlushMerges(MergeTrigger mergeTrigger, SegmentInfos segmentInfos, MergeContext mergeContext) throws IOException {
+        MergeSpecification mergeSpecification = super.findFullFlushMerges(mergeTrigger, segmentInfos, mergeContext);
+        if (mergeSpecification == null) {
+            return null;
+        }
+        List<OneMerge> merges = mergeSpecification.merges;
+        OneMerge merge = merges.removeLast();
+        List<SegmentCommitInfo> segmentList = new ArrayList<>(merge.segments);
+        SegmentCommitInfo lastestSegmentCommitInfo = null;
+        for(SegmentCommitInfo segmentCommitInfo: segmentList) {
+            if (lastestSegmentCommitInfo == null) {
+                lastestSegmentCommitInfo = segmentCommitInfo;
+            } else {
+                if (isGreater(segmentCommitInfo, lastestSegmentCommitInfo)) {
+                    lastestSegmentCommitInfo = segmentCommitInfo;
+                }
+            }
+        }
+        segmentList.remove(lastestSegmentCommitInfo);
+        logger.error("Removing: {}", lastestSegmentCommitInfo);
+        OneMerge modified = new OneMerge(segmentList);
+        merges.add(modified);
+        return mergeSpecification;
     }
 
     @Override
